@@ -1,0 +1,68 @@
+version = 1
+
+[settings]
+language = "auto"
+hotkey_apps = "cmd+shift+space"
+hotkey_links = "cmd+option+space"
+scan_applications = true
+discover_edge_apps = true
+icon_services = ["site"]
+
+[[categories]]
+id = "dev"
+name = "Development"
+tab = "links"
+
+[[categories]]
+id = "docs"
+name = "Documentation"
+tab = "links"
+
+[[categories]]
+id = "tools"
+name = "Tools"
+tab = "apps"
+
+[[links]]
+id = "github"
+name = "GitHub"
+description = "Repositories and pull requests"
+url = "https://github.com"
+category = "dev"
+icon = "sh:github-light"
+
+[[links]]
+id = "wails"
+name = "Wails"
+description = "Desktop apps in Go"
+url = "https://wails.io"
+category = "dev"
+icon = "sh:wails"
+
+[[links]]
+id = "drolosoft"
+name = "Drolosoft"
+description = "Tools we wish existed"
+url = "https://drolosoft.com"
+category = "dev"
+
+[[links]]
+id = "go-std"
+name = "Go standard library"
+description = "pkg.go.dev/std"
+url = "https://pkg.go.dev/std"
+category = "docs"
+
+[[links]]
+id = "mdn"
+name = "MDN"
+description = "Web platform reference"
+url = "https://developer.mozilla.org"
+category = "docs"
+
+[[links]]
+id = "wails-docs"
+name = "Wails documentation"
+description = "Guides and API reference"
+url = "https://wails.io/docs/introduction"
+category = "docs"
