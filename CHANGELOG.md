@@ -11,3 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The launcher from the original private monorepo, rebuilt as hopto: two global shortcuts, global search, categories, favourites and usage order, Edge web apps, light and dark themes.
+
+### Fixed
+- A corrupt usage.json is no longer overwritten on the first opening.
+- The selection no longer disappears when moving up on a short apps grid.
