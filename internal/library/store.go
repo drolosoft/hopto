@@ -18,6 +18,12 @@ import (
 // understand.
 var ErrReadOnly = errors.New("library: the file cannot be parsed, refusing to overwrite it")
 
+// maxFileBytes is the largest library.toml hopto will read. 2000 entries
+// (the cap Validate enforces) encode to well under this; anything bigger
+// is either a mistake or something feeding the file garbage, and parsing
+// it would freeze the page rather than serve the user.
+const maxFileBytes = 1 << 20
+
 // header opens every file hopto writes. The comments a user adds are lost
 // on the next write, and the header says so.
 const header = `# hopto library. The app rewrites this file when you add, edit or delete;
@@ -58,6 +64,14 @@ type Store struct {
 // until the file is fixed.
 func Open(path string, seed []byte, home string) (*Store, error) {
 	store := &Store{path: path, home: home}
+
+	// Stat before reading: a file past the cap is never even loaded into
+	// memory, let alone handed to the TOML parser.
+	if info, statErr := os.Stat(path); statErr == nil && info.Size() > maxFileBytes {
+		store.loadErr = fmt.Errorf("%w: file is %d bytes, the cap is %d", ErrTooLarge, info.Size(), maxFileBytes)
+		store.lib, _ = Decode(seed)
+		return store, store.loadErr
+	}
 
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -143,15 +157,19 @@ func (s *Store) Apply(op func(*Library) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// A file that does not parse, or comes from a newer hopto, is never
-	// rewritten: the caller gets ErrReadOnly with the parse detail behind
-	// it, so the page can show the line while refusing the edit.
-	if err := s.reloadIfChanged(); err != nil || s.loadErr != nil {
-		if s.loadErr != nil {
-			return fmt.Errorf("%w: %v", ErrReadOnly, s.loadErr)
-		}
+	// First step: a hand edit made since the last read may have just broken
+	// the file (too big, unparseable, from a newer hopto). The caller gets
+	// ErrReadOnly with the parse detail behind it, so the page can show the
+	// line while refusing the edit.
+	if reloadErr := s.reloadIfChanged(); reloadErr != nil {
+		return fmt.Errorf("%w: %v", ErrReadOnly, reloadErr)
+	}
 
-		return err
+	// Second step: nothing changed since the last read, but the file was
+	// already broken then (its content is byte-identical to a version we
+	// already rejected). The store stays read only until it is fixed.
+	if s.loadErr != nil {
+		return fmt.Errorf("%w: %v", ErrReadOnly, s.loadErr)
 	}
 
 	draft := clone(s.lib)
@@ -180,10 +198,26 @@ func (s *Store) Apply(op func(*Library) error) error {
 // cheap. A file that cannot be read (deleted, permissions) makes the
 // store read only until it can be read again.
 func (s *Store) reloadIfChanged() error {
+	// Stat before reading: a file that grew past the cap since the last
+	// reload is refused without being parsed, the same as at Open.
+	if info, statErr := os.Stat(s.path); statErr == nil && info.Size() > maxFileBytes {
+		s.loadErr = fmt.Errorf("%w: file is %d bytes, the cap is %d", ErrTooLarge, info.Size(), maxFileBytes)
+		s.loadLine = 0
+		s.checksum = [32]byte{}
+
+		return s.loadErr
+	}
+
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		s.loadErr = err
 		s.loadLine = 0
+
+		// The checksum of the vanished file must not survive it: if the
+		// file comes back with the exact bytes it had before, the next
+		// reload has to see them as new again, not as "already read".
+		s.checksum = [32]byte{}
+
 		return err
 	}
 
@@ -298,7 +332,13 @@ func Encode(lib Library) ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString(header)
 
-	if err := toml.NewEncoder(&buffer).Encode(withoutNils(lib)); err != nil {
+	encoder := toml.NewEncoder(&buffer)
+	// The spec's example lists table bodies flush with the table header,
+	// not indented under it; an unindented file is also what a user
+	// editing by hand is more likely to keep consistent.
+	encoder.Indent = ""
+
+	if err := encoder.Encode(withoutNils(lib)); err != nil {
 		return nil, err
 	}
 

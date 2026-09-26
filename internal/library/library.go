@@ -18,10 +18,10 @@ const (
 type Library struct {
 	Version    int        `toml:"version"`
 	Settings   Settings   `toml:"settings"`
-	Categories []Category `toml:"categories"`
-	Links      []Link     `toml:"links"`
-	Apps       []AppEntry `toml:"apps"`
-	Hidden     []Hidden   `toml:"hidden"`
+	Categories []Category `toml:"categories,omitempty"`
+	Links      []Link     `toml:"links,omitempty"`
+	Apps       []AppEntry `toml:"apps,omitempty"`
+	Hidden     []Hidden   `toml:"hidden,omitempty"`
 }
 
 // Settings are the few knobs of hopto. Language "auto" follows the system;

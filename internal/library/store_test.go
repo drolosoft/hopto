@@ -382,3 +382,107 @@ func TestEncodeRoundTrip(t *testing.T) {
 		t.Fatalf("round trip lost data: %+v", back)
 	}
 }
+
+// A file past the 1 MiB cap is refused without being read into memory:
+// a runaway file (or a symlink loop feeding garbage) must not freeze the
+// page trying to parse megabytes of TOML.
+func TestOpenRefusesAFileOverTheSizeCap(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "library.toml")
+
+	// One comment line repeated past the 1 MiB cap; the content does not
+	// matter, only its size.
+	line := "# padding to cross the one mebibyte cap\n"
+	oversized := strings.Repeat(line, maxFileBytes/len(line)+1)
+	if err := os.WriteFile(path, []byte(oversized), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := Open(path, []byte(sampleTOML), home)
+	if !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("err = %v, want ErrTooLarge", err)
+	}
+
+	if !store.Status().ReadOnly {
+		t.Fatal("store must be read only over the size cap")
+	}
+}
+
+// A file that grows past the cap between operations makes the store read
+// only from the next reload, the same as a parse error would.
+func TestApplyRefusesWhenTheFileGrowsOverTheSizeCap(t *testing.T) {
+	store, path := openSample(t)
+
+	line := "# padding to cross the one mebibyte cap\n"
+	oversized := strings.Repeat(line, maxFileBytes/len(line)+1)
+	if err := os.WriteFile(path, []byte(oversized), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := store.Apply(func(lib *Library) error { return nil })
+	if !errors.Is(err, ErrReadOnly) {
+		t.Fatalf("err = %v, want ErrReadOnly", err)
+	}
+
+	if !store.Status().ReadOnly {
+		t.Fatal("store must be read only over the size cap")
+	}
+}
+
+// A file that vanishes and then comes back byte-identical to what the
+// store already had in memory must still be read: the checksum recorded
+// for the vanished file must not match the recovered one by accident.
+func TestApplyRecoversWhenTheFileComesBackIdentical(t *testing.T) {
+	store, path := openSample(t)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Apply(func(lib *Library) error { return nil }); !errors.Is(err, ErrReadOnly) {
+		t.Fatalf("err = %v, want ErrReadOnly", err)
+	}
+
+	if err := os.WriteFile(path, before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Apply(func(lib *Library) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+
+	if store.Status().ReadOnly {
+		t.Fatal("store still read only after the file came back identical")
+	}
+}
+
+// An empty apps list must encode without the top-level key, or a
+// hand-added [[apps]] table appended afterwards fails to parse with
+// "Key 'apps' was already created".
+func TestEncodeThenHandAddedAppsTableStillDecodes(t *testing.T) {
+	lib := Default()
+	lib.Categories = []Category{{ID: "tools", Name: "Tools", Tab: TabApps}}
+
+	data, err := Encode(lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handAdded := string(data) + "\n[[apps]]\nid = \"safari\"\nname = \"Safari\"\npath = \"/Applications/Safari.app\"\ncategory = \"tools\"\n"
+
+	decoded, err := Decode([]byte(handAdded))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Validate(decoded, home); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(decoded.Apps) != 1 || decoded.Apps[0].ID != "safari" {
+		t.Fatalf("apps = %+v, want one entry for safari", decoded.Apps)
+	}
+}

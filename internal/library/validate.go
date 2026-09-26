@@ -75,6 +75,12 @@ func Validate(lib Library, home string) error {
 		return ErrFutureVersion
 	}
 
+	// A negative version cannot come from a real hopto write; only a hand
+	// edit could put one there.
+	if lib.Version < 0 {
+		return &Problem{Field: "version", Key: "version.invalid", Detail: "version cannot be negative"}
+	}
+
 	if len(lib.Links)+len(lib.Apps) > maxItems || len(lib.Categories) > maxCategories {
 		return ErrTooLarge
 	}

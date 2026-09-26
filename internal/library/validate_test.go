@@ -107,6 +107,21 @@ func TestValidateRefusesAFutureVersion(t *testing.T) {
 	}
 }
 
+// A negative version cannot come from any hopto that ever existed; it can
+// only be a hand edit gone wrong, and letting it through would send it
+// unchanged into the next rewrite.
+func TestValidateRefusesANegativeVersion(t *testing.T) {
+	lib := validLibrary()
+	lib.Version = -1
+
+	err := Validate(lib, "/Users/someone")
+
+	var problem *Problem
+	if !errors.As(err, &problem) || problem.Field != "version" || problem.Key != "version.invalid" {
+		t.Fatalf("error = %v, want a version.invalid Problem", err)
+	}
+}
+
 // The size limits keep a runaway file from freezing the page.
 func TestValidateRefusesTooManyItems(t *testing.T) {
 	lib := validLibrary()
