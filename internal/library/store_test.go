@@ -342,6 +342,29 @@ func TestSnapshotIsADeepCopy(t *testing.T) {
 	}
 }
 
+// Keywords are a slice inside a slice: Snapshot must deep-copy that inner
+// slice too, or a page appending to it would silently edit the store.
+func TestSnapshotDeepCopiesKeywords(t *testing.T) {
+	store, _ := openSample(t)
+
+	err := store.Apply(func(lib *Library) error {
+		lib.Links[0].Keywords = []string{"git", "code"}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot := store.Snapshot()
+	snapshot.Links[0].Keywords[0] = "changed"
+	snapshot.Links[0].Keywords = append(snapshot.Links[0].Keywords, "extra")
+
+	again := store.Snapshot().Links[0].Keywords
+	if again[0] != "git" || len(again) != 2 {
+		t.Fatalf("keywords = %v, want the store's own copy untouched", again)
+	}
+}
+
 // Decode fills the defaults an old or hand-written file may lack, and
 // reports keys hopto does not know instead of failing on them.
 func TestDecodeDefaultsAndUnknownKeys(t *testing.T) {

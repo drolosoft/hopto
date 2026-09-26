@@ -36,15 +36,26 @@ var ErrFutureVersion = errors.New("library: the file comes from a newer version 
 // ErrTooLarge is returned when the file holds more than the page can show.
 var ErrTooLarge = errors.New("library: too many entries")
 
-// The limits of a library. 2000 items is far beyond what a launcher lists,
-// and keeps a runaway file from freezing the page; 64 categories is more
-// than fit in the chips row.
+// The limits of a library.
 const (
-	maxItems      = 2000
+	// 2000 items is far beyond what a launcher lists, and keeps a runaway
+	// file from freezing the page.
+	maxItems = 2000
+
+	// 64 categories is more than fit in the chips row.
 	maxCategories = 64
-	maxNameRunes  = 80
-	maxDescRunes  = 200
-	maxURLBytes   = 2048
+
+	// 80 characters is about what fits on one row of the panel without
+	// wrapping or being cut off.
+	maxNameRunes = 80
+
+	// 200 characters is about one line of text under the name, the most
+	// the page ever shows of a description.
+	maxDescRunes = 200
+
+	// 2048 bytes is the length browsers and servers commonly accept for a
+	// URL; anything past it is not a link anyone is meant to type.
+	maxURLBytes = 2048
 )
 
 // idPattern is the shape of every id: a slug of at most 64 characters. Ids
@@ -53,6 +64,10 @@ var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
 // bundlePattern is a reverse-DNS bundle identifier, as `open -b` wants it.
 var bundlePattern = regexp.MustCompile(`^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$`)
+
+// iconShPattern is a selfh.st icon hint: "sh:" followed by the same slug
+// shape as every id in the library.
+var iconShPattern = regexp.MustCompile(`^sh:[a-z0-9][a-z0-9-]{0,63}$`)
 
 // reservedPrefixes are the ids of discovered apps; a user entry must not
 // look like one, or hiding and usage keys would get confused.
@@ -136,10 +151,23 @@ func Validate(lib Library, home string) error {
 		}
 	}
 
+	seenHidden := make(map[string]bool, len(lib.Hidden))
 	for _, hidden := range lib.Hidden {
 		if !idPattern.MatchString(hidden.ID) {
 			return &Problem{Field: "id", ID: hidden.ID, Key: "id.invalid", Detail: "hidden entry with an invalid id"}
 		}
+
+		// Only a discovered app (an "edge-" or "app-" id) can be hidden;
+		// a user entry is removed instead of hidden.
+		if !hasReservedPrefix(hidden.ID) {
+			return &Problem{Field: "id", ID: hidden.ID, Key: "hidden.prefix", Detail: "hidden entries must be discovered apps, prefixed edge- or app-"}
+		}
+
+		if seenHidden[hidden.ID] {
+			return &Problem{Field: "id", ID: hidden.ID, Key: "id.duplicate", Detail: "duplicate hidden id"}
+		}
+
+		seenHidden[hidden.ID] = true
 	}
 
 	return nil
@@ -152,13 +180,23 @@ func CheckID(id string) *Problem {
 		return &Problem{Field: "id", ID: id, Key: "id.invalid", Detail: "id must be lowercase letters, digits and dashes, 1 to 64 characters"}
 	}
 
-	for _, prefix := range reservedPrefixes {
-		if strings.HasPrefix(id, prefix) {
-			return &Problem{Field: "id", ID: id, Key: "id.reserved", Detail: "ids starting with " + prefix + " belong to discovered apps"}
-		}
+	if hasReservedPrefix(id) {
+		return &Problem{Field: "id", ID: id, Key: "id.reserved", Detail: "ids starting with edge- or app- belong to discovered apps"}
 	}
 
 	return nil
+}
+
+// hasReservedPrefix reports whether id starts with one of the prefixes a
+// discovered app gets ("edge-" for an Edge PWA, "app-" for a scanned .app).
+func hasReservedPrefix(id string) bool {
+	for _, prefix := range reservedPrefixes {
+		if strings.HasPrefix(id, prefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CheckLink checks the fields of one link on their own; whether the
@@ -179,6 +217,10 @@ func CheckLink(link Link) []Problem {
 
 	for _, keyword := range link.Keywords {
 		problems = append(problems, checkText("keywords", link.ID, keyword, maxNameRunes, true)...)
+	}
+
+	if problem := checkIcon(link.ID, link.Icon); problem != nil {
+		problems = append(problems, *problem)
 	}
 
 	return problems
@@ -280,6 +322,26 @@ func HostOf(raw string) (string, error) {
 	return parsed.Host, nil
 }
 
+// checkIcon validates the icon hint of a link: either "sh:<name>", a
+// selfh.st icon name, or an https URL fetched once into icons/<id>.png.
+// Only https is accepted, never http: the fetch happens automatically,
+// with no user in the loop to notice a downgrade to plain text.
+func checkIcon(id, icon string) *Problem {
+	if icon == "" {
+		return nil
+	}
+
+	if iconShPattern.MatchString(icon) {
+		return nil
+	}
+
+	if _, err := HostOf(icon); err == nil && strings.HasPrefix(icon, "https://") {
+		return nil
+	}
+
+	return &Problem{Field: "icon", ID: id, Key: "icon.invalid", Detail: "icon must be sh:<name> or an https URL"}
+}
+
 // isInvisible catches the format characters (Unicode category Cf) that
 // make a URL look like another one: zero-width spaces and joiners, the
 // byte order mark, the word joiner and every bidi mark, embedding and
@@ -355,8 +417,14 @@ func checkSettings(settings Settings) error {
 		}
 	}
 
-	if settings.HotkeyApps == "" || settings.HotkeyLinks == "" {
+	// Each hotkey is reported on its own field, so the page can point at
+	// the exact one that is empty instead of always naming hotkey_apps.
+	if settings.HotkeyApps == "" {
 		return &Problem{Field: "hotkey_apps", Key: "settings.hotkey", Detail: "hotkeys cannot be empty"}
+	}
+
+	if settings.HotkeyLinks == "" {
+		return &Problem{Field: "hotkey_links", Key: "settings.hotkey", Detail: "hotkeys cannot be empty"}
 	}
 
 	return nil

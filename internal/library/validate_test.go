@@ -17,6 +17,7 @@ func validLibrary() Library {
 	return lib
 }
 
+// The baseline every other case in this file starts from and mutates.
 func TestValidateAcceptsAValidLibrary(t *testing.T) {
 	if err := Validate(validLibrary(), "/Users/someone"); err != nil {
 		t.Fatal(err)
@@ -30,39 +31,46 @@ func TestValidateRejects(t *testing.T) {
 		edit  func(*Library)
 		field string
 	}{
-		{"link id with uppercase", func(l *Library) { l.Links[0].ID = "GitHub" }, "id"},
-		{"link id with a colon", func(l *Library) { l.Links[0].ID = "git:hub" }, "id"},
-		{"link id reserved for edge apps", func(l *Library) { l.Links[0].ID = "edge-x" }, "id"},
-		{"duplicate link id", func(l *Library) { l.Links = append(l.Links, l.Links[0]) }, "id"},
-		{"empty name", func(l *Library) { l.Links[0].Name = "" }, "name"},
-		{"name too long", func(l *Library) { l.Links[0].Name = strings.Repeat("a", 81) }, "name"},
-		{"control char in name", func(l *Library) { l.Links[0].Name = "Git\x00Hub" }, "name"},
-		{"description too long", func(l *Library) { l.Links[0].Description = strings.Repeat("a", 201) }, "description"},
-		{"unknown category", func(l *Library) { l.Links[0].Category = "nope" }, "category"},
-		{"category of the other tab", func(l *Library) { l.Links[0].Category = "tools" }, "category"},
-		{"file url", func(l *Library) { l.Links[0].URL = "file:///etc/passwd" }, "url"},
-		{"javascript url", func(l *Library) { l.Links[0].URL = "javascript:alert(1)" }, "url"},
-		{"custom scheme", func(l *Library) { l.Links[0].URL = "x-apple.systempreferences:x" }, "url"},
-		{"url with userinfo", func(l *Library) { l.Links[0].URL = "https://google.com@evil.example/" }, "url"},
-		{"url without host", func(l *Library) { l.Links[0].URL = "https:///path" }, "url"},
-		{"url with bad port", func(l *Library) { l.Links[0].URL = "https://example.com:99999/" }, "url"},
-		{"url with leading dash", func(l *Library) { l.Links[0].URL = "-a Calculator" }, "url"},
-		{"url with a zero-width char", func(l *Library) { l.Links[0].URL = "https://exam\u200bple.com" }, "url"},
-		{"url with a left-to-right mark", func(l *Library) { l.Links[0].URL = "https://exam\u200eple.com" }, "url"},
-		{"url with a right-to-left mark", func(l *Library) { l.Links[0].URL = "https://exam\u200fple.com" }, "url"},
-		{"url too long", func(l *Library) { l.Links[0].URL = "https://example.com/" + strings.Repeat("a", 2048) }, "url"},
-		{"app without path or bundle id", func(l *Library) { l.Apps[0].Path = "" }, "path"},
-		{"app path not a bundle", func(l *Library) { l.Apps[0].Path = "/Applications/run.command" }, "path"},
-		{"app path relative", func(l *Library) { l.Apps[0].Path = "Applications/Safari.app" }, "path"},
-		{"app path with dot dot", func(l *Library) { l.Apps[0].Path = "/Applications/../tmp/x.app" }, "path"},
-		{"app path outside the roots", func(l *Library) { l.Apps[0].Path = "/Users/someone/Downloads/x.app" }, "path"},
-		{"bad bundle id", func(l *Library) { l.Apps[0].Path = ""; l.Apps[0].BundleID = "not a bundle id" }, "bundle_id"},
-		{"category without tab", func(l *Library) { l.Categories[0].Tab = "" }, "tab"},
-		{"category id reserved", func(l *Library) { l.Categories[0].ID = "favorites"; l.Links[0].Category = "favorites" }, "id"},
-		{"duplicate category", func(l *Library) { l.Categories = append(l.Categories, l.Categories[0]) }, "id"},
-		{"hidden with a bad id", func(l *Library) { l.Hidden = []Hidden{{ID: "Bad Id"}} }, "id"},
-		{"unknown language", func(l *Library) { l.Settings.Language = "fr" }, "language"},
-		{"unknown icon service", func(l *Library) { l.Settings.IconServices = []string{"bing"} }, "icon_services"},
+		{"link id with uppercase", func(lib *Library) { lib.Links[0].ID = "GitHub" }, "id"},
+		{"link id with a colon", func(lib *Library) { lib.Links[0].ID = "git:hub" }, "id"},
+		{"link id reserved for edge apps", func(lib *Library) { lib.Links[0].ID = "edge-x" }, "id"},
+		{"duplicate link id", func(lib *Library) { lib.Links = append(lib.Links, lib.Links[0]) }, "id"},
+		{"empty name", func(lib *Library) { lib.Links[0].Name = "" }, "name"},
+		{"name too long", func(lib *Library) { lib.Links[0].Name = strings.Repeat("a", 81) }, "name"},
+		{"control char in name", func(lib *Library) { lib.Links[0].Name = "Git\x00Hub" }, "name"},
+		{"description too long", func(lib *Library) { lib.Links[0].Description = strings.Repeat("a", 201) }, "description"},
+		{"unknown category", func(lib *Library) { lib.Links[0].Category = "nope" }, "category"},
+		{"category of the other tab", func(lib *Library) { lib.Links[0].Category = "tools" }, "category"},
+		{"file url", func(lib *Library) { lib.Links[0].URL = "file:///etc/passwd" }, "url"},
+		{"javascript url", func(lib *Library) { lib.Links[0].URL = "javascript:alert(1)" }, "url"},
+		{"custom scheme", func(lib *Library) { lib.Links[0].URL = "x-apple.systempreferences:x" }, "url"},
+		{"url with userinfo", func(lib *Library) { lib.Links[0].URL = "https://google.com@evil.example/" }, "url"},
+		{"url without host", func(lib *Library) { lib.Links[0].URL = "https:///path" }, "url"},
+		{"url with bad port", func(lib *Library) { lib.Links[0].URL = "https://example.com:99999/" }, "url"},
+		{"url with leading dash", func(lib *Library) { lib.Links[0].URL = "-a Calculator" }, "url"},
+		{"url with a zero-width char", func(lib *Library) { lib.Links[0].URL = "https://exam\u200bple.com" }, "url"},
+		{"url with a left-to-right mark", func(lib *Library) { lib.Links[0].URL = "https://exam\u200eple.com" }, "url"},
+		{"url with a right-to-left mark", func(lib *Library) { lib.Links[0].URL = "https://exam\u200fple.com" }, "url"},
+		{"url too long", func(lib *Library) { lib.Links[0].URL = "https://example.com/" + strings.Repeat("a", 2048) }, "url"},
+		{"app without path or bundle id", func(lib *Library) { lib.Apps[0].Path = "" }, "path"},
+		{"app path not a bundle", func(lib *Library) { lib.Apps[0].Path = "/Applications/run.command" }, "path"},
+		{"app path relative", func(lib *Library) { lib.Apps[0].Path = "Applications/Safari.app" }, "path"},
+		{"app path with dot dot", func(lib *Library) { lib.Apps[0].Path = "/Applications/../tmp/x.app" }, "path"},
+		{"app path outside the roots", func(lib *Library) { lib.Apps[0].Path = "/Users/someone/Downloads/x.app" }, "path"},
+		{"bad bundle id", func(lib *Library) { lib.Apps[0].Path = ""; lib.Apps[0].BundleID = "not a bundle id" }, "bundle_id"},
+		{"category without tab", func(lib *Library) { lib.Categories[0].Tab = "" }, "tab"},
+		{"category id reserved", func(lib *Library) { lib.Categories[0].ID = "favorites"; lib.Links[0].Category = "favorites" }, "id"},
+		{"duplicate category", func(lib *Library) { lib.Categories = append(lib.Categories, lib.Categories[0]) }, "id"},
+		{"hidden with a bad id", func(lib *Library) { lib.Hidden = []Hidden{{ID: "Bad Id"}} }, "id"},
+		{"hidden without a discovered-app prefix", func(lib *Library) { lib.Hidden = []Hidden{{ID: "safari"}} }, "id"},
+		{"duplicate hidden id", func(lib *Library) { lib.Hidden = []Hidden{{ID: "edge-x"}, {ID: "edge-x"}} }, "id"},
+		{"empty apps hotkey", func(lib *Library) { lib.Settings.HotkeyApps = "" }, "hotkey_apps"},
+		{"empty links hotkey", func(lib *Library) { lib.Settings.HotkeyLinks = "" }, "hotkey_links"},
+		{"unknown language", func(lib *Library) { lib.Settings.Language = "fr" }, "language"},
+		{"unknown icon service", func(lib *Library) { lib.Settings.IconServices = []string{"bing"} }, "icon_services"},
+		{"icon over http instead of https", func(lib *Library) { lib.Links[0].Icon = "http://example.com/icon.png" }, "icon"},
+		{"icon with a file scheme", func(lib *Library) { lib.Links[0].Icon = "file:///etc/passwd" }, "icon"},
+		{"icon hint with a space in the name", func(lib *Library) { lib.Links[0].Icon = "sh:Bad Name" }, "icon"},
 	}
 
 	for _, tc := range cases {
@@ -90,6 +98,18 @@ func TestValidateAllows(t *testing.T) {
 	lib.Links[0].URL = "http://localhost:7681/"
 	lib.Apps[0].Path = "/Users/someone/Applications/Edge Apps.localized/Karakeep.app"
 	lib.Apps = append(lib.Apps, AppEntry{ID: "by-bundle", Name: "By bundle", BundleID: "com.apple.Safari", Category: "tools"})
+
+	if err := Validate(lib, "/Users/someone"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Both icon hint shapes are accepted: a selfh.st icon name, or an https
+// URL fetched straight into icons/<id>.png.
+func TestValidateAcceptsIconHints(t *testing.T) {
+	lib := validLibrary()
+	lib.Links[0].Icon = "sh:github-light"
+	lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev", Icon: "https://example.com/icon.png"})
 
 	if err := Validate(lib, "/Users/someone"); err != nil {
 		t.Fatal(err)
