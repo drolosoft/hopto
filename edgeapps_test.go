@@ -88,7 +88,9 @@ func TestPngFromICNSPrefers256(t *testing.T) {
 // corrupt length does not loop.
 func TestPngFromICNSRejectsGarbage(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "x.icns")
-	os.WriteFile(path, []byte("icns\x00\x00\x00\x20ic08\x00\x00\x00\x02"), 0o644)
+	if err := os.WriteFile(path, []byte("icns\x00\x00\x00\x20ic08\x00\x00\x00\x02"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, ok := pngFromICNS(path); ok {
 		t.Error("garbage accepted")

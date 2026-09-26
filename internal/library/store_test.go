@@ -73,7 +73,9 @@ func TestOpenSeedsAMissingFile(t *testing.T) {
 // An empty file is an empty library, not an error, and is left alone.
 func TestOpenAcceptsAnEmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "library.toml")
-	os.WriteFile(path, nil, 0o600)
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	store, err := Open(path, []byte(sampleTOML), home)
 	if err != nil {
@@ -94,7 +96,9 @@ func TestOpenAcceptsAnEmptyFile(t *testing.T) {
 func TestOpenKeepsACorruptFileIntact(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "library.toml")
 	corrupt := []byte("version = 1\n[[links]\nid = \"x\"\n")
-	os.WriteFile(path, corrupt, 0o600)
+	if err := os.WriteFile(path, corrupt, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	store, err := Open(path, []byte(sampleTOML), home)
 	if err == nil {
@@ -120,7 +124,9 @@ func TestOpenKeepsACorruptFileIntact(t *testing.T) {
 // A file from the future is refused and left intact.
 func TestOpenRefusesAFutureVersion(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "library.toml")
-	os.WriteFile(path, []byte("version = 99\n"), 0o600)
+	if err := os.WriteFile(path, []byte("version = 99\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	store, err := Open(path, []byte(sampleTOML), home)
 	if !errors.Is(err, ErrFutureVersion) || !store.Status().ReadOnly {
@@ -185,9 +191,11 @@ func TestApplySeesAHandEdit(t *testing.T) {
 	store, path := openSample(t)
 
 	edited := sampleTOML + "\n[[links]]\nid = \"by-hand\"\nname = \"By hand\"\nurl = \"https://example.com\"\ncategory = \"dev\"\n"
-	os.WriteFile(path, []byte(edited), 0o600)
 	// Same second as the seed write is possible on a fast disk: force a
 	// different size so the change is noticed either way.
+	if err := os.WriteFile(path, []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	err := store.Apply(func(lib *Library) error {
 		lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev"})
@@ -211,7 +219,9 @@ func TestApplySeesAHandEdit(t *testing.T) {
 // next reload, keeping the last good library in memory.
 func TestReloadKeepsTheLastGoodLibrary(t *testing.T) {
 	store, path := openSample(t)
-	os.WriteFile(path, []byte("version = 1\n[[links]\n"), 0o600)
+	if err := os.WriteFile(path, []byte("version = 1\n[[links]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := store.ReloadIfChanged(); err == nil {
 		t.Fatal("expected a parse error")
@@ -221,7 +231,10 @@ func TestReloadKeepsTheLastGoodLibrary(t *testing.T) {
 		t.Fatalf("snapshot lost or store writable: %+v", store.Status())
 	}
 
-	os.WriteFile(path, []byte(sampleTOML), 0o600)
+	if err := os.WriteFile(path, []byte(sampleTOML), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := store.ReloadIfChanged(); err != nil || store.Status().ReadOnly {
 		t.Fatalf("store did not recover: err=%v status=%+v", err, store.Status())
 	}
@@ -301,7 +314,11 @@ func TestOpenReportsASeedThatCannotBeWritten(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() { os.Chmod(dir, 0o700) })
+	t.Cleanup(func() {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	store, err := Open(filepath.Join(dir, "library.toml"), []byte(sampleTOML), home)
 	if err == nil {

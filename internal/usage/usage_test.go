@@ -130,8 +130,13 @@ func TestToggleFavorite(t *testing.T) {
 func TestForgetRemovesEveryTrace(t *testing.T) {
 	store := openAt(t, filepath.Join(t.TempDir(), "usage.json"))
 
-	store.RecordOpen("links:mdn")
-	store.ToggleFavorite("links:mdn")
+	if err := store.RecordOpen("links:mdn"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.ToggleFavorite("links:mdn"); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := store.Forget("links:mdn"); err != nil {
 		t.Fatal(err)
@@ -187,7 +192,9 @@ func TestConcurrentRecordOpen(t *testing.T) {
 
 		go func() {
 			defer group.Done()
-			store.RecordOpen("links:mdn")
+			// The key is valid and constant, so this never fails; a
+			// goroutine cannot call t.Fatal, hence the plain discard.
+			_ = store.RecordOpen("links:mdn")
 		}()
 	}
 
