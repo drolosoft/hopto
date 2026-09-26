@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/drolosoft/hopto/internal/usage"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -22,7 +23,7 @@ const (
 type App struct {
 	ctx      context.Context
 	repoRoot string
-	usage    *usageStore
+	usage    *usage.Store
 
 	mu      sync.Mutex
 	visible bool
@@ -32,14 +33,14 @@ type App struct {
 // NewApp creates the launcher; the repository root is detected once so the
 // catalog can point at sibling builds while developing, and the usage file
 // is loaded once. A broken usage file is logged and the launcher goes on
-// with empty counts rather than refusing to start.
+// read only, with empty counts, rather than refusing to start.
 func NewApp() *App {
-	usage, err := newUsageStore(usagePath())
+	store, err := usage.Open(usage.DefaultPath())
 	if err != nil {
-		log.Printf("usage: %v", err)
+		log.Printf("usage: %v (favourites and counts are read only until the file is fixed)", err)
 	}
 
-	return &App{repoRoot: repoRootFromExecutable(), usage: usage, tab: tabApps}
+	return &App{repoRoot: repoRootFromExecutable(), usage: store, tab: tabApps}
 }
 
 // startup stores the context and registers the global shortcuts. The window
@@ -71,9 +72,9 @@ func (a *App) LinkCategories() []Category {
 	return linkCatalog.Categories
 }
 
-// Usage returns the opening counts and favourites, so the page can sort by
-// use and mark the stars.
-func (a *App) Usage() Usage {
+// Usage returns the opening counts, last openings and favourites, so the
+// page can sort by use and recency and mark the stars.
+func (a *App) Usage() usage.Usage {
 	return a.usage.Snapshot()
 }
 
