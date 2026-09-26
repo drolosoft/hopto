@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -223,6 +224,92 @@ func TestReloadKeepsTheLastGoodLibrary(t *testing.T) {
 	os.WriteFile(path, []byte(sampleTOML), 0o600)
 	if err := store.ReloadIfChanged(); err != nil || store.Status().ReadOnly {
 		t.Fatalf("store did not recover: err=%v status=%+v", err, store.Status())
+	}
+}
+
+// A hand edit with the same length as the file, landing in the same
+// second as our own write, is still seen: the store compares bytes.
+func TestApplySeesASameSizedEditInTheSameSecond(t *testing.T) {
+	store, path := openSample(t)
+
+	current, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Same length, different content, same timestamp: "GitHub" becomes
+	// "GitHab" and the modification time is put back to what it was.
+	edited := []byte(strings.Replace(string(current), "GitHub", "GitHab", 1))
+	if len(edited) != len(current) {
+		t.Fatal("fixture drift: the edit must keep the length")
+	}
+
+	if err := os.WriteFile(path, edited, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+
+	err = store.Apply(func(lib *Library) error {
+		lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev"})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.Snapshot().Links[0].Name != "GitHab" {
+		t.Fatal("the hand edit was overwritten by the operation")
+	}
+}
+
+// A file that vanishes between operations makes the store read only,
+// with Status saying so, until it is back.
+func TestApplyRefusesWhenTheFileVanished(t *testing.T) {
+	store, path := openSample(t)
+
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	err := store.Apply(func(lib *Library) error { return nil })
+	if !errors.Is(err, ErrReadOnly) || !store.Status().ReadOnly {
+		t.Fatalf("err = %v, status = %+v", err, store.Status())
+	}
+
+	if err := os.WriteFile(path, []byte(sampleTOML), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Apply(func(lib *Library) error { return nil }); err != nil || store.Status().ReadOnly {
+		t.Fatalf("store did not recover: err=%v status=%+v", err, store.Status())
+	}
+}
+
+// A seed that cannot be written (the folder is read only) is reported by
+// Status, not only by the returned error.
+func TestOpenReportsASeedThatCannotBeWritten(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { os.Chmod(dir, 0o700) })
+
+	store, err := Open(filepath.Join(dir, "library.toml"), []byte(sampleTOML), home)
+	if err == nil {
+		t.Fatal("expected a write error")
+	}
+
+	if !store.Status().ReadOnly || len(store.Snapshot().Links) != 1 {
+		t.Fatalf("status = %+v, links = %d", store.Status(), len(store.Snapshot().Links))
 	}
 }
 

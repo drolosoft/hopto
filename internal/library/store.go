@@ -2,11 +2,11 @@ package library
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -49,8 +49,7 @@ type Store struct {
 	lib      Library
 	loadErr  error
 	loadLine int
-	modTime  time.Time
-	size     int64
+	checksum [32]byte
 }
 
 // Open loads the file at path. A missing file is created from seed, once.
@@ -63,17 +62,25 @@ func Open(path string, seed []byte, home string) (*Store, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		lib, err := Decode(seed)
+		if err == nil {
+			err = Validate(lib, home)
+		}
+
 		if err != nil {
+			store.loadErr = err
+			store.lib = Default()
 			return store, err
 		}
 
-		if err := Validate(lib, home); err != nil {
-			return store, err
-		}
-
+		// The seed is kept in memory even when the disk refuses it, so the
+		// panel still shows something; Status says why nothing can be saved.
 		store.lib = lib
+		if err := store.write(lib); err != nil {
+			store.loadErr = err
+			return store, err
+		}
 
-		return store, store.write(lib)
+		return store, nil
 	}
 
 	if err != nil {
@@ -82,7 +89,7 @@ func Open(path string, seed []byte, home string) (*Store, error) {
 		return store, err
 	}
 
-	store.recordStat()
+	store.checksum = sha256.Sum256(data)
 
 	if err := store.load(data); err != nil {
 		store.lib, _ = Decode(seed)
@@ -118,9 +125,9 @@ func (s *Store) Status() Status {
 	return status
 }
 
-// ReloadIfChanged re-reads the file when its size or modification time
-// changed since the last read. Called on every appearance of the panel; a
-// broken edit keeps the last good library and turns the store read only.
+// ReloadIfChanged re-reads the file when its content changed since the
+// last read or write. Called on every appearance of the panel; a broken
+// edit keeps the last good library and turns the store read only.
 func (s *Store) ReloadIfChanged() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -165,23 +172,27 @@ func (s *Store) Apply(op func(*Library) error) error {
 	return nil
 }
 
-// reloadIfChanged is ReloadIfChanged with the lock held.
+// reloadIfChanged reads the file again and parses it when its content
+// changed since the last read or write. The comparison is on the bytes,
+// not on size and time: a hand edit made in the same second as our own
+// write, with the same length, would otherwise be overwritten by the
+// next operation. The file is small; reading it on every appearance is
+// cheap. A file that cannot be read (deleted, permissions) makes the
+// store read only until it can be read again.
 func (s *Store) reloadIfChanged() error {
-	info, err := os.Stat(s.path)
+	data, err := os.ReadFile(s.path)
 	if err != nil {
+		s.loadErr = err
+		s.loadLine = 0
 		return err
 	}
 
-	if info.ModTime().Equal(s.modTime) && info.Size() == s.size {
+	sum := sha256.Sum256(data)
+	if sum == s.checksum {
 		return s.loadErr
 	}
 
-	data, err := os.ReadFile(s.path)
-	if err != nil {
-		return err
-	}
-
-	s.recordStat()
+	s.checksum = sum
 
 	return s.load(data)
 }
@@ -207,8 +218,8 @@ func (s *Store) load(data []byte) error {
 	return nil
 }
 
-// write encodes and saves, keeping the previous file in .bak, and records
-// the new stat so the next reload knows this write was ours.
+// write encodes and saves, keeping the previous file in .bak, and remembers
+// the checksum of what it wrote so the next reload knows this write was ours.
 func (s *Store) write(lib Library) error {
 	data, err := Encode(lib)
 	if err != nil {
@@ -219,20 +230,9 @@ func (s *Store) write(lib Library) error {
 		return err
 	}
 
-	s.recordStat()
+	s.checksum = sha256.Sum256(data)
 
 	return nil
-}
-
-// recordStat remembers the size and time of the file as we last saw it.
-func (s *Store) recordStat() {
-	info, err := os.Stat(s.path)
-	if err != nil {
-		return
-	}
-
-	s.modTime = info.ModTime()
-	s.size = info.Size()
 }
 
 // lineOf digs the line number out of a TOML parse error, 0 for anything else.
