@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Tests for check-internal-files.sh. Run: bash scripts/check-internal-files_test.sh
 set -u
-G="$(dirname "$0")/check-internal-files.sh"
+guard_script="$(dirname "$0")/check-internal-files.sh"
 pass=0; fail=0
-must_block() { if bash "$G" --files "$1" >/dev/null 2>&1; then echo "  ✗ NOT blocked: $1"; fail=$((fail+1)); else pass=$((pass+1)); fi; }
-must_allow() { if bash "$G" --files "$1" >/dev/null 2>&1; then pass=$((pass+1)); else echo "  ✗ wrongly blocked: $1"; fail=$((fail+1)); fi; }
+must_block() { if bash "$guard_script" --files "$1" >/dev/null 2>&1; then echo "  ✗ NOT blocked: $1"; fail=$((fail+1)); else pass=$((pass+1)); fi; }
+must_allow() { if bash "$guard_script" --files "$1" >/dev/null 2>&1; then pass=$((pass+1)); else echo "  ✗ wrongly blocked: $1"; fail=$((fail+1)); fi; }
 
 echo "▶ every internal working file this repo could grow must be blocked:"
-while IFS= read -r f; do must_block "$f"; done << 'LEAKED'
+while IFS= read -r file; do must_block "$file"; done << 'LEAKED'
 .claude/commands/release-hopto.md
 .superpowers/sdd/2026-09-26-hopto-1-cimientos/plan-path
 CLAUDE.md
@@ -23,7 +23,7 @@ changelog-2026-09-26.md
 LEAKED
 
 echo "▶ the owner's personal library and its exports must never leak in:"
-while IFS= read -r f; do must_block "$f"; done << 'LEAKED_LIBRARY'
+while IFS= read -r file; do must_block "$file"; done << 'LEAKED_LIBRARY'
 library.toml
 library.toml.bak
 config.local.toml
@@ -31,7 +31,7 @@ icons/github-light.png
 LEAKED_LIBRARY
 
 echo "▶ legitimate public files must pass:"
-while IFS= read -r f; do must_allow "$f"; done << 'PUBLIC'
+while IFS= read -r file; do must_allow "$file"; done << 'PUBLIC'
 README.md
 CHANGELOG.md
 CONTRIBUTING.md
@@ -53,7 +53,7 @@ echo "▶ a root .md that matches no named pattern still falls through to the al
 must_block NOTES.md
 
 echo "▶ the whole tracked tree must be clean right now:"
-if bash "$G" --tree; then pass=$((pass+1)); else echo "  ✗ tracked tree contains internal files"; fail=$((fail+1)); fi
+if bash "$guard_script" --tree; then pass=$((pass+1)); else echo "  ✗ tracked tree contains internal files"; fail=$((fail+1)); fi
 
 echo "── $pass passed, $fail failed"
 [ $fail -eq 0 ]

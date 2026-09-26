@@ -17,9 +17,11 @@ lint:
 	golangci-lint run ./...
 
 # Installs the pre-commit guard so internal files never reach a commit.
+# git rev-parse --git-path resolves to the right hooks folder in a
+# worktree too, where .git is a file pointing elsewhere, not a folder.
 hooks:
-	printf '#!/usr/bin/env bash\nexec bash scripts/check-internal-files.sh\n' > .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
+	printf '#!/usr/bin/env bash\nexec bash scripts/check-internal-files.sh\n' > "$$(git rev-parse --git-path hooks)/pre-commit"
+	chmod +x "$$(git rev-parse --git-path hooks)/pre-commit"
 
 clean:
 	rm -rf build/bin frontend/dist/* frontend/wailsjs

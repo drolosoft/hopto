@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: these workflows only ever check out and read the
+# repository, never write to it or to anything else on GitHub's side.
+permissions:
+  contents: read
+
 jobs:
   test:
     # Carbon and Cocoa only compile on macOS; there is no Linux build.
@@ -18,6 +23,11 @@ jobs:
       # first so a leak fails fast, and in CI so --no-verify cannot skip it.
       - name: Guard against internal files
         run: bash scripts/check-internal-files.sh --tree
+
+      # The guard's own test suite: a change to the guard script that
+      # silently drops a case would otherwise only be caught by hand.
+      - name: Guard self-test
+        run: bash scripts/check-internal-files_test.sh
 
       - uses: actions/setup-go@v5
         with:

@@ -62,16 +62,16 @@ case "$mode" in
 esac
 
 bad=()
-while IFS= read -r f; do
-  [ -z "$f" ] && continue
-  for a in "${ALLOWED[@]:-}"; do [ "$f" = "$a" ] && continue 2; done
-  for p in "${BLOCKED_PATTERNS[@]}"; do
-    if [[ "$f" =~ $p ]]; then bad+=("$f  (matches: $p)"); continue 2; fi
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  for allowed in "${ALLOWED[@]:-}"; do [ "$file" = "$allowed" ] && continue 2; done
+  for pattern in "${BLOCKED_PATTERNS[@]}"; do
+    if [[ "$file" =~ $pattern ]]; then bad+=("$file  (matches: $pattern)"); continue 2; fi
   done
   # Root-level .md not in the public allow-list.
-  if [[ "$f" != */* && "$f" == *.md ]]; then
-    ok=0; for a in "${ROOT_MD_ALLOWED[@]}"; do [ "$f" = "$a" ] && ok=1; done
-    [ $ok -eq 1 ] || bad+=("$f  (root .md not in ROOT_MD_ALLOWED)")
+  if [[ "$file" != */* && "$file" == *.md ]]; then
+    ok=0; for allowed in "${ROOT_MD_ALLOWED[@]}"; do [ "$file" = "$allowed" ] && ok=1; done
+    [ $ok -eq 1 ] || bad+=("$file  (root .md not in ROOT_MD_ALLOWED)")
   fi
 done <<< "$files"
 
