@@ -87,6 +87,37 @@ func TestCorruptFileIsNeverOverwritten(t *testing.T) {
 	}
 }
 
+// A file with "favorites": null (hand edited, or from an older version)
+// must never be written back with the same null: the page treats
+// favorites as a list, and json.Marshal turns a nil slice into null.
+func TestFavoritesNeverWrittenBackAsNull(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+
+	if err := os.WriteFile(path, []byte(`{"opens": {}, "lastOpened": {}, "favorites": null}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := openAt(t, path)
+
+	if err := store.RecordOpen("apps:cronometro"); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var onDisk map[string]json.RawMessage
+	if err := json.Unmarshal(data, &onDisk); err != nil {
+		t.Fatal(err)
+	}
+
+	if string(onDisk["favorites"]) != "[]" {
+		t.Fatalf("favorites on disk = %s, want []", onDisk["favorites"])
+	}
+}
+
 // A file with null maps (hand edited, or from an older version) loads with
 // empty maps instead of panicking on the first write.
 func TestNullMapsDoNotPanic(t *testing.T) {

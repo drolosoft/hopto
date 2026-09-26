@@ -103,6 +103,12 @@ func Open(path string) (*Store, error) {
 		store.usage.LastOpened = map[string]time.Time{}
 	}
 
+	// Same story for favorites: a null here must never be carried into the
+	// next save, or the page would keep receiving null instead of a list.
+	if store.usage.Favorites == nil {
+		store.usage.Favorites = []string{}
+	}
+
 	return store, nil
 }
 

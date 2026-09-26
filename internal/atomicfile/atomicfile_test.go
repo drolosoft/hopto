@@ -3,6 +3,7 @@ package atomicfile
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -39,7 +40,8 @@ func TestWriteLeavesOnlyTheFile(t *testing.T) {
 // A write into a folder that does not exist creates it, so the first save
 // of a fresh install needs no setup.
 func TestWriteCreatesTheFolder(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "hopto", "usage.json")
+	folder := filepath.Join(t.TempDir(), "hopto")
+	path := filepath.Join(folder, "usage.json")
 
 	if err := Write(path, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
@@ -47,6 +49,17 @@ func TestWriteCreatesTheFolder(t *testing.T) {
 
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal(err)
+	}
+
+	// The folder holds the user's own data (the library, the usage
+	// counts): 0o700 keeps it private the same way the files inside it are.
+	info, err := os.Stat(folder)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode().Perm() != 0o700 {
+		t.Fatalf("folder mode %o, want 700", info.Mode().Perm())
 	}
 }
 
@@ -57,14 +70,20 @@ func TestConcurrentWritesLeaveAWholeFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "usage.json")
 	var group sync.WaitGroup
 
+	// One version per writer, recorded up front so the final file can be
+	// checked against the exact bytes a writer sent, not just their length.
+	versions := make([]string, 20)
+	for writer := range 20 {
+		versions[writer] = string(rune('a'+writer)) + "-version-of-the-file"
+	}
+
 	for writer := range 20 {
 		group.Add(1)
 
 		go func() {
 			defer group.Done()
 
-			content := []byte(string(rune('a'+writer)) + "-version-of-the-file")
-			if err := Write(path, content, 0o600); err != nil {
+			if err := Write(path, []byte(versions[writer]), 0o600); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -77,8 +96,8 @@ func TestConcurrentWritesLeaveAWholeFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(data) != len("a-version-of-the-file") {
-		t.Fatalf("file is %q, not one whole version", data)
+	if !slices.Contains(versions, string(data)) {
+		t.Fatalf("file is %q, not one of the twenty written versions", data)
 	}
 
 	entries, _ := os.ReadDir(filepath.Dir(path))
