@@ -9,24 +9,34 @@ linters:
     - unused
     - gocritic
     - misspell
+  settings:
+    gocritic:
+      enabled-checks:
+        - dupImport
+        - ifElseChain
+        - nestingReduce
+        - unnecessaryBlock
+    # hopto's comments favour British spelling (favourites, colour,
+    # neighbours), but Usage.Favorites is an exported field whose JSON tag
+    # is already on disk in every user's usage.json, and "localized" mirrors
+    # the literal macOS folder suffix (Edge Apps.localized) — neither is a
+    # typo to fix, so both spellings are allowed alongside the UK locale.
+    misspell:
+      locale: UK
+      ignore-rules:
+        - favorite
+        - favorites
+        - localized
+        - motivacional
+  exclusions:
+    paths:
+      - testdata
 
 formatters:
   enable:
     - gofmt
 
-linters-settings:
-  gocritic:
-    enabled-checks:
-      - dupImport
-      - ifElseChain
-      - nestingReduce
-      - unnecessaryBlock
-  misspell:
-    locale: US
-
 issues:
-  exclude-dirs:
-    - testdata
   max-issues-per-linter: 50
   max-same-issues: 5
 

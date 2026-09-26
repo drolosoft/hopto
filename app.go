@@ -18,7 +18,7 @@ const (
 	tabLinks = "links"
 )
 
-// App exposes the catalogs to the page and owns the show/hide state of the
+// App exposes the catalogues to the page and owns the show/hide state of the
 // launcher window.
 type App struct {
 	ctx      context.Context
