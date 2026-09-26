@@ -39,12 +39,14 @@ func Write(path string, data []byte, perm os.FileMode) error {
 
 	tempName := temp.Name()
 	if err := writeAndClose(temp, data, perm); err != nil {
-		os.Remove(tempName)
+		// Best-effort cleanup: the error already being returned is the
+		// one that matters.
+		_ = os.Remove(tempName)
 		return err
 	}
 
 	if err := os.Rename(tempName, destination); err != nil {
-		os.Remove(tempName)
+		_ = os.Remove(tempName)
 		return err
 	}
 
@@ -106,17 +108,19 @@ func resolveLink(path string) (string, error) {
 // final mode before the rename makes it visible.
 func writeAndClose(file *os.File, data []byte, perm os.FileMode) error {
 	if _, err := file.Write(data); err != nil {
-		file.Close()
+		// Best-effort cleanup: the error already being returned is the
+		// one that matters.
+		_ = file.Close()
 		return err
 	}
 
 	if err := file.Sync(); err != nil {
-		file.Close()
+		_ = file.Close()
 		return err
 	}
 
 	if err := file.Chmod(perm); err != nil {
-		file.Close()
+		_ = file.Close()
 		return err
 	}
 
@@ -131,7 +135,9 @@ func syncFolder(folder string) error {
 		return err
 	}
 
-	defer handle.Close()
+	// Best-effort cleanup: the error already being returned is the one
+	// that matters.
+	defer func() { _ = handle.Close() }()
 
 	return handle.Sync()
 }

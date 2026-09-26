@@ -62,4 +62,9 @@ jobs:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          # Pinned: "latest" floats and breaks the build on its own
+          # schedule, the way v2.14's stricter config verify broke this
+          # workflow the first time it ran, out of step with any commit
+          # of ours. Bump this by hand when we're ready to test the new
+          # version, not because a runner picked it for us.
+          version: v2.14
