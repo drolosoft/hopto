@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>hopto</title>
+</head>
+<body>
+<main id="launcher" role="dialog" aria-label="Mis apps y mis links">
+    <header>
+        <nav id="tabs" role="tablist" aria-label="Pestañas">
+            <button type="button" role="tab" id="tab-apps" data-tab="apps" aria-selected="true">Mis apps <span class="count"></span></button>
+            <button type="button" role="tab" id="tab-links" data-tab="links" aria-selected="false">Mis links <span class="count"></span></button>
+        </nav>
+        <input id="search" type="search" placeholder="Buscar…" aria-label="Buscar" autocomplete="off" spellcheck="false"/>
+    </header>
+    <nav id="categories" aria-label="Categorías"></nav>
+    <section id="content">
+        <ul id="grid" role="listbox" aria-label="Resultados"></ul>
+        <p id="empty" hidden></p>
+    </section>
+    <footer>
+        <p id="totals"></p>
+        <p class="hint">↑↓←→ elegir · Enter abre · ⌘F favorito · ⇥ pestaña · ⌘1-9 categoría · Esc cierra · ⌘⇧Espacio apps · ⌘⌥Espacio links</p>
+    </footer>
+</main>
+<script src="./src/main.js" type="module"></script>
+</body>
+</html>

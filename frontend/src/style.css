@@ -1,0 +1,351 @@
+@font-face {
+    font-family: "Nunito";
+    font-style: normal;
+    font-weight: 400;
+    src: local(""),
+    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+}
+
+/* The palette, dark by default; the light scheme below follows the system
+   appearance (the window has no fixed appearance, so the media query works). */
+:root {
+    color-scheme: dark;
+    --text: #f5f5f5;
+    --panel: rgba(30, 30, 30, 0.94);
+    --panel-shadow: rgba(0, 0, 0, 0.5);
+    --line: rgba(255, 255, 255, 0.15);
+    --line-strong: rgba(255, 255, 255, 0.45);
+    --fill: rgba(255, 255, 255, 0.08);
+    --fill-strong: rgba(255, 255, 255, 0.16);
+    --selected: rgba(255, 255, 255, 0.14);
+    --selected-ring: rgba(255, 255, 255, 0.35);
+    --input: rgba(0, 0, 0, 0.3);
+    --tile: rgba(255, 255, 255, 0.12);
+    --star-on: #f5c542;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color-scheme: light;
+        --text: #1d1d1f;
+        --panel: rgba(246, 246, 248, 0.97);
+        --panel-shadow: rgba(0, 0, 0, 0.28);
+        --line: rgba(0, 0, 0, 0.14);
+        --line-strong: rgba(0, 0, 0, 0.4);
+        --fill: rgba(0, 0, 0, 0.06);
+        --fill-strong: rgba(0, 0, 0, 0.12);
+        --selected: rgba(0, 0, 0, 0.09);
+        --selected-ring: rgba(0, 0, 0, 0.3);
+        --input: rgba(255, 255, 255, 0.85);
+        --tile: rgba(0, 0, 0, 0.08);
+        --star-on: #d9a400;
+    }
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    /* Transparent so the desktop shows around the rounded panel. */
+    background: transparent;
+    color: var(--text);
+    font-family: "Nunito", system-ui, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+}
+
+#launcher {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 24px 14px;
+    border-radius: 20px;
+    background: var(--panel);
+    box-shadow: 0 20px 60px var(--panel-shadow);
+    /* The whole overlay can be dragged, as Cmd+Tab has no title bar. */
+    --wails-draggable: drag;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+/* Tabs: two big words, the active one bright, like a title that switches. */
+#tabs {
+    display: flex;
+    gap: 4px;
+}
+
+#tabs [role="tab"] {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 22px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    opacity: 0.45;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}
+
+#tabs [role="tab"][aria-selected="true"] {
+    opacity: 1;
+    background: var(--fill);
+}
+
+/* Counters live on tabs and chips: small, dimmed, never the loudest thing. */
+.count {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-left: 6px;
+}
+
+#search {
+    flex: 0 1 260px;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--input);
+    color: inherit;
+    font: inherit;
+    font-size: 15px;
+    outline: none;
+    -webkit-appearance: none;
+    --wails-draggable: no-drag;
+}
+
+#search:focus {
+    border-color: var(--line-strong);
+}
+
+#categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}
+
+.chip[aria-pressed="true"] {
+    background: var(--fill-strong);
+    border-color: transparent;
+}
+
+/* The list scrolls; header, chips and footer stay put. */
+#content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 -8px;
+    padding: 0 8px;
+}
+
+#grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#grid.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+#grid.rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.app, .link {
+    border-radius: 12px;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    text-align: center;
+}
+
+.app img, .app .tile {
+    width: 84px;
+    height: 84px;
+}
+
+.app .name {
+    font-size: 15px;
+}
+
+/* Cards have room below the icon: the description wraps there, and a long
+   host breaks anywhere rather than pushing past the card. */
+.app .description {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.link {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 10px;
+}
+
+.link img, .link .tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    /* Logos are not all square; never stretch them. */
+    object-fit: contain;
+}
+
+.link .text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.link .name {
+    font-size: 15px;
+}
+
+.link .aside {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.link .host {
+    font-size: 12px;
+    opacity: 0.45;
+}
+
+/* The opening count: a quiet "×N" that only appears once earned. */
+.opens {
+    font-size: 11px;
+    opacity: 0.45;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The favourite star: dim until marked or hovered, gold when on. */
+.star {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 17px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 8px;
+    opacity: 0.3;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}
+
+.star:hover {
+    opacity: 0.8;
+    background: var(--fill);
+}
+
+.star[aria-pressed="true"] {
+    opacity: 1;
+    color: var(--star-on);
+}
+
+/* On a card the star and the count sit in the corners. */
+.app {
+    position: relative;
+}
+
+.app .star {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+.app .opens {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+/* A letter on a soft tile stands in for a link without icon. */
+.tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tile);
+    font-size: 16px;
+}
+
+.description {
+    font-size: 12px;
+    opacity: 0.6;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The selection ring, the same idea as the highlighted app in Cmd+Tab. */
+[role="option"][aria-selected="true"] {
+    background: var(--selected);
+    outline: 2px solid var(--selected-ring);
+    outline-offset: -2px;
+}
+
+.app.missing {
+    opacity: 0.4;
+}
+
+#empty {
+    margin: 32px 0;
+    text-align: center;
+    opacity: 0.6;
+}
+
+footer {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+footer p {
+    margin: 0;
+}
+
+#totals {
+    font-size: 13px;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.hint {
+    font-size: 11px;
+    opacity: 0.5;
+    text-align: right;
+}

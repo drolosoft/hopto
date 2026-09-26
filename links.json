@@ -1,0 +1,14 @@
+{
+  "categories": [
+    {"id": "dev", "name": "Desarrollo"},
+    {"id": "docs", "name": "Documentación"}
+  ],
+  "links": [
+    {"id": "github", "name": "GitHub", "description": "Repositorios y pull requests", "url": "https://github.com", "category": "dev", "icon": "sh:github-light"},
+    {"id": "wails", "name": "Wails", "description": "Apps de escritorio en Go", "url": "https://wails.io", "category": "dev", "icon": "sh:wails"},
+    {"id": "drolosoft", "name": "Drolosoft", "description": "Herramientas que queríamos que existieran", "url": "https://drolosoft.com", "category": "dev"},
+    {"id": "go-std", "name": "Biblioteca estándar de Go", "description": "pkg.go.dev/std", "url": "https://pkg.go.dev/std", "category": "docs"},
+    {"id": "mdn", "name": "MDN", "description": "Referencia de la web", "url": "https://developer.mozilla.org", "category": "docs"},
+    {"id": "wails-docs", "name": "Documentación de Wails", "description": "Guías y referencia de la API", "url": "https://wails.io/docs/introduction", "category": "docs"}
+  ]
+}

@@ -1,0 +1,49 @@
+package main
+
+import (
+	"embed"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+func main() {
+	openLog()
+	app := NewApp()
+
+	// An overlay, not a document window: no frame, always on top, hidden
+	// until the shortcut, and closing only hides it. The Dock icon goes away
+	// with the accessory activation policy set from hotkey_darwin.go (the
+	// plist's LSUIElement alone is overridden by Wails). The window itself is
+	// fully transparent: the page paints the rounded panel, so the corners
+	// are round. WindowIsTranslucent is off on purpose, its vibrancy view is
+	// rectangular and showed as square corners. No fixed appearance either:
+	// the page follows the system's light or dark mode.
+	err := wails.Run(&options.App{
+		Title:             "hopto",
+		Width:             760,
+		Height:            520,
+		DisableResize:     true,
+		Frameless:         true,
+		AlwaysOnTop:       true,
+		StartHidden:       true,
+		HideWindowOnClose: true,
+		AssetServer:       &assetserver.Options{Assets: assets},
+		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		OnStartup:         app.startup,
+		Bind:              []interface{}{app},
+		Mac: &mac.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  false,
+		},
+	})
+
+	if err != nil {
+		println("Error:", err.Error())
+	}
+}

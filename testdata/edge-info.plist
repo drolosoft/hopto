@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>app_mode_loader</string>
+	<key>CFBundleIconFile</key>
+	<string>app.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.microsoft.edgemac.Dev.app.ohidmjbkefgohoiloehjeiedgddlpfaf</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Karakeep</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string></string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>3500.1</string>
+	<key>CrAppModeIsAdhocSigned</key>
+	<false/>
+	<key>CrAppModeShortcutID</key>
+	<string>ohidmjbkefgohoiloehjeiedgddlpfaf</string>
+	<key>CrAppModeShortcutName</key>
+	<string>Karakeep</string>
+	<key>CrAppModeShortcutURL</key>
+	<string>https://example.com/</string>
+	<key>CrAppModeUserDataDir</key>
+	<string>/Users/someone/Library/Application Support/Microsoft Edge Dev/-/Web Applications/_crx__ohidmjbkefgohoiloehjeiedgddlpfaf</string>
+	<key>CrBundleIdentifier</key>
+	<string>com.microsoft.edgemac.Dev</string>
+	<key>CrBundleVersion</key>
+	<string>141.0.3500.1</string>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTSDKBuild</key>
+	<string>24F74</string>
+	<key>DTSDKName</key>
+	<string>macosx15.5</string>
+	<key>DTXcode</key>
+	<string>1640</string>
+	<key>DTXcodeBuild</key>
+	<string>16F6</string>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>MallocNanoZone</key>
+		<string>0</string>
+	</dict>
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>NSAppleScriptEnabled</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+</dict>
+</plist>
