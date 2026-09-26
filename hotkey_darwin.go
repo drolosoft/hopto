@@ -131,25 +131,6 @@ import "C"
 
 import "log"
 
-// Virtual key code of the space bar and the modifiers, from Carbon's
-// Events.h. Cmd+Shift+Space opens the apps tab: it is free in a stock macOS
-// (Option+Space belongs to Alfred or Raycast, Cmd+Space to Spotlight).
-// Cmd+Option+Space opens the links tab; macOS assigns it to "Show Finder
-// search window", which has to be disabled in System Settings for the
-// launcher to receive it.
-const (
-	keySpace          = 49
-	modifierCmdShift  = C.cmdKey | C.shiftKey
-	modifierCmdOption = C.cmdKey | C.optionKey
-)
-
-// The hot key ids handed to Carbon; they come back in the event so the
-// handler knows which tab to open.
-const (
-	hotkeyApps  = 1
-	hotkeyLinks = 2
-)
-
 // onHotkey is what the Carbon handler calls, with the tab of the pressed
 // shortcut. It is a variable so the App can install its own toggle without
 // the C side knowing about it.
@@ -157,10 +138,7 @@ var onHotkey = func(tab string) {}
 
 //export launcherHotkeyPressed
 func launcherHotkeyPressed(id C.UInt32) {
-	tab := tabApps
-	if id == hotkeyLinks {
-		tab = tabLinks
-	}
+	tab := tabForHotkey(uint32(id))
 
 	log.Printf("hotkey %d pressed: %s", id, tab)
 
@@ -185,12 +163,13 @@ func becomeAccessory() {
 	C.becomeAccessory()
 }
 
-// registerToggleHotkeys binds Cmd+Shift+Space to the apps tab and
-// Cmd+Option+Space to the links tab.
-func registerToggleHotkeys(toggle func(tab string)) {
+// registerToggleHotkeys binds the apps shortcut to the apps tab and the
+// links shortcut to the links tab. The specs come from the library; the
+// defaults are in hotkeyspec.go.
+func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
 	onHotkey = toggle
-	C.registerHotkey(hotkeyApps, C.UInt32(keySpace), C.UInt32(modifierCmdShift))
-	C.registerHotkey(hotkeyLinks, C.UInt32(keySpace), C.UInt32(modifierCmdOption))
+	C.registerHotkey(hotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers))
+	C.registerHotkey(hotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers))
 }
 
 // centerOnActiveScreen moves the hidden window to the middle of the screen

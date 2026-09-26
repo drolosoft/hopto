@@ -48,7 +48,18 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	becomeAccessory()
-	registerToggleHotkeys(a.toggle)
+	registerToggleHotkeys(a.toggle, mustHotkey(defaultAppsHotkey), mustHotkey(defaultLinksHotkey))
+}
+
+// mustHotkey parses a built-in spec; a typo there is a programming error,
+// so it panics rather than starting without a shortcut.
+func mustHotkey(spec string) Hotkey {
+	hotkey, err := ParseHotkey(spec)
+	if err != nil {
+		panic(err)
+	}
+
+	return hotkey
 }
 
 // Apps returns the catalog with the resolved paths, so the page can grey out
