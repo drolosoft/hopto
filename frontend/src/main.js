@@ -2,6 +2,7 @@ import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {Apps, AppCategories, Links, LinkCategories, Launch, OpenLink, Hide, TabChanged, Debug, Usage, ToggleFavorite} from '../wailsjs/go/main/App';
 import {filterItems, decorate, sortByUse, FAVORITES} from './filter.js';
+import {nextIndex} from './keys.js';
 import {appCard, linkRow} from './cards.js';
 
 // Icons are bundled by Vite; the key is the id from the Go catalogs.
@@ -233,7 +234,7 @@ function move(delta) {
         return;
     }
 
-    state.selected = (state.selected + delta + count) % count;
+    state.selected = nextIndex(state.selected, delta, count);
     renderItems();
 }
 
