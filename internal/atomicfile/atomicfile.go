@@ -70,19 +70,36 @@ func WriteWithBackup(path string, data []byte, perm os.FileMode) error {
 }
 
 // resolveLink returns the real file behind path when path is a symbolic
-// link, and path itself otherwise. A missing file is not an error here:
-// it is about to be created.
+// link, and path itself otherwise. A missing file is not an error here: it
+// is about to be created. A link whose target does not exist yet (a
+// dotfiles link made before the file) is followed by hand, because
+// EvalSymlinks refuses to resolve it and the link must survive the write.
 func resolveLink(path string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return path, nil
+	if err == nil {
+		return resolved, nil
 	}
 
-	if err != nil {
+	if !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
 
-	return resolved, nil
+	info, statErr := os.Lstat(path)
+	if statErr != nil || info.Mode()&os.ModeSymlink == 0 {
+		return path, nil
+	}
+
+	target, readErr := os.Readlink(path)
+	if readErr != nil {
+		return "", readErr
+	}
+
+	// A relative link target is relative to the folder holding the link.
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
+
+	return resolveLink(target)
 }
 
 // writeAndClose fills the temporary file, forces it to disk and sets the

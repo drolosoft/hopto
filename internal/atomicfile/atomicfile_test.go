@@ -149,3 +149,37 @@ func TestWriteFollowsASymbolicLink(t *testing.T) {
 		t.Fatalf("target holds %q, want new", data)
 	}
 }
+
+// A link made before its target exists (a dotfiles setup on a fresh Mac)
+// is followed too: the first write creates the target and keeps the link.
+func TestWriteFollowsADanglingSymbolicLink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "dotfiles", "library.toml")
+	link := filepath.Join(dir, "library.toml")
+
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Write(link, []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("the dangling link was replaced by a regular file")
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(data) != "first" {
+		t.Fatalf("target holds %q, want first", data)
+	}
+}
