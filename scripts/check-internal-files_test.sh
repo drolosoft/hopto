@@ -34,6 +34,8 @@ echo "▶ legitimate public files must pass:"
 while IFS= read -r f; do must_allow "$f"; done << 'PUBLIC'
 README.md
 CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
 ARCHITECTURE.md
 config.example.toml
 internal/library/store.go
@@ -46,6 +48,9 @@ PUBLIC
 
 echo "▶ links.json is still today's generic seed, so it must pass for now:"
 must_allow links.json
+
+echo "▶ a root .md that matches no named pattern still falls through to the allow-list check:"
+must_block NOTES.md
 
 echo "▶ the whole tracked tree must be clean right now:"
 if bash "$G" --tree; then pass=$((pass+1)); else echo "  ✗ tracked tree contains internal files"; fail=$((fail+1)); fi
