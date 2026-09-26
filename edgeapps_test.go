@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/drolosoft/hopto/internal/usage"
 )
 
 // fakeEdgeBundle builds one web app bundle in dir from the test data.
@@ -93,12 +95,27 @@ func TestPngFromICNSRejectsGarbage(t *testing.T) {
 	}
 }
 
-// TestSlug covers spaces, brackets and accents.
+// TestSlug covers spaces, brackets and accents. An accented letter is not
+// ASCII, so it falls out as a separator like any other punctuation: the id
+// stays inside the shape usage.ValidKey requires, which only allows ASCII
+// letters and digits.
 func TestSlug(t *testing.T) {
-	cases := map[string]string{"Outlook (PWA)": "outlook-pwa", "Go On The Way": "go-on-the-way", "bear-writer": "bear-writer", "Música!": "música"}
+	cases := map[string]string{
+		"Outlook (PWA)": "outlook-pwa",
+		"Go On The Way": "go-on-the-way",
+		"bear-writer":   "bear-writer",
+		"Música!":       "m-sica",
+		"Añadir notas":  "a-adir-notas",
+	}
+
 	for in, want := range cases {
-		if got := slug(in); got != want {
+		got := slug(in)
+		if got != want {
 			t.Errorf("slug(%q) = %q, want %q", in, got, want)
+		}
+
+		if id := "apps:edge-" + got; !usage.ValidKey(id) {
+			t.Errorf("slug(%q) produced id %q, not a valid usage key", in, id)
 		}
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode"
 
 	"howett.net/plist"
 )
@@ -129,14 +128,19 @@ func pngFromICNS(path string) ([]byte, bool) {
 	return nil, false
 }
 
-// slug turns "Outlook (PWA)" into "outlook-pwa": lowercase letters and
-// digits, single dashes between them, for the usage keys and DOM ids.
+// slug turns "Outlook (PWA)" into "outlook-pwa": lowercase ASCII letters
+// and digits, single dashes between them, for the usage keys and DOM ids.
+// It is restricted to ASCII, not unicode.IsLetter, because usage.ValidKey
+// only accepts "a-z0-9" in an id: an accented letter (as in a Spanish app
+// name) falls out as a separator like any other punctuation, the same as
+// a space or a parenthesis. A later plan unifies this with a slug that
+// strips accents instead of dropping them.
 func slug(name string) string {
 	var out strings.Builder
 	dash := false
 
 	for _, r := range strings.ToLower(name) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 			out.WriteRune(r)
 			dash = false
 			continue
