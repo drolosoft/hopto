@@ -48,6 +48,8 @@ func TestValidateRejects(t *testing.T) {
 		{"url with bad port", func(l *Library) { l.Links[0].URL = "https://example.com:99999/" }, "url"},
 		{"url with leading dash", func(l *Library) { l.Links[0].URL = "-a Calculator" }, "url"},
 		{"url with a zero-width char", func(l *Library) { l.Links[0].URL = "https://exam​ple.com" }, "url"},
+		{"url with a left-to-right mark", func(l *Library) { l.Links[0].URL = "https://exam‎ple.com" }, "url"},
+		{"url with a right-to-left mark", func(l *Library) { l.Links[0].URL = "https://exam‏ple.com" }, "url"},
 		{"url too long", func(l *Library) { l.Links[0].URL = "https://example.com/" + strings.Repeat("a", 2048) }, "url"},
 		{"app without path or bundle id", func(l *Library) { l.Apps[0].Path = "" }, "path"},
 		{"app path not a bundle", func(l *Library) { l.Apps[0].Path = "/Applications/run.command" }, "path"},

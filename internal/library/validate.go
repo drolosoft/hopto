@@ -274,15 +274,12 @@ func HostOf(raw string) (string, error) {
 	return parsed.Host, nil
 }
 
-// isInvisible catches the zero-width and bidi characters that make a URL
-// look like another one.
+// isInvisible catches the format characters (Unicode category Cf) that
+// make a URL look like another one: zero-width spaces and joiners, the
+// byte order mark, the word joiner and every bidi mark, embedding and
+// isolate. A web address never needs any of them.
 func isInvisible(r rune) bool {
-	switch r {
-	case 0x200B, 0x200C, 0x200D, 0xFEFF, 0x2060:
-		return true
-	}
-
-	return (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069)
+	return unicode.Is(unicode.Cf, r)
 }
 
 // checkText applies the length and character rules of names, descriptions
