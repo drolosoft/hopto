@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    # Carbon and Cocoa only compile on macOS; there is no Linux build.
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Public repository: refuse any tracked internal working file. Runs
+      # first so a leak fails fast, and in CI so --no-verify cannot skip it.
+      - name: Guard against internal files
+        run: bash scripts/check-internal-files.sh --tree
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
+      # Runs before the build: it only needs the sources already in the
+      # checkout, not the generated frontend/wailsjs bindings.
+      - name: Frontend tests
+        run: cd frontend && npm ci && npm test
+
+      # wails build writes frontend/wailsjs and frontend/dist, which the Go
+      # package embeds; the Go tests cannot run before it.
+      - name: Build
+        run: wails build -clean
+
+      - name: Go tests
+        run: go vet ./... && go test -race -count=1 -cover ./...
+
+      - name: Fmt check
+        run: test -z "$(gofmt -l .)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hopto-unsigned
+          path: build/bin/hopto.app
+
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest

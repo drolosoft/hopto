@@ -23,3 +23,10 @@ coverage.out
 CLAUDE.md
 CONTINUE.md
 docs/superpowers/
+
+# A personal library dropped in the repo for a test must never be
+# committed; the public example is config.example.toml
+library.toml
+library.toml.bak
+*.local.toml
+/icons/
