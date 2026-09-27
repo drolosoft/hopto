@@ -44,6 +44,18 @@ seed/seed.toml
 testdata/edge-info.plist
 frontend/src/assets/icons/hopto.svg
 .github/workflows/ci.yml
+doc/architecture.md
+doc/configuration.md
+doc/testing.md
+assets/icon.png
+assets/demo.gif
+scripts/real-app.sh
+scripts/verify-hopto.sh
+scripts/record-demo.sh
+scripts/changelog-section.sh
+.github/ISSUE_TEMPLATE/bug_report.yml
+.github/pull_request_template.md
+.github/workflows/release.yml
 PUBLIC
 
 echo "▶ links.json is the old launcher's bookmarks file, not the public seed:"

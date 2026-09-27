@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in hopto does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Please leave your own links, hosts and paths out of the report.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        1. Pressed ⌘⌥Space
+        2. Typed "git" and pressed Enter
+        3. Nothing opened
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: hopto version
+      description: Press ? in the panel; the help shows the version and the commit, such as "v0.1.0 · abc1234".
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: mac
+    attributes:
+      label: Mac
+      options:
+        - Apple silicon
+        - Intel
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The lines of ~/Library/Logs/hopto.log from around the problem.
+      render: text
+  - type: textarea
+    id: library
+    attributes:
+      label: library.toml
+      description: Only when the problem is about the file. A few lines are enough; write example.org in place of your own links.
+      render: toml

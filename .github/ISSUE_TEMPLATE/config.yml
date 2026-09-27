@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/drolosoft/hopto/security/policy
+    about: Report security problems by email to forge@drolosoft.com, never in a public issue.
