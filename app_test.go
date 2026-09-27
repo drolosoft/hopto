@@ -17,6 +17,11 @@ type fakeWindow struct {
 	mu        sync.Mutex
 	calls     []string
 	clipboard string
+
+	// What the fake open panel answers: a path, "" for cancel, or an
+	// error.
+	pickPath string
+	pickErr  error
 }
 
 func (w *fakeWindow) record(call string) {
@@ -42,6 +47,19 @@ func (w *fakeWindow) SetClipboard(text string) error {
 	w.clipboard = text
 
 	return nil
+}
+
+func (w *fakeWindow) SetAlwaysOnTop(on bool) {
+	w.record(fmt.Sprintf("ontop:%v", on))
+}
+
+func (w *fakeWindow) PickFile(directory string) (string, error) {
+	w.record("pick:" + directory)
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.pickPath, w.pickErr
 }
 
 // joined returns the calls as one string for assertions.

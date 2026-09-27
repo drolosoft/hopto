@@ -40,6 +40,8 @@ type window interface {
 	Activate()
 	Emit(name string, data any)
 	SetClipboard(text string) error
+	SetAlwaysOnTop(on bool)
+	PickFile(directory string) (string, error)
 }
 
 // wailsWindow is the real window. Center and Activate go through the cgo
@@ -59,6 +61,25 @@ func (w *wailsWindow) Emit(name string, data any) {
 
 func (w *wailsWindow) SetClipboard(text string) error {
 	return runtime.ClipboardSetText(w.ctx, text)
+}
+
+// SetAlwaysOnTop moves the window between the floating level and the
+// normal one; the open panel needs the normal level to sit on top.
+func (w *wailsWindow) SetAlwaysOnTop(on bool) {
+	runtime.WindowSetAlwaysOnTop(w.ctx, on)
+}
+
+// PickFile runs the open panel as a sheet on this window, limited to
+// .app bundles, and blocks until the user picks one ("" on cancel). It
+// must be called from a goroutine, never from the main thread: Wails
+// waits on a channel the sheet's completion handler fills.
+func (w *wailsWindow) PickFile(directory string) (string, error) {
+	return runtime.OpenFileDialog(w.ctx, runtime.OpenDialogOptions{
+		DefaultDirectory: directory,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Applications", Pattern: "*.app"},
+		},
+	})
 }
 
 // runOpen is /usr/bin/open, the only way hopto starts anything: it handles
@@ -93,9 +114,13 @@ type App struct {
 	// unit test never reaches the network by accident.
 	offline bool
 
-	mu         sync.Mutex
-	visible    bool
-	tab        string
+	mu      sync.Mutex
+	visible bool
+	tab     string
+	// dialogOpen is true while PickApp waits for the open panel, a sheet
+	// on this window: hiding the window then would strand the sheet, and
+	// Wails' dialog call with it, so toggle and Hide leave it alone.
+	dialogOpen bool
 	discovered map[string]discover.App
 	fetched    map[string]bool
 
@@ -205,6 +230,11 @@ func (a *App) toggle(tab string) {
 
 	log.Printf("toggle %s: visible=%v tab=%s", tab, a.visible, a.tab)
 
+	if a.dialogOpen {
+		log.Printf("toggle ignored: a dialog is open")
+		return
+	}
+
 	if a.visible && a.tab == tab {
 		a.window.Hide()
 		a.visible = false
@@ -238,10 +268,15 @@ func (a *App) TabChanged(tab string) {
 }
 
 // Hide is called from the page on Escape or when the window loses focus,
-// and by every successful opening.
+// and by every successful opening. While a dialog is open it does
+// nothing: the page's blur fires as the sheet takes the focus.
 func (a *App) Hide() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	if a.dialogOpen {
+		return
+	}
 
 	a.window.Hide()
 	a.visible = false
