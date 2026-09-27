@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"os"
 
 	"howett.net/plist"
@@ -133,18 +134,35 @@ func symbolicHotkeyParameters(entry map[string]any) (symbolicCombo, bool) {
 	return symbolicCombo{KeyCode: keyCode, Modifiers: modifiers}, true
 }
 
-// symbolicHotkeyNumber reads one number of a parameters triple, which
-// the plist library decodes as one of Go's signed or unsigned 64-bit
-// kinds depending on its sign.
+// symbolicHotkeyNumber reads one number of a parameters triple. The
+// plist library decodes <integer> as one of Go's signed or unsigned
+// 64-bit kinds depending on its sign, and <real> as a float; a real
+// counts only when it holds a whole number that fits.
 func symbolicHotkeyNumber(value any) (uint32, bool) {
 	switch number := value.(type) {
 	case uint64:
 		return uint32(number), true
 	case int64:
 		return uint32(number), true
+	case float64:
+		return wholeUint32(number)
+	case float32:
+		return wholeUint32(float64(number))
 	default:
 		return 0, false
 	}
+}
+
+// wholeUint32 converts a float that holds a whole number between 0 and
+// the largest uint32 (NaN is never equal to itself, so it fails too);
+// anything else is not a number macOS writes for a key.
+func wholeUint32(number float64) (uint32, bool) {
+	whole := number == math.Trunc(number)
+	if number < 0 || number > math.MaxUint32 || !whole {
+		return 0, false
+	}
+
+	return uint32(number), true
 }
 
 // finderSearchShortcutEnabled reads the user's file; no file is the

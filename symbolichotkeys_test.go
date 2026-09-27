@@ -38,6 +38,13 @@ func TestSymbolicHotkeyEnabled(t *testing.T) {
 		`<integer>27</integer><integer>53</integer><integer>1572864</integer>` +
 		`</array></dict></dict>`
 
+	// The same rebinding written with <real> numbers: howett.net/plist
+	// hands them back as float64, and they mean the same key.
+	reboundAsReals := `<key>65</key><dict><key>enabled</key><true/>` +
+		`<key>value</key><dict><key>parameters</key><array>` +
+		`<real>27</real><real>53</real><real>1572864</real>` +
+		`</array></dict></dict>`
+
 	cases := []struct {
 		name string
 		data []byte
@@ -50,6 +57,10 @@ func TestSymbolicHotkeyEnabled(t *testing.T) {
 			symbolicPrefs(stillFinderSpace), true,
 		},
 		{"rebound to another key", symbolicPrefs(reboundToEscape), false},
+		{
+			"rebound to another key, as reals",
+			symbolicPrefs(reboundAsReals), false,
+		},
 		{"never touched", symbolicPrefs(other), true},
 		{"not a plist", []byte("garbage"), true},
 		{"empty", nil, true},
@@ -95,5 +106,33 @@ func TestUsesFinderShortcut(t *testing.T) {
 	settings.HotkeyApps = "option+cmd+space"
 	if !usesFinderShortcut(settings) {
 		t.Error("the order of the modifiers does not matter")
+	}
+}
+
+// Plan 3 minor (f): a whole number in range counts whatever Go type the
+// plist library picked for it; anything else is not a key code.
+func TestSymbolicHotkeyNumber(t *testing.T) {
+	cases := []struct {
+		value any
+		want  uint32
+		ok    bool
+	}{
+		{uint64(49), 49, true},
+		{int64(1572864), 1572864, true},
+		{float64(49), 49, true},
+		{float32(53), 53, true},
+		{float64(1572864), 1572864, true},
+		{49.5, 0, false},
+		{float64(-1), 0, false},
+		{float64(1 << 33), 0, false},
+		{"49", 0, false},
+		{nil, 0, false},
+	}
+
+	for _, test := range cases {
+		got, ok := symbolicHotkeyNumber(test.value)
+		if got != test.want || ok != test.ok {
+			t.Errorf("%#v: got %d %v", test.value, got, ok)
+		}
 	}
 }
