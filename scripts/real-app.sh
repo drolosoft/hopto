@@ -126,7 +126,10 @@ running_bundle() {
 
 # set_aside copies the data folder into $1/data, checks the copy, and
 # only then removes the original, so hopto can start on a library of the
-# script's own. put_back restores it exactly as it was.
+# script's own. It marks the job done only once that is true, so a
+# script that dies partway through (an osascript call, ffmpeg, a failed
+# wait_for) never leaves put_back thinking there is a safe copy to fall
+# back on. put_back restores it exactly as it was.
 set_aside() {
     local keep="$1"
 
@@ -137,10 +140,22 @@ set_aside() {
         diff -rq "$data" "$keep/data" > /dev/null
         rm -rf "$data"
     fi
+
+    # Proves the steps above ran to completion (or there was nothing to
+    # save in the first place); put_back refuses to touch $data without
+    # this marker.
+    touch "$keep/aside"
 }
 
 put_back() {
     local keep="$1"
+
+    # Without the marker, set_aside either never ran or died partway
+    # through, so $keep/data cannot be trusted: removing $data now would
+    # either destroy the only copy or replace it with a partial one.
+    if [ ! -f "$keep/aside" ]; then
+        return 0
+    fi
 
     rm -rf "$data"
 

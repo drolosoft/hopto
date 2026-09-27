@@ -38,6 +38,12 @@ jobs:
       - name: Release notes self-test
         run: bash scripts/changelog-section_test.sh
 
+      # set_aside/put_back are what stand between a script's own runs and
+      # the user's real data folder; a regression here belongs in CI, not
+      # in someone's Application Support.
+      - name: Real-app helpers self-test
+        run: bash scripts/real-app_test.sh
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
