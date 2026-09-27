@@ -149,6 +149,8 @@ func launcherHotkeyPressed(id C.UInt32) {
 
 //export launcherHotkeyRegistered
 func launcherHotkeyRegistered(id C.UInt32, status C.OSStatus) {
+	recordHotkeyStatus(uint32(id), int32(status))
+
 	if status != 0 {
 		log.Printf("hotkey %d: RegisterEventHotKey failed with status %d", id, status)
 		return

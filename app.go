@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -138,6 +139,14 @@ type App struct {
 	// delete) can tell its answer is stale and drop it instead of racing
 	// the newer one to disk.
 	fetchGeneration map[string]int
+
+	// firstRun is true when this run wrote library.toml from the seed;
+	// welcomeDismissed (under mu) hides the welcome for the rest of the
+	// run; symbolicHotkeys is macOS's own shortcut table, read for the
+	// Finder's ⌘⌥Space.
+	firstRun         bool
+	welcomeDismissed bool
+	symbolicHotkeys  string
 }
 
 // NewApp builds the launcher for the real Mac: the user's home, the system
@@ -173,6 +182,7 @@ func newApp(
 			path:       launchAgentPath(home),
 			executable: os.Executable,
 		},
+		symbolicHotkeys: filepath.Join(home, symbolicHotkeysFile),
 		tab:             tabApps,
 		discovered:      map[string]discover.App{},
 		fetched:         map[string]bool{},
@@ -188,9 +198,13 @@ func newApp(
 	}
 	app.usage = usageStore
 
-	store, err := library.Open(
-		filepath.Join(dataDir, libraryFile), seed.For(language), home,
-	)
+	// No library file yet means hopto never ran for this user; Open is
+	// about to write the seed, so the question is asked first.
+	libraryPath := filepath.Join(dataDir, libraryFile)
+	_, statErr := os.Stat(libraryPath)
+	app.firstRun = errors.Is(statErr, os.ErrNotExist)
+
+	store, err := library.Open(libraryPath, seed.For(language), home)
 	if err != nil {
 		log.Printf(
 			"library: %v (the panel shows the last good version, edits are refused)",
