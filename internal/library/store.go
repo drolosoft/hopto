@@ -274,8 +274,7 @@ func (s *Store) write(lib Library) error {
 
 // lineOf digs the line number out of a TOML parse error, 0 for anything else.
 func lineOf(err error) int {
-	var parseErr toml.ParseError
-	if errors.As(err, &parseErr) {
+	if parseErr, ok := errors.AsType[toml.ParseError](err); ok {
 		return parseErr.Position.Line
 	}
 

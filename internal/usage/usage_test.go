@@ -219,14 +219,11 @@ func TestConcurrentRecordOpen(t *testing.T) {
 	var group sync.WaitGroup
 
 	for range 20 {
-		group.Add(1)
-
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			// The key is valid and constant, so this never fails; a
 			// goroutine cannot call t.Fatal, hence the plain discard.
 			_ = store.RecordOpen("links:mdn")
-		}()
+		})
 	}
 
 	group.Wait()

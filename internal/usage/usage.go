@@ -8,6 +8,7 @@ package usage
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -133,14 +134,10 @@ func (s *Store) Snapshot() Usage {
 	}
 
 	opens := make(map[string]int, len(s.usage.Opens))
-	for key, count := range s.usage.Opens {
-		opens[key] = count
-	}
+	maps.Copy(opens, s.usage.Opens)
 
 	lastOpened := make(map[string]time.Time, len(s.usage.LastOpened))
-	for key, when := range s.usage.LastOpened {
-		lastOpened[key] = when
-	}
+	maps.Copy(lastOpened, s.usage.LastOpened)
 
 	return Usage{Opens: opens, LastOpened: lastOpened, Favorites: favorites}
 }

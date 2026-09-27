@@ -78,15 +78,11 @@ func TestConcurrentWritesLeaveAWholeFile(t *testing.T) {
 	}
 
 	for writer := range 20 {
-		group.Add(1)
-
-		go func() {
-			defer group.Done()
-
+		group.Go(func() {
 			if err := Write(path, []byte(versions[writer]), 0o600); err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 	}
 
 	group.Wait()

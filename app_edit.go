@@ -621,11 +621,8 @@ func (a *App) fetchIconLater(id, hint, pageURL string) {
 	}
 
 	fetcher := a.newFetcher()
-	a.background.Add(1)
 
-	go func() {
-		defer a.background.Done()
-
+	a.background.Go(func() {
 		ctx, cancel := context.WithTimeout(
 			context.Background(), icons.FetchTimeout,
 		)
@@ -651,7 +648,7 @@ func (a *App) fetchIconLater(id, hint, pageURL string) {
 		}
 
 		a.emit("icons", id)
-	}()
+	})
 }
 
 // stillCurrent reports whether generation is still the one an edit last

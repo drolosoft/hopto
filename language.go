@@ -12,7 +12,7 @@ const (
 // AppleLanguages` prints, a parenthesised list such as ("es-ES", "en-US"),
 // and reduces it to a language hopto speaks.
 func parseAppleLanguages(output string) string {
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		tag := strings.Trim(strings.TrimSpace(line), "\",")
 		if tag == "" || tag == "(" || tag == ")" {
 			continue

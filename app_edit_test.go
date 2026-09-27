@@ -748,18 +748,14 @@ func TestConcurrentAddLinkGetsDistinctIDs(t *testing.T) {
 	errs := make([]error, concurrency)
 
 	for i := range concurrency {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			url := "https://race-" + strconv.Itoa(i) + ".test"
 			result, err := app.AddLink(
 				LinkInput{URL: url, Name: "Race", Category: "dev"},
 			)
 			ids[i] = result.ID
 			errs[i] = err
-		}()
+		})
 	}
 
 	wg.Wait()

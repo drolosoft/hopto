@@ -133,7 +133,7 @@ func TestPresentWelcome(t *testing.T) {
 	// into tokens first: what matters is how many times Show() itself
 	// ran, not how many times the substring appears anywhere in the log.
 	shown := 0
-	for _, call := range strings.Split(win.joined(), " ") {
+	for call := range strings.SplitSeq(win.joined(), " ") {
 		if call == "show" {
 			shown++
 		}
