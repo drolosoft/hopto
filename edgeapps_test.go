@@ -19,8 +19,8 @@ func fakeEdgeBundle(t *testing.T, dir, name string) string {
 	}
 
 	for src, dst := range map[string]string{
-		"testdata/edge-info.plist": filepath.Join(bundle, "Contents", "Info.plist"),
-		"testdata/edge-app.icns":   filepath.Join(bundle, "Contents", "Resources", "app.icns"),
+		"testdata/edge-info.plist":              filepath.Join(bundle, "Contents", "Info.plist"),
+		"internal/icons/testdata/edge-app.icns": filepath.Join(bundle, "Contents", "Resources", "app.icns"),
 	} {
 		data, err := os.ReadFile(src)
 		if err != nil {
@@ -68,32 +68,6 @@ func TestScanEdgeAppsBuildsEntries(t *testing.T) {
 func TestScanEdgeAppsMissingFolder(t *testing.T) {
 	if apps := scanEdgeApps(filepath.Join(t.TempDir(), "nope")); len(apps) != 0 {
 		t.Errorf("got %d apps from a missing folder", len(apps))
-	}
-}
-
-// TestPngFromICNSPrefers256 checks the 256 px PNG (ic08) wins over 128 px.
-func TestPngFromICNSPrefers256(t *testing.T) {
-	png, ok := pngFromICNS("testdata/edge-app.icns")
-	if !ok {
-		t.Fatal("no PNG found in the test icns")
-	}
-
-	// The Karakeep icns holds ic07 (4098 bytes of PNG) and ic08 (9399).
-	if len(png) != 9399 {
-		t.Errorf("png length = %d, want the ic08 entry (9399)", len(png))
-	}
-}
-
-// TestPngFromICNSRejectsGarbage makes sure a non-icns file is refused and a
-// corrupt length does not loop.
-func TestPngFromICNSRejectsGarbage(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "x.icns")
-	if err := os.WriteFile(path, []byte("icns\x00\x00\x00\x20ic08\x00\x00\x00\x02"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, ok := pngFromICNS(path); ok {
-		t.Error("garbage accepted")
 	}
 }
 

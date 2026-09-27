@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/binary"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/drolosoft/hopto/internal/icons"
 	"howett.net/plist"
 )
 
@@ -65,7 +64,7 @@ func edgeEntry(bundle string) Entry {
 		}
 	}
 
-	if png, ok := pngFromICNS(filepath.Join(bundle, "Contents", "Resources", "app.icns")); ok {
+	if png, ok := icons.PNG(filepath.Join(bundle, "Contents", "Resources", "app.icns")); ok {
 		entry.Icon = "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
 	}
 
@@ -85,47 +84,6 @@ func readEdgeInfo(path string) (edgeInfo, error) {
 	_, err = plist.Unmarshal(data, &info)
 
 	return info, err
-}
-
-// Icon sizes inside an .icns, best first: 256 px, then 128 px, then the
-// bigger ones. These entries hold plain PNG data, so no decoding is needed.
-var icnsTypes = []string{"ic08", "ic07", "ic09", "ic13", "ic12"}
-
-// pngFromICNS returns the PNG of the best-sized icon in an .icns file. The
-// container is a list of 4-byte type + 4-byte big-endian length (including
-// the 8-byte header) + data, after an 8-byte file header.
-func pngFromICNS(path string) ([]byte, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil || len(data) < 8 || string(data[:4]) != "icns" {
-		return nil, false
-	}
-
-	found := map[string][]byte{}
-
-	for offset := 8; offset+8 <= len(data); {
-		kind := string(data[offset : offset+4])
-		length := int(binary.BigEndian.Uint32(data[offset+4 : offset+8]))
-
-		// A corrupt length would loop forever or run past the end.
-		if length < 8 || offset+length > len(data) {
-			break
-		}
-
-		body := data[offset+8 : offset+length]
-		if bytes.HasPrefix(body, []byte("\x89PNG")) {
-			found[kind] = body
-		}
-
-		offset += length
-	}
-
-	for _, kind := range icnsTypes {
-		if png, ok := found[kind]; ok {
-			return png, true
-		}
-	}
-
-	return nil, false
 }
 
 // slug turns "Outlook (PWA)" into "outlook-pwa": lowercase ASCII letters
