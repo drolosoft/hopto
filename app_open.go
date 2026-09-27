@@ -147,8 +147,12 @@ func (a *App) recordOpen(key string) {
 	}
 }
 
-// findLink looks a link up by id in the current library.
+// findLink looks a link up by id in the current library, reloading first
+// so a hand edit made between two calls (a background icon fetch runs
+// well after the edit that started it) is not missed.
 func (a *App) findLink(id string) (library.Link, bool) {
+	a.reload()
+
 	for _, link := range a.library.Snapshot().Links {
 		if link.ID == id {
 			return link, true

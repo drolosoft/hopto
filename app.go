@@ -239,11 +239,8 @@ func (a *App) Hide() {
 }
 
 // emit sends an event to the page when there is a window to send it to
-// (the background fetches may finish before startup, or in a test). It has
-// no caller yet: task 9's fetchMissingIcons uses it to report a finished
-// fetch, so the linter is told rather than given a premature caller.
-//
-//nolint:unused // called from task 9's fetchMissingIcons
+// (the background fetches may finish before startup, or in a test): a
+// finished icon download tells the page through this, in app_edit.go.
 func (a *App) emit(name string, data any) {
 	if a.window != nil {
 		a.window.Emit(name, data)

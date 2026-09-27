@@ -315,6 +315,3 @@ func (a *App) iconSource(id string) (string, bool) {
 
 	return "", false
 }
-
-// fetchMissingIcons starts the background downloads; rebuilt in app_edit.go.
-func (a *App) fetchMissingIcons(links []library.Link) {}
