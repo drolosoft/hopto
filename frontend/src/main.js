@@ -7,13 +7,17 @@ import {Items, Categories, Usage, Settings, LibraryStatus, Launch, OpenLink, Ope
 import {decorate, filterByCategory, sections, unifiedSearch} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems} from './state.js';
-import {otherTab} from './tabs.js';
+import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
-import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox} from './render.js';
+import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour} from './render.js';
 import {installKeyboard} from './keyboard.js';
 
 // How many "Recent" items the empty-query layout shows.
 const RECENT_LIMIT = 5;
+
+// ⌘⇧↩ opens every item of the active chip at once; past this many, that
+// is a wall of windows rather than a shortcut, so it refuses instead.
+const MAX_CHIP_OPEN = 10;
 
 // How long to wait after a blur before hiding: the first appearance after
 // launch fires a blur while the window is being activated, and if the
@@ -255,11 +259,26 @@ function dispatch(action) {
 
     switch (action.type) {
         case 'move': {
-            const count = layoutOf(state).entries.length;
-            if (count > 0) {
-                state.selected = nextIndex(state.selected, action.delta, count);
-                render();
+            const layout = layoutOf(state);
+            if (layout.entries.length === 0) {
+                break;
             }
+
+            // A vertical move (|delta| > 1) on the grouped cards grid goes
+            // by geometry instead of by index: see verticalNeighbour for
+            // why a fixed column count cannot be trusted there.
+            const cards = TABS[state.tab].layout === 'cards' && !layout.unified;
+            if (cards && Math.abs(action.delta) > 1) {
+                const target = verticalNeighbour(Math.sign(action.delta));
+                if (target !== null) {
+                    state.selected = target;
+                    render();
+                }
+                break;
+            }
+
+            state.selected = nextIndex(state.selected, action.delta, layout.entries.length);
+            render();
             break;
         }
         case 'open':
@@ -268,9 +287,23 @@ function dispatch(action) {
         case 'openAlt':
             openEntry(entry, 'alt');
             break;
-        case 'openAll':
-            (state.query ? layoutOf(state).entries : chipItems(state)).forEach((item) => openEntry(item));
+        case 'openAll': {
+            // Scoped to a chip on purpose: with the search box empty and a
+            // category picked, "open all" means that category, never the
+            // unified search results or a whole tab.
+            if (state.query !== '' || state.category === '') {
+                break;
+            }
+
+            const items = chipItems(state);
+            if (items.length > MAX_CHIP_OPEN) {
+                showToast(t('toast.tooMany'));
+                break;
+            }
+
+            items.forEach((item) => openEntry(item));
             break;
+        }
         case 'reveal':
             if (entry && entry.kind === 'app') {
                 RevealInFinder(entry.id).catch((error) => Debug(`reveal ${entry.id}: ${error}`));
@@ -332,7 +365,8 @@ document.querySelectorAll('#tabs [role="tab"]').forEach((button) => {
 });
 
 // Like Cmd+Tab, the overlay goes away as soon as something else takes
-// focus. While the editor (plan 3) or a native dialog is up, it stays.
+// focus. `state.editing` keeps it up instead: the flag a native dialog
+// will set, and the same one the future editor will set once it exists.
 window.addEventListener('blur', () => {
     setTimeout(() => {
         if (document.hasFocus() || state.editing) {
@@ -342,6 +376,13 @@ window.addEventListener('blur', () => {
         Debug('window blur');
         Hide();
     }, BLUR_GRACE_MS);
+});
+
+// A blocked request never throws in the page; without this, a stricter
+// CSP than the page expects would fail silently instead of showing up in
+// the log a developer actually reads.
+document.addEventListener('securitypolicyviolation', (event) => {
+    Debug(`csp ${event.violatedDirective} ${event.blockedURI}`);
 });
 
 // Every time a shortcut shows the window, the page starts clean on the tab

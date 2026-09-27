@@ -37,7 +37,13 @@ export function initialState(tab) {
  * @returns {{apps: number, links: number}}
  */
 export function counts(state, query) {
-    const count = (items) => (query ? rankItems(items, query).length : items.filter((item) => !item.hidden).length);
+    // A hidden app never shows in the list, searching or not, so it must
+    // not be counted either: unifiedSearch drops it the same way.
+    const count = (items) => {
+        const visible = items.filter((item) => !item.hidden);
+        return query ? rankItems(visible, query).length : visible.length;
+    };
+
     return {apps: count(state.apps), links: count(state.links)};
 }
 
@@ -88,12 +94,16 @@ export function footerAction(entry, t) {
 }
 
 /**
- * The items the chip filter leaves, for callers that need a flat list
- * (⌘⇧↩ opens all of them).
+ * The items of the active chip, for ⌘⇧↩. Empty with no chip selected: the
+ * shortcut opens one category at a time, never "everything on the tab".
  * @param {object} state
  * @returns {object[]}
  */
 export function chipItems(state) {
+    if (!state.category) {
+        return [];
+    }
+
     const items = state.tab === 'links' ? state.links : state.apps;
     return filterByCategory(items.filter((item) => !item.hidden), state.category);
 }

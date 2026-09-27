@@ -295,6 +295,57 @@ export function columns() {
 }
 
 /**
+ * The card ArrowUp/ArrowDown should land on in the cards layout. Column
+ * counting breaks down once the grid holds several sections (Tools,
+ * Applications, Edge apps…): a short section can end mid-row, so moving by
+ * a fixed number of positions can land in the wrong section entirely.
+ * Comparing the actual boxes on screen instead finds the nearest row in
+ * the given direction, then the option in it closest to the current
+ * horizontal centre.
+ * @param {1|-1} direction
+ * @returns {number|null} the target's data-index, or null past either end
+ */
+export function verticalNeighbour(direction) {
+    const current = elements.grid.querySelector('[aria-selected="true"]');
+    if (!current) {
+        return null;
+    }
+
+    const currentRect = current.getBoundingClientRect();
+    const currentCentre = currentRect.left + currentRect.width / 2;
+
+    // Half a card height is the tolerance for "same row": two cards laid
+    // out side by side share a top exactly, but rounding across sections
+    // can be off by a pixel or two.
+    const rowTolerance = currentRect.height / 2;
+
+    const options = Array.from(elements.grid.querySelectorAll('[role="option"]'))
+        .filter((option) => option !== current)
+        .map((option) => ({option, rect: option.getBoundingClientRect()}))
+        .filter(({rect}) => direction > 0
+            ? rect.top > currentRect.top + rowTolerance
+            : rect.top < currentRect.top - rowTolerance);
+
+    if (options.length === 0) {
+        return null;
+    }
+
+    const nearestTop = options.reduce(
+        (best, {rect}) => Math.abs(rect.top - currentRect.top) < Math.abs(best - currentRect.top) ? rect.top : best,
+        options[0].rect.top,
+    );
+
+    const row = options.filter(({rect}) => Math.abs(rect.top - nearestTop) < rowTolerance);
+    const nearest = row.reduce((best, candidate) => {
+        const centre = candidate.rect.left + candidate.rect.width / 2;
+        const distance = Math.abs(centre - currentCentre);
+        return best === null || distance < best.distance ? {candidate, distance} : best;
+    }, null);
+
+    return Number(nearest.candidate.option.dataset.index);
+}
+
+/**
  * The search box, for the glue to focus and read.
  * @returns {HTMLInputElement}
  */

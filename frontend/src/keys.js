@@ -45,7 +45,9 @@ export function actionFor(event, context) {
     }
 
     if (event.metaKey && /^[1-9]$/.test(key)) {
-        return {type: 'category', index: Number(key) - 1};
+        // A query already typed means the chips are not what the digit is
+        // about; ⌘1-9 only picks a category while the search box is empty.
+        return context.query ? null : {type: 'category', index: Number(key) - 1};
     }
 
     if (event.metaKey) {

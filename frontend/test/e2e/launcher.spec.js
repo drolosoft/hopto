@@ -1,19 +1,29 @@
 import {test, expect} from '@playwright/test';
 
 // Every test starts from a fresh page with the `shown` event fired for a
-// tab, and ends with no page error at all: a thrown exception in the page
-// is a failure whatever else passed.
+// tab, and ends with no page error and no CSP violation at all: either one
+// is a failure whatever else passed, the CSP one because the console is
+// the only place a blocked request shows up (see the "csp" Debug call in
+// main.js).
 const errors = [];
+const cspViolations = [];
 
 test.beforeEach(async ({page}) => {
     errors.length = 0;
+    cspViolations.length = 0;
     page.on('pageerror', (error) => errors.push(String(error)));
+    page.on('console', (message) => {
+        if (message.text().includes('Content Security Policy')) {
+            cspViolations.push(message.text());
+        }
+    });
     await page.goto(process.env.HARNESS_URL + '/');
     await page.waitForFunction(() => typeof window.emit === 'function');
 });
 
 test.afterEach(() => {
     expect(errors).toEqual([]);
+    expect(cspViolations).toEqual([]);
 });
 
 /**
@@ -145,6 +155,36 @@ test('the page speaks Spanish when the settings say so', async ({page}) => {
     await expect(page.locator('#tab-apps .label')).toHaveText('Mis apps');
     await expect(page.locator('#categories .chip').last()).toHaveText('Apps de Edge');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+});
+
+test('⌘⇧↩ opens nothing with no chip picked, and only the chip once one is', async ({page}) => {
+    await shown(page, 'links');
+
+    await page.keyboard.press('Meta+Shift+Enter');
+    let made = await calls(page);
+    expect(made.filter((call) => call.startsWith('Launch:') || call.startsWith('OpenLink'))).toEqual([]);
+
+    // The "Docs" chip holds one link, mdn; ⌘3 is "All", so Docs is further
+    // along, picked by clicking it directly instead of counting chips.
+    await page.locator('#categories .chip', {hasText: 'Docs'}).click();
+    await page.keyboard.press('Meta+Shift+Enter');
+
+    made = await calls(page);
+    expect(made.filter((call) => call === 'OpenLink:mdn')).toHaveLength(1);
+});
+
+test('ArrowDown on the grouped apps grid follows the visual column, not the flat index', async ({page}) => {
+    await shown(page, 'apps');
+
+    await expect(page.locator('#grid .section')).toHaveText(['Tools', 'Applications', 'Edge apps']);
+    await expect(page.locator('#grid [role="option"]')).toHaveCount(3);
+    await expect(page.locator('#grid [role="option"]').nth(0)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#grid [role="option"]').nth(1)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#grid [role="option"]').nth(2)).toHaveAttribute('aria-selected', 'true');
 });
 
 test('a second shown resets query, chip and selection', async ({page}) => {

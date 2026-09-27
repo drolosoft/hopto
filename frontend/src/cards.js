@@ -16,17 +16,27 @@
 function iconElement(iconUrl, name) {
     const tile = document.createElement('span');
     tile.className = 'tile';
+    const initial = name.trim().charAt(0).toUpperCase();
 
     if (iconUrl) {
         const image = document.createElement('img');
         image.src = iconUrl;
         image.alt = '';
         image.loading = 'lazy';
+
+        // The file behind iconUrl can go stale (a moved bundle, a fetch
+        // that never landed): once the browser gives up loading it, the
+        // tile falls back to the initial instead of a broken-image icon.
+        image.addEventListener('error', () => {
+            image.remove();
+            tile.textContent = initial;
+        }, {once: true});
+
         tile.appendChild(image);
         return tile;
     }
 
-    tile.textContent = name.trim().charAt(0).toUpperCase();
+    tile.textContent = initial;
     return tile;
 }
 

@@ -64,6 +64,10 @@ test('⌘1-9 pick a chip, ⌘N ⌘E ⌘⌫ are the editor keys', () => {
     assert.deepEqual(actionFor(press('Backspace', {metaKey: true}), idle), {type: 'delete'});
 });
 
+test('⌘1-9 is left to the search box once it holds a query', () => {
+    assert.equal(actionFor(press('3', {metaKey: true}), {...idle, query: 'wh'}), null);
+});
+
 test('while the editor is open only Escape is taken', () => {
     const editing = {...idle, editing: true};
     assert.equal(actionFor(press('ArrowDown'), editing), null);
