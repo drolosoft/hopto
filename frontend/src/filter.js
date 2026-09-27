@@ -150,21 +150,25 @@ export function rankItems(items, query) {
 }
 
 /**
- * The items of a chip: everything, the favourites, or one category.
+ * The items of a chip: everything, the favourites, or one category. A
+ * search-only app (from /System/Applications) is never under a chip:
+ * the chips show what the user keeps, those only come up by typing.
  * @param {object[]} items
  * @param {string} category
  * @returns {object[]}
  */
 export function filterByCategory(items, category) {
+    const listed = items.filter((item) => !item.searchOnly);
+
     if (!category) {
-        return items;
+        return listed;
     }
 
     if (category === FAVORITES) {
-        return items.filter((item) => item.favorite);
+        return listed.filter((item) => item.favorite);
     }
 
-    return items.filter((item) => item.category === category);
+    return listed.filter((item) => item.category === category);
 }
 
 /**
@@ -198,14 +202,15 @@ function byOpens(items) {
 /**
  * The empty-query layout of a tab: favourites, the most recent, and the
  * rest grouped by category, most opened first inside each group. An item
- * shows once; hidden ones never show; empty sections are dropped.
+ * shows once; hidden and search-only ones never show; empty sections are
+ * dropped.
  * @param {object[]} items decorated
  * @param {{id: string, name: string}[]} categories chip order
  * @param {number} recentLimit
  * @returns {{id: string, items: object[]}[]}
  */
 export function sections(items, categories, recentLimit) {
-    const visible = items.filter((item) => !item.hidden);
+    const visible = items.filter((item) => !item.hidden && !item.searchOnly);
     const placed = new Set();
     const result = [];
 

@@ -91,3 +91,15 @@ test('confirmQuestion names what goes and how to answer', () => {
     assert.equal(confirmQuestion({action: 'deleteCategory', name: 'Docs'}, t), 'Delete the category Docs? ↩ yes · Esc no');
     assert.equal(confirmQuestion(null, t), '');
 });
+
+test('a search-only app counts while typing and not in the totals', () => {
+    const apps = decorate([
+        {id: 'a', key: 'apps:a', kind: 'app', name: 'Alpha', category: 'x', keywords: []},
+        {id: 's', key: 'apps:s', kind: 'app', name: 'Alarm', category: 'applications', keywords: [], searchOnly: true},
+    ], usage);
+    const state = stateWith({apps});
+
+    assert.deepEqual(counts(state, ''), {apps: 1, links: 2});
+    assert.deepEqual(counts(state, 'al'), {apps: 2, links: 0});
+    assert.equal(totalsText(state, t), '1 app · 2 links');
+});

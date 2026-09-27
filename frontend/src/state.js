@@ -47,10 +47,15 @@ export function initialState(tab) {
  */
 export function counts(state, query) {
     // A hidden app never shows in the list, searching or not, so it must
-    // not be counted either: unifiedSearch drops it the same way.
+    // not be counted either; a search-only app counts only while typing,
+    // the one place it shows.
     const count = (items) => {
         const visible = items.filter((item) => !item.hidden);
-        return query ? rankItems(visible, query).length : visible.length;
+        if (query) {
+            return rankItems(visible, query).length;
+        }
+
+        return visible.filter((item) => !item.searchOnly).length;
     };
 
     return {apps: count(state.apps), links: count(state.links)};
@@ -85,7 +90,9 @@ export function emptyMessage(state, t) {
  * @returns {string}
  */
 export function totalsText(state, t) {
-    return `${t.plural('apps', state.apps.filter((app) => !app.hidden).length)} · ${t.plural('links', state.links.length)}`;
+    const apps = state.apps.filter((app) => !app.hidden && !app.searchOnly);
+
+    return `${t.plural('apps', apps.length)} · ${t.plural('links', state.links.length)}`;
 }
 
 /**
@@ -107,18 +114,18 @@ export function footerAction(entry, t) {
 }
 
 /**
- * How many items of the current tab each chip holds: every non-hidden
- * item for "All", the favourites among them for the star chip, and each
- * category's own non-hidden items. Ignores the search box on purpose:
- * chips are hidden while searching, so counting matches would count
- * something nobody is looking at.
+ * How many items of the current tab each chip holds: every non-hidden,
+ * non-search-only item for "All", the favourites among them for the star
+ * chip, and each category's own non-hidden items. Ignores the search box
+ * on purpose: chips are hidden while searching, so counting matches
+ * would count something nobody is looking at.
  * @param {object} state
  * @returns {Object<string, number>}
  */
 export function chipCounts(state) {
     const categories = state.tab === 'links' ? state.linkCategories : state.appCategories;
     const everything = state.tab === 'links' ? state.links : state.apps;
-    const items = everything.filter((item) => !item.hidden);
+    const items = everything.filter((item) => !item.hidden && !item.searchOnly);
 
     const totals = {'': items.length, [FAVORITES]: items.filter((item) => item.favorite).length};
     for (const category of categories) {

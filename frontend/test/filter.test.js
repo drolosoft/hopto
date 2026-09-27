@@ -168,3 +168,17 @@ test('visibleUnder shows only the hidden apps under their chip, and never elsewh
     assert.deepEqual(visibleUnder(items, 'applications'), []);
     assert.deepEqual(visibleUnder(items, 'edge').map((item) => item.id), ['edge-github']);
 });
+
+// A search-only app: found by typing, never on the grid or under a chip.
+const calculator = {id: 'app-calculator', key: 'apps:app-calculator', kind: 'app', source: 'applications', name: 'Calculator', description: '', category: 'applications', keywords: [], searchOnly: true};
+
+test('a search-only app is found by typing and nowhere else', () => {
+    const items = decorate([calculator, apps[0]], {opens: {}, lastOpened: {}, favorites: ['apps:app-calculator']});
+
+    assert.deepEqual(unifiedSearch(items, [], 'calc').map((row) => row.id), ['app-calculator']);
+    assert.deepEqual(filterByCategory(items, 'applications').map((item) => item.id), ['app-mail']);
+    assert.deepEqual(filterByCategory(items, FAVORITES), [], 'not even as a favourite');
+
+    const grid = sections(items, [{id: 'applications', name: 'Applications'}], 5);
+    assert.deepEqual(grid.flatMap((section) => section.items.map((item) => item.id)), ['app-mail']);
+});

@@ -23,11 +23,12 @@ window.runtime = {
 };
 
 // The fixture: two discovered apps (one an Edge app on github.com), one
-// hand-added app, three links, two categories per tab.
+// hand-added app, and one app of /System/Applications, search only.
 const apps = [
     {id: 'mine', key: 'apps:mine', kind: 'app', source: 'library', name: 'Mine', description: 'A hand-added app', url: '', host: '', path: '/Applications/Mine.app', bundleId: '', category: 'tools', keywords: [], iconUrl: '', hidden: false, missing: false},
     {id: 'app-mail', key: 'apps:app-mail', kind: 'app', source: 'applications', name: 'Mail', description: '', url: '', host: '', path: '/Applications/Mail.app', bundleId: 'com.apple.mail', category: 'applications', keywords: [], iconUrl: '', hidden: false, missing: false},
     {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', url: 'https://github.com/', host: 'github.com', path: '/Users/someone/Applications/Edge Apps.localized/GitHub.app', bundleId: '', category: 'edge', keywords: [], iconUrl: '', hidden: false, missing: false},
+    {id: 'app-calculator', key: 'apps:app-calculator', kind: 'app', source: 'applications', name: 'Calculator', description: '', url: '', host: '', path: '/System/Applications/Calculator.app', bundleId: 'com.apple.calculator', category: 'applications', keywords: [], iconUrl: '', hidden: false, missing: false, searchOnly: true},
 ];
 
 const links = [
