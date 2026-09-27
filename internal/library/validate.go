@@ -74,8 +74,9 @@ var iconShPattern = regexp.MustCompile(`^sh:[a-z0-9][a-z0-9-]{0,63}$`)
 var reservedPrefixes = []string{"edge-", "app-"}
 
 // reservedCategoryIDs are the virtual chips of the page: the favourites
-// filter and the two groups of discovered apps.
-var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true, "applications": true, "edge": true}
+// filter, the two groups of discovered apps and the chip of the hidden
+// ones.
+var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true, "applications": true, "edge": true, "hidden": true}
 
 // The values settings accept.
 var (

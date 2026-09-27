@@ -290,13 +290,51 @@ func TestItemsListsDiscoveredApps(t *testing.T) {
 		t.Errorf("mine = %+v", apps[0])
 	}
 
+	// app-alpha is hidden, so the "hidden" chip closes the row.
 	categories := app.Categories(tabApps)
-	if len(categories) != 2 || categories[1].ID != "applications" || !categories[1].Virtual {
+	wrong := len(categories) != 3 ||
+		categories[1].ID != "applications" || !categories[1].Virtual ||
+		categories[2].ID != hiddenChip || !categories[2].Virtual
+	if wrong {
 		t.Errorf("categories = %+v", categories)
 	}
 
 	if _, ok := app.iconSource("app-alpha"); !ok {
 		t.Error("the handler cannot resolve the discovered icon")
+	}
+}
+
+// The hidden chip shows only while a present app is hidden, and no user
+// category can take its id.
+func TestHiddenChipComesAndGoes(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	fakeBundle(t, app, "Alpha", "com.example.alpha")
+
+	hasHidden := func() bool {
+		for _, category := range app.Categories(tabApps) {
+			if category.ID == hiddenChip {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	if hasHidden() {
+		t.Fatal("hidden chip with nothing hidden")
+	}
+
+	if err := app.HideApp("app-alpha"); err != nil || !hasHidden() {
+		t.Fatalf("after hiding: %v", err)
+	}
+
+	if err := app.UnhideApp("app-alpha"); err != nil || hasHidden() {
+		t.Fatalf("after unhiding: %v", err)
+	}
+
+	view, err := app.AddCategory(tabApps, "Hidden")
+	if err != nil || view.ID != "hidden-2" {
+		t.Errorf("category = %+v %v", view, err)
 	}
 }
 

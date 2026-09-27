@@ -17,6 +17,10 @@ const (
 	sourceLibrary = "library"
 )
 
+// hiddenChip is the virtual chip of the apps hidden with ⌘⌫; library
+// reserves the id, so no category of the user can take it.
+const hiddenChip = "hidden"
+
 // ItemView is one row or card of the page: a link, a hand-added app or a
 // discovered one, flattened so the page never branches on where it came
 // from. Every slice is non-nil.
@@ -88,7 +92,8 @@ func (a *App) Items(tab string) []ItemView {
 }
 
 // Categories returns the chips of a tab: the library's, plus the virtual
-// ones for the discovered apps that are actually present.
+// ones for the discovered apps that are actually present, and the hidden
+// apps' chip when there is any.
 func (a *App) Categories(tab string) []CategoryView {
 	a.reload()
 	lib := a.library.Snapshot()
@@ -106,9 +111,16 @@ func (a *App) Categories(tab string) []CategoryView {
 		return views
 	}
 
+	hidden := map[string]bool{}
+	for _, entry := range lib.Hidden {
+		hidden[entry.ID] = true
+	}
+
 	present := map[string]bool{}
+	anyHidden := false
 	for _, app := range a.discover(lib.Settings) {
 		present[app.Source] = true
+		anyHidden = anyHidden || hidden[app.ID]
 	}
 
 	sources := []string{discover.SourceApplications, discover.SourceEdge}
@@ -116,6 +128,13 @@ func (a *App) Categories(tab string) []CategoryView {
 		if present[source] {
 			views = append(views, CategoryView{ID: source, Tab: tab, Virtual: true})
 		}
+	}
+
+	// The hidden apps get a chip only while there is one on disk: an
+	// empty chip would be a way to nothing. It is the only place they
+	// show, and where ⌘⌫ brings one back.
+	if anyHidden {
+		views = append(views, CategoryView{ID: hiddenChip, Tab: tab, Virtual: true})
 	}
 
 	return views
