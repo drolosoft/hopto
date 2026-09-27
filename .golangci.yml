@@ -21,6 +21,8 @@ linters:
     # is already on disk in every user's usage.json, and "localized" mirrors
     # the literal macOS folder suffix (Edge Apps.localized) — neither is a
     # typo to fix, so both spellings are allowed alongside the UK locale.
+    # Normalize is the exported name the icons package uses, and the standard
+    # library package image/color cannot be renamed.
     misspell:
       locale: UK
       ignore-rules:
@@ -28,6 +30,8 @@ linters:
         - favorites
         - localized
         - motivacional
+        - normalize
+        - color
   exclusions:
     paths:
       - testdata

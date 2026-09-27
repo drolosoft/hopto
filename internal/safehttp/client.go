@@ -117,7 +117,7 @@ func NewClient(opts Options) *http.Client {
 
 // Open sends a GET for rawURL and returns the response when the status is
 // 200; the caller reads the body with its own cap and closes it. The
-// scheme is checked before dialing; CheckRedirect covers the hops.
+// scheme is checked before dialling; CheckRedirect covers the hops.
 func Open(
 	ctx context.Context, client *http.Client, rawURL string, accept string,
 ) (*http.Response, error) {
