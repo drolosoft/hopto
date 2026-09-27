@@ -1,6 +1,6 @@
 /**
  * Global shortcuts as people read them. The settings write
- * "cmd+shift+space"; the welcome shows "⌘⇧Space", like a macOS menu.
+ * "cmd+shift+space"; the welcome shows "⇧⌘Space", like a macOS menu.
  */
 
 // The glyph of each modifier word the Go parser accepts.
@@ -27,7 +27,7 @@ const NAMED_KEYS = {
 };
 
 /**
- * "cmd+shift+space" → "⌘⇧Space". A spec with no modifier or an unknown
+ * "cmd+shift+space" → "⇧⌘Space". A spec with no modifier or an unknown
  * word comes back as it was: better the raw text than a wrong glyph.
  * @param {string} spec
  * @param {Function} t
