@@ -153,6 +153,7 @@ test('the page speaks Spanish when the settings say so', async ({page}) => {
     await shown(page, 'apps');
 
     await expect(page.locator('#tab-apps .label')).toHaveText('Mis apps');
+    await expect(page.locator('#tab-apps .icon')).toBeVisible();
     await expect(page.locator('#categories .chip').last()).toHaveText('Apps de Edge');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 });
@@ -185,6 +186,26 @@ test('ArrowDown on the grouped apps grid follows the visual column, not the flat
 
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('#grid [role="option"]').nth(2)).toHaveAttribute('aria-selected', 'true');
+});
+
+test('grouped card sections span the grid: a header sits above its group, not beside it', async ({page}) => {
+    await shown(page, 'apps');
+
+    // The fixture puts one card in each of three sections (Tools,
+    // Applications, Edge apps); every card should start at the same x as
+    // the grid's single column, and the second header should sit below
+    // the first card rather than squeezed into a neighbouring column.
+    const cards = page.locator('#grid .card');
+    await expect(cards).toHaveCount(3);
+
+    const firstBox = await cards.nth(0).boundingBox();
+    for (let index = 1; index < 3; index += 1) {
+        const box = await cards.nth(index).boundingBox();
+        expect(Math.abs(box.x - firstBox.x)).toBeLessThanOrEqual(2);
+    }
+
+    const secondHeaderBox = await page.locator('#grid .section').nth(1).boundingBox();
+    expect(secondHeaderBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
 });
 
 test('a second shown resets query, chip and selection', async ({page}) => {

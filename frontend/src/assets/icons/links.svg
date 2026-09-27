@@ -1,0 +1,9 @@
+<!-- The links tab: a chain link, drawn as two interlocking loops. Stroked
+     rather than filled, but the mask only reads opaque pixels, so the
+     outline works the same as a filled shape would. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+    <g fill="none" stroke="#000" stroke-width="1.33" stroke-linecap="round">
+        <path d="M6.67 8.67a3.33 3.33 0 0 0 5.03 0.36l2 -2a3.33 3.33 0 0 0 -4.71 -4.71l-1.15 1.14"/>
+        <path d="M9.33 7.33a3.33 3.33 0 0 0 -5.03 -0.36l-2 2a3.33 3.33 0 0 0 4.71 4.71l1.14 -1.15"/>
+    </g>
+</svg>

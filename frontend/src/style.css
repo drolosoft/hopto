@@ -109,6 +109,8 @@ header {
 }
 
 #tabs [role="tab"] {
+    display: inline-flex;
+    align-items: center;
     border: 0;
     background: transparent;
     color: var(--text-muted);
@@ -118,6 +120,35 @@ header {
     border-radius: 10px;
     cursor: pointer;
     --wails-draggable: no-drag;
+}
+
+/* The glyph left of each tab's label. It is a mask, not an <img>, so it
+   always renders in the tab's current text colour: muted, then bright
+   once the tab is selected, with no separate light/dark artwork to keep
+   in step with the palette above. */
+.icon {
+    display: inline-block;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    background-color: currentColor;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+}
+
+#tab-apps .icon {
+    mask-image: url("assets/icons/apps.svg");
+    -webkit-mask-image: url("assets/icons/apps.svg");
+}
+
+#tab-links .icon {
+    mask-image: url("assets/icons/links.svg");
+    -webkit-mask-image: url("assets/icons/links.svg");
 }
 
 #tabs [role="tab"][aria-selected="true"] {
@@ -233,9 +264,23 @@ header {
     gap: 2px;
 }
 
+/* A group's header and its cards must each own a full row of the grid:
+   left as auto-placed items, the grid gives every li one column, so the
+   next section's header lands beside the previous group instead of under
+   it. */
+.section, #grid > .group {
+    grid-column: 1 / -1;
+}
+
 /* A group of cards under a section header takes the whole width. */
 #grid > .group {
     display: block;
+}
+
+/* The group's own ul.cards lays out its cards in the width the group
+   just claimed above, not the single grid column it would default to. */
+#grid > .group > .cards {
+    width: 100%;
 }
 
 .section {
