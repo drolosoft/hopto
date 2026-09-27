@@ -158,12 +158,12 @@ func TestValidateRefusesTooManyItems(t *testing.T) {
 // id; an empty value means "no secondary browser" and is fine.
 func TestValidateSecondaryBrowser(t *testing.T) {
 	cases := map[string]bool{
-		"":                      true,
-		"com.apple.Safari":      true,
-		"org.mozilla.firefox":   true,
-		"Safari":                false,
-		"/Applications/Safari":  false,
-		"com.apple.Safari; rm":  false,
+		"":                     true,
+		"com.apple.Safari":     true,
+		"org.mozilla.firefox":  true,
+		"Safari":               false,
+		"/Applications/Safari": false,
+		"com.apple.Safari; rm": false,
 	}
 
 	for browser, ok := range cases {

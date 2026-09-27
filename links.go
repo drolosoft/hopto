@@ -1,15 +1,14 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/url"
 )
 
-// linksJSON is the catalog of "mis links". It is data, not code, so adding a
-// link or a category is an edit to links.json and a rebuild. Plan 2 removes
-// this file from the repo, so the fallback is an empty catalog.
+// linksJSON is the catalog of "mis links", currently a hardcoded empty
+// literal. Plan 2 replaces this with a different data source: links.json has
+// been deleted from the repo and is permanently blocked from re-entry.
 var linksJSON = []byte(`{"categories":[],"links":[]}`)
 
 // Category groups apps or links under one filter chip on the page.
@@ -45,11 +44,11 @@ type LinkCatalog struct {
 // at start, which is what we want: the tests catch it before a build.
 var linkCatalog = mustLoadLinks(linksJSON)
 
-// mustLoadLinks parses the embedded catalog or panics with the reason.
+// mustLoadLinks parses the catalog or panics with the reason.
 func mustLoadLinks(data []byte) LinkCatalog {
 	catalog, err := loadLinks(data)
 	if err != nil {
-		panic("links.json: " + err.Error())
+		panic("catalog: " + err.Error())
 	}
 
 	return catalog
