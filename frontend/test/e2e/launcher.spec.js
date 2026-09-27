@@ -246,6 +246,17 @@ test('the help names the build and the library file', async ({page}) => {
     ]);
 });
 
+test('plan 3 minor (e): the library path in the help wraps only where it has to', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.press('?');
+
+    const about = page.locator('#help li.about').last();
+    await expect(about).toBeVisible();
+    expect(await about.evaluate((item) => getComputedStyle(item).overflowWrap)).toBe('anywhere');
+    expect(await about.evaluate((item) => getComputedStyle(item).wordBreak)).not.toBe('break-all');
+    expect(await page.locator('#help').evaluate((help) => help.scrollWidth <= help.clientWidth)).toBe(true);
+});
+
 test('the menu bar Help opens the help panel over a fresh list', async ({page}) => {
     await shown(page, 'apps');
     await page.evaluate(() => window.listeners.help(true));

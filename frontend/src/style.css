@@ -523,12 +523,14 @@ footer p {
     font-size: 12px;
 }
 
-/* The build and the library path: small print at the end of the help. */
+/* The build and the library path: small print at the end of the help.
+   A long path breaks at the edge of the panel, and only there; break-all
+   split every word of the line even when it fitted. */
 #help .about {
     font-size: 12px;
     line-height: 1.5;
     color: var(--text-muted);
-    word-break: break-all;
+    overflow-wrap: anywhere;
     -webkit-user-select: text;
     user-select: text;
 }
