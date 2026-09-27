@@ -12,8 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+- `actions/checkout`, `actions/setup-go` and `actions/setup-node` in the CI and release workflows now use their newest major versions.
 
 ### Fixed
+- The scripts that drive the real app no longer risk your data: `put_back` only restores from a copy that `set_aside` actually finished making, so a script that dies partway through never wipes `library.toml`, `icons/` or `usage.json`.
+- `record-demo.sh` no longer closes Preview windows that were already open before the recording; it now closes only the backdrop image it created itself.
+- A version tag now fails to release unless the tagged commit's CI run was green, instead of publishing a build that had skipped golangci-lint, gofmt and Playwright.
+- "Open at login" refuses a translocated copy of hopto.app, which would otherwise stop working the first time the Mac restarts.
 
 ## [v0.1.0] - 2026-09-27
 
