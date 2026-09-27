@@ -46,6 +46,7 @@ window.go = {main: {App: {
         ? [{id: 'eco', name: 'Ecosystem', tab: 'links', virtual: false}, {id: 'docs', name: 'Docs', tab: 'links', virtual: false}]
         : [{id: 'tools', name: 'Tools', tab: 'apps', virtual: false}, {id: 'applications', name: '', tab: 'apps', virtual: true}, {id: 'edge', name: '', tab: 'apps', virtual: true}]),
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
+    About: async () => ({version: 'v0.3.0-test', commit: 'abc1234', builtAt: '2026-09-27', goVersion: 'go1.27.1', libraryPath: '/Users/someone/Library/Application Support/hopto/library.toml'}),
     Settings: async () => ({language: window.language ?? 'en', hotkeyApps: 'cmd+shift+space', hotkeyLinks: 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
     // Named libraryStatus, not status: window.status is a native Window
     // property (the old status-bar text) that stringifies anything

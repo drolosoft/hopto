@@ -3,13 +3,13 @@
  */
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
-import {Items, Categories, Usage, Settings, LibraryStatus, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/main/App';
+import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/main/App';
 import {decorate, filterByCategory, sections, unifiedSearch} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems} from './state.js';
 import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
-import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour} from './render.js';
+import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout} from './render.js';
 import {installKeyboard} from './keyboard.js';
 
 // How many "Recent" items the empty-query layout shows.
@@ -399,5 +399,20 @@ EventsOn('shown', (tab) => {
 EventsOn('icons', () => {
     refreshItems();
 });
+
+/**
+ * Asks Go once for the build facts the help panel shows; they do not
+ * change while the app runs.
+ */
+async function loadAbout() {
+    try {
+        setAbout(await About());
+        renderHelp(state, t);
+    } catch (error) {
+        Debug(`about: ${error}`);
+    }
+}
+
+loadAbout();
 
 refresh();

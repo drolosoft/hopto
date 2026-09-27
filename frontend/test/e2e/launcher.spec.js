@@ -140,7 +140,9 @@ test('? opens the help and Esc closes it; a broken library shows its line', asyn
 
     await page.keyboard.press('?');
     await expect(page.locator('#help')).toBeVisible();
-    await expect(page.locator('#help li').last()).toContainText('cmd+shift+space');
+    // The last shortcut line, not the about facts that now close the
+    // panel below it.
+    await expect(page.locator('#help li:not(.about)').last()).toContainText('cmd+shift+space');
 
     await page.keyboard.press('Escape');
     await expect(page.locator('#help')).toBeHidden();
@@ -217,4 +219,15 @@ test('a second shown resets query, chip and selection', async ({page}) => {
     await expect(page.locator('#search')).toHaveValue('');
     await expect(page.locator('#categories .chip[aria-pressed="true"]')).toHaveText('All');
     await expect(page.locator('#tab-apps')).toHaveAttribute('aria-selected', 'true');
+});
+
+test('the help names the build and the library file', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.press('?');
+
+    const facts = page.locator('#help li.about');
+    await expect(facts).toHaveText([
+        'hopto v0.3.0-test · abc1234 · built 2026-09-27 · go1.27.1',
+        'Library: /Users/someone/Library/Application Support/hopto/library.toml',
+    ]);
 });

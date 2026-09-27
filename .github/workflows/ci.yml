@@ -17,7 +17,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # The tags are needed for `git describe` in make build; the default
+      # shallow clone has none and the version would read as a bare hash.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Public repository: refuse any tracked internal working file. Runs
       # first so a leak fails fast, and in CI so --no-verify cannot skip it.
@@ -47,10 +51,11 @@ jobs:
       - name: Frontend tests
         run: cd frontend && npm ci && npm test
 
-      # wails build writes frontend/wailsjs and frontend/dist, which the Go
-      # package embeds; the Go tests cannot run before it.
+      # make build stamps the version, commit and date into the binary;
+      # it writes frontend/wailsjs and frontend/dist, which the Go
+      # package embeds, so the Go tests cannot run before it.
       - name: Build
-        run: wails build -clean
+        run: make build
 
       - name: Go tests
         run: go vet ./... && go test -race -count=1 -cover ./...

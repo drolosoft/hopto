@@ -4,8 +4,17 @@
 # would fail on a fresh clone before wailsjs exists.
 .PHONY: build test e2e lint hooks clean
 
+# What `make build` stamps into the binary for the help panel: what git
+# describes (the tag, or the commit, plus -dirty for local changes), the
+# full commit and the build time in UTC. `wails build` on its own leaves
+# them empty and the panel says "dev".
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
+BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.builtAt=$(BUILT)
+
 build:
-	wails build -clean
+	wails build -clean -ldflags "$(LDFLAGS)"
 
 test:
 	cd frontend && npm test

@@ -30,6 +30,18 @@ const TOAST_MS = 800;
 // The pending toast timer, so a second toast replaces the first.
 let toastTimer = 0;
 
+// The build and library facts for the help panel, from Go's About();
+// null until the first answer arrives.
+let about = null;
+
+/**
+ * Keeps what About() said, for the next paint of the help panel.
+ * @param {{version: string, commit: string, builtAt: string, goVersion: string, libraryPath: string}} view
+ */
+export function setAbout(view) {
+    about = view;
+}
+
 /**
  * The name of a chip: the library's, or the translation of a virtual one.
  * @param {{id: string, name: string, virtual: boolean}} category
@@ -236,6 +248,22 @@ export function renderHelp(state, t) {
         const item = document.createElement('li');
         item.textContent = line;
         list.appendChild(item);
+    }
+
+    // The build and the library file close the panel, quieter than the
+    // shortcuts: they are for bug reports, not for daily use.
+    if (about) {
+        const facts = [
+            t('help.version', {version: about.version, commit: about.commit || '—', date: about.builtAt || '—', go: about.goVersion}),
+            t('help.library', {path: about.libraryPath}),
+        ];
+
+        for (const fact of facts) {
+            const item = document.createElement('li');
+            item.className = 'about';
+            item.textContent = fact;
+            list.appendChild(item);
+        }
     }
 }
 
