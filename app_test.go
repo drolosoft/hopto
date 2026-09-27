@@ -598,11 +598,41 @@ func TestSystemAppsAreSearchOnly(t *testing.T) {
 		t.Fatalf("items = %+v", byID)
 	}
 
-	if !byID["app-calculator"].SearchOnly || byID["app-alpha"].SearchOnly {
-		t.Errorf("calculator = %+v, alpha = %+v", byID["app-calculator"], byID["app-alpha"])
+	calculator := byID["app-calculator"]
+	alpha := byID["app-alpha"]
+
+	if !calculator.SearchOnly || alpha.SearchOnly {
+		t.Errorf("calculator = %+v, alpha = %+v", calculator, alpha)
 	}
 
-	if !strings.HasPrefix(byID["app-alpha"].Path, filepath.Join(app.home, "Applications")) {
-		t.Errorf("the ~/Applications copy should win: %s", byID["app-alpha"].Path)
+	appsRoot := filepath.Join(app.home, "Applications")
+	if !strings.HasPrefix(alpha.Path, appsRoot) {
+		t.Errorf("the ~/Applications copy should win: %s", alpha.Path)
+	}
+
+	// A hidden app must still reach the page under the Hidden chip, even
+	// when it is also search only: SearchOnly hides it from the ordinary
+	// grid and chips, but Hidden is the one place it has to come back
+	// from, or ⌘⌫ would have no way to unhide it once it is gone.
+	if err := app.HideApp(calculator.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	hasHiddenChip := false
+	for _, category := range app.Categories(tabApps) {
+		hasHiddenChip = hasHiddenChip || category.ID == hiddenChip
+	}
+	if !hasHiddenChip {
+		t.Error("a hidden search-only app must open the Hidden chip")
+	}
+
+	for _, view := range app.Items(tabApps) {
+		if view.ID != calculator.ID {
+			continue
+		}
+
+		if !view.Hidden || !view.SearchOnly {
+			t.Errorf("hidden calculator = %+v", view)
+		}
 	}
 }
