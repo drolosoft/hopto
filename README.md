@@ -4,7 +4,6 @@
 
 <p align="center">
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/github/v/release/drolosoft/hopto?label=release" alt="GitHub Release"></a>
-  <a href="https://goreportcard.com/report/github.com/drolosoft/hopto"><img src="https://goreportcard.com/badge/github.com/drolosoft/hopto" alt="Go Report Card"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/macOS-12%2B-lightgrey.svg" alt="macOS 12+"></a>
 </p>
