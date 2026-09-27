@@ -149,24 +149,24 @@ scripts/              internal-files guard, real-app helpers, demo recording, re
 
 ## Style card
 
-What the code does, measured, so a change can read like the code around it. Measured on commit `3108150`.
+What the code does, measured, so a change can read like the code around it. Measured on commit `0327e6d`.
 
 | Go | |
 |---|---|
 | `gofmt`, `go vet`, `golangci-lint` (errcheck, govet, ineffassign, staticcheck, unused, gocritic, misspell with the UK locale) | clean |
-| Lines over 78 columns, cgo preambles aside | 197 |
-| Functions without a doc comment | 37 |
-| Comments at the end of a line | 2 |
+| Lines over 78 columns, cgo preambles aside | 0 |
+| Functions without a doc comment | 0 |
+| Comments at the end of a line | 0 |
 
 | Page (JavaScript) | |
 |---|---|
-| `var` / `let` / `const` | 0 / 17 / 257 |
-| Function declarations / arrow functions kept in a constant | 152 / 4 |
+| `var` / `let` / `const` | 0 / 17 / 258 |
+| Function declarations / arrow functions kept in a constant | 154 / 4 |
 | One-letter names | 3, all `t`, the translator |
 | Lines with two statements | 0 |
 | JSDoc before internal functions | 64 of 64 |
-| Comments above the line / at the end of a line | 150 / 0 |
-| Median comment width | 61 characters |
+| Comments above the line / at the end of a line | 155 / 0 |
+| Median comment width | 62 characters |
 | `innerHTML`, `outerHTML`, `insertAdjacentHTML` | 0 (`frontend/test/dom-rules.test.js`) |
 
 The checks, from the repository root:
