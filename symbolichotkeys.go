@@ -23,9 +23,28 @@ var finderSearchCombo = Hotkey{
 	Modifiers: modifierCmd | modifierOption,
 }
 
+// finderSearchKeyCode and the two modifier bits below are the shape
+// macOS writes under a symbolic hotkey's "value.parameters", once the
+// entry has been touched: a [char, keycode, modifiers] triple in
+// NSEvent's own numbering, not Carbon's masks from hotkeyspec.go (Space
+// happens to be 49 in both, but the modifier bits differ).
+const finderSearchKeyCode = 49
+
+// The two modifier bits "enabled" alone cannot tell apart: a user can
+// leave 65 switched on but rebind it away from Space, cmd or option, and
+// the entry would then no longer collide with hopto's own shortcut.
+const (
+	finderSearchModifierCmd    = 1 << 20 // 1048576
+	finderSearchModifierOption = 1 << 19 // 524288
+)
+
 // symbolicHotkeyEnabled reads one entry of the file. macOS only writes
 // an entry once the user changes it, so a missing entry (or a file that
-// does not parse) is the factory setting, which is on.
+// does not parse) is the factory setting, which is on. The "enabled"
+// flag alone is not enough for 65: it stays on when the user rebinds the
+// shortcut to something else, so its own combo (value.parameters) is
+// read too; a triple that is missing or does not parse falls back to
+// the flag alone, as before this check existed.
 func symbolicHotkeyEnabled(data []byte, id string) bool {
 	var prefs struct {
 		Hotkeys map[string]map[string]any `plist:"AppleSymbolicHotKeys"`
@@ -40,17 +59,91 @@ func symbolicHotkeyEnabled(data []byte, id string) bool {
 		return true
 	}
 
-	// The flag is a boolean in the files seen so far; an integer is
-	// accepted too, since older systems wrote 0 and 1.
-	switch enabled := entry["enabled"].(type) {
-	case bool:
-		return enabled
-	case uint64:
-		return enabled != 0
-	case int64:
-		return enabled != 0
-	default:
+	enabled, known := symbolicHotkeyFlag(entry)
+	if !known {
 		return true
+	}
+
+	if !enabled {
+		return false
+	}
+
+	params, ok := symbolicHotkeyParameters(entry)
+	if !ok {
+		return true
+	}
+
+	return params.KeyCode == finderSearchKeyCode &&
+		params.Modifiers&finderSearchModifierCmd != 0 &&
+		params.Modifiers&finderSearchModifierOption != 0
+}
+
+// symbolicHotkeyFlag reads an entry's "enabled" flag: a boolean in the
+// files seen so far, but an integer is accepted too, since older systems
+// wrote 0 and 1. known is false for anything else, so the caller treats
+// the entry as the factory setting.
+func symbolicHotkeyFlag(entry map[string]any) (enabled, known bool) {
+	switch flag := entry["enabled"].(type) {
+	case bool:
+		return flag, true
+	case uint64:
+		return flag != 0, true
+	case int64:
+		return flag != 0, true
+	default:
+		return false, false
+	}
+}
+
+// symbolicCombo is a symbolic hotkey's own [keycode, modifiers], read
+// from "value.parameters". Its modifiers are NSEvent's bits, not
+// Carbon's masks, so it is a distinct type from Hotkey rather than one
+// that could be compared against a Carbon-registered shortcut by
+// mistake.
+type symbolicCombo struct {
+	KeyCode   uint32
+	Modifiers uint32
+}
+
+// symbolicHotkeyParameters reads an entry's own combo, three numbers
+// deep under "value.parameters": the physical key and the modifiers the
+// user last bound it to. ok is false when the shape is not the one
+// macOS is known to write.
+func symbolicHotkeyParameters(entry map[string]any) (symbolicCombo, bool) {
+	value, ok := entry["value"].(map[string]any)
+	if !ok {
+		return symbolicCombo{}, false
+	}
+
+	raw, ok := value["parameters"].([]any)
+	if !ok || len(raw) < 3 {
+		return symbolicCombo{}, false
+	}
+
+	keyCode, ok := symbolicHotkeyNumber(raw[1])
+	if !ok {
+		return symbolicCombo{}, false
+	}
+
+	modifiers, ok := symbolicHotkeyNumber(raw[2])
+	if !ok {
+		return symbolicCombo{}, false
+	}
+
+	return symbolicCombo{KeyCode: keyCode, Modifiers: modifiers}, true
+}
+
+// symbolicHotkeyNumber reads one number of a parameters triple, which
+// the plist library decodes as one of Go's signed or unsigned 64-bit
+// kinds depending on its sign.
+func symbolicHotkeyNumber(value any) (uint32, bool) {
+	switch number := value.(type) {
+	case uint64:
+		return uint32(number), true
+	case int64:
+		return uint32(number), true
+	default:
+		return 0, false
 	}
 }
 

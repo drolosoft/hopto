@@ -144,6 +144,30 @@ func TestPresentWelcome(t *testing.T) {
 	}
 }
 
+// On a later run, a taken shortcut or the Finder's own window must not
+// open the panel by itself: with the stock ⌥⌘Space still bound to "Show
+// Finder search window" and hopto's own default links shortcut of
+// cmd+option+space, that would pop the panel up on every launch for any
+// user who never touched either setting. The spec's ruling is that the
+// welcome shows once; a later problem waits for the user's own `shown`.
+func TestPresentWelcomeStaysQuietAfterTheFirstRun(t *testing.T) {
+	first, _, _ := newTestApp(t)
+	win := &fakeWindow{}
+	app := newApp(first.home, first.dataDir, win, first.open, languageEnglish)
+	withHotkeys(t, 0, hotkeyExistsStatus)
+
+	view := app.Welcome()
+	if !view.Show || view.FirstRun {
+		t.Fatalf("setup: expected a due problem on a later run, got %+v", view)
+	}
+
+	app.PresentWelcome()
+
+	if got := win.joined(); got != "" {
+		t.Errorf("opened the panel unasked: %q", got)
+	}
+}
+
 // The settings button opens the Keyboard pane through `open`.
 func TestOpenKeyboardSettings(t *testing.T) {
 	app, _, open := newTestApp(t)

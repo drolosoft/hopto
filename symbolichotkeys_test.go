@@ -17,11 +17,26 @@ func symbolicPrefs(entries string) []byte {
 }
 
 // macOS writes an entry only once the user touches it; a missing one is
-// the factory setting, which for 65 is on.
+// the factory setting, which for 65 is on. The flag alone is not enough
+// once an entry carries its own combo: it still warns when that combo is
+// missing (nothing to read yet, so the flag is trusted as before this
+// check existed) or still ⌥⌘Space, but not once the user has rebound it
+// elsewhere while leaving the flag on.
 func TestSymbolicHotkeyEnabled(t *testing.T) {
 	off := `<key>65</key><dict><key>enabled</key><false/></dict>`
 	on := `<key>65</key><dict><key>enabled</key><true/></dict>`
 	other := `<key>64</key><dict><key>enabled</key><false/></dict>`
+
+	// A "value.parameters" triple is [char, keycode, modifiers]; 49 is
+	// Space, 1572864 is ⌘ (1048576) and ⌥ (524288) combined, 53 is Esc.
+	stillFinderSpace := `<key>65</key><dict><key>enabled</key><true/>` +
+		`<key>value</key><dict><key>parameters</key><array>` +
+		`<integer>32</integer><integer>49</integer><integer>1572864</integer>` +
+		`</array></dict></dict>`
+	reboundToEscape := `<key>65</key><dict><key>enabled</key><true/>` +
+		`<key>value</key><dict><key>parameters</key><array>` +
+		`<integer>27</integer><integer>53</integer><integer>1572864</integer>` +
+		`</array></dict></dict>`
 
 	cases := []struct {
 		name string
@@ -29,7 +44,12 @@ func TestSymbolicHotkeyEnabled(t *testing.T) {
 		want bool
 	}{
 		{"turned off", symbolicPrefs(off), false},
-		{"turned on", symbolicPrefs(on), true},
+		{"turned on, no parameters yet", symbolicPrefs(on), true},
+		{
+			"turned on, still bound to ⌥⌘Space",
+			symbolicPrefs(stillFinderSpace), true,
+		},
+		{"rebound to another key", symbolicPrefs(reboundToEscape), false},
 		{"never touched", symbolicPrefs(other), true},
 		{"not a plist", []byte("garbage"), true},
 		{"empty", nil, true},

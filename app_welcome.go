@@ -89,12 +89,19 @@ func hotkeyView(tab, spec string, id uint32) HotkeyView {
 	return view
 }
 
-// PresentWelcome is what the page calls once it has loaded: when the
-// welcome is due and the panel is hidden, it shows the panel, whose
-// `shown` then finds the welcome. Asking from the page, instead of from
-// startup, means the event never arrives before anyone listens.
+// PresentWelcome is what the page calls once it has loaded. Only on the
+// first run does it show the panel by itself, whose `shown` then finds
+// the welcome; a later run's problem (a taken shortcut, or the Finder's
+// own ⌥⌘Space) is shown once the user opens the panel themselves,
+// through checkWelcome on that `shown`. Popping the panel up unasked on
+// every later launch is exactly what "Show Finder search window" already
+// does with the default links shortcut on a stock Mac, which is the
+// spec's ruling over the plan's own wider wording. Asking from the page,
+// instead of from startup, means the event never arrives before anyone
+// listens.
 func (a *App) PresentWelcome() {
-	if !a.Welcome().Show {
+	view := a.Welcome()
+	if !view.Show || !view.FirstRun {
 		return
 	}
 
