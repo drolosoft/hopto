@@ -76,7 +76,13 @@ var reservedPrefixes = []string{"edge-", "app-"}
 // reservedCategoryIDs are the virtual chips of the page: the favourites
 // filter, the two groups of discovered apps and the chip of the hidden
 // ones.
-var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true, "applications": true, "edge": true, "hidden": true}
+var reservedCategoryIDs = map[string]bool{
+	"favoritos":    true,
+	"favorites":    true,
+	"applications": true,
+	"edge":         true,
+	"hidden":       true,
+}
 
 // The values settings accept.
 var (

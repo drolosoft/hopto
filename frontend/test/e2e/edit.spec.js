@@ -68,6 +68,42 @@ test('moving away, typing or a new shown drop the question without deleting', as
     expect(await payloads(page, 'DeleteLink')).toEqual([]);
 });
 
+test('Critical fix: clicking a chip drops a pending question, so Enter opens the newly selected item', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(selected(page).locator('.name')).toHaveText('MDN');
+
+    await page.keyboard.press('Meta+Backspace');
+    await expect(page.locator('#action')).toHaveText('Delete MDN? ↩ yes · Esc no');
+
+    await page.locator('#categories .chip', {hasText: 'Ecosystem'}).click();
+    await expect(page.locator('#action')).toHaveText('↩ Open Gitea');
+    await expect(page.locator('#grid .confirming')).toHaveCount(0);
+
+    await page.keyboard.press('Enter');
+    expect(await payloads(page, 'OpenLink')).toEqual(['gitea']);
+    expect(await payloads(page, 'DeleteLink')).toEqual([]);
+});
+
+test('Critical fix: clicking the other tab drops a pending question, so Enter opens the newly selected item', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(selected(page).locator('.name')).toHaveText('MDN');
+
+    await page.keyboard.press('Meta+Backspace');
+    await expect(page.locator('#action')).toHaveText('Delete MDN? ↩ yes · Esc no');
+
+    await page.locator('#tabs [role="tab"][data-tab="apps"]').click();
+    await expect(page.locator('#action')).toHaveText('↩ Open Mine');
+    await expect(page.locator('#grid .confirming')).toHaveCount(0);
+
+    await page.keyboard.press('Enter');
+    expect(await payloads(page, 'Launch')).toEqual(['mine']);
+    expect(await payloads(page, 'DeleteLink')).toEqual([]);
+});
+
 test('a found app is hidden after asking, and comes back from the Hidden chip at once', async ({page}) => {
     await shown(page, 'apps');
     await page.keyboard.press('ArrowRight');
