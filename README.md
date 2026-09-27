@@ -225,6 +225,8 @@ Requires macOS 12 or later, Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcod
 
 **There is no Dock icon.** By design. Use the shortcuts, or the menu bar item, which also has Quit.
 
+**Open at login does nothing.** hopto refuses to write the LaunchAgent while it runs from a translocated copy, the state macOS gives a fresh download opened without being moved first. Move hopto.app to /Applications, open it again, then tick the box.
+
 **A shortcut does nothing.** Another app may have it. The welcome panel and `~/Library/Logs/hopto.log` say whether each one registered (`hotkey 1 registered`, or `RegisterEventHotKey failed` with a status). Pick another in `library.toml`, then quit hopto from the menu bar item and open it again.
 
 **A line at the top of the panel says `library.toml, line N: …`.** The file does not parse or breaks a rule. hopto keeps showing the last good library and refuses to write until that line is fixed; the button opens the file. The previous good version is `library.toml.bak`.

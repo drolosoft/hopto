@@ -73,6 +73,24 @@ func TestBundlePath(t *testing.T) {
 	}
 }
 
+// Gatekeeper runs a freshly downloaded, unnotarised copy from a folder
+// under /AppTranslocation/ that macOS recreates on every launch and
+// empties on the next one: a login item pointing there would work once
+// and then silently stop, so bundlePath must refuse it outright.
+func TestBundlePathRefusesTranslocation(t *testing.T) {
+	const executable = "/private/var/folders/x/AppTranslocation/" +
+		"1234-5678/d/hopto.app/Contents/MacOS/hopto"
+
+	got, err := bundlePath(executable)
+	if got != "" {
+		t.Errorf("got %q, want no bundle path", got)
+	}
+
+	if !errors.Is(err, errTranslocated) {
+		t.Errorf("err = %v, want errTranslocated", err)
+	}
+}
+
 // Enable writes the plist, Disable removes it, twice is harmless, and
 // outside a bundle nothing is written at all.
 func TestLoginAgentEnableDisable(t *testing.T) {

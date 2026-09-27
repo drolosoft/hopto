@@ -26,6 +26,19 @@ const launchAgentPerm = 0o644
 // bundle's Info.plist, as a Dock app, which is not hopto.
 var errNotInBundle = errors.New("hopto is not running from a .app bundle")
 
+// errTranslocated is the answer when the running .app sits under macOS's
+// AppTranslocation folder: Gatekeeper puts a freshly downloaded,
+// unnotarised app there, in a folder it recreates on every launch and
+// empties on the next one, so a login item pointing at it would work
+// once and then quietly fail after a reboot.
+var errTranslocated = errors.New(
+	"hopto is running from a translocated copy, not /Applications",
+)
+
+// translocationMarker is the folder name macOS's Gatekeeper interposes
+// on the path of an app it has translocated.
+const translocationMarker = "/AppTranslocation/"
+
 // launchAgent is the plist launchd reads. `open` on the bundle instead
 // of the binary makes the login start behave like a double click.
 type launchAgent struct {
@@ -73,6 +86,10 @@ func bundlePath(executable string) (string, error) {
 		strings.HasSuffix(bundle, ".app")
 	if !inBundle {
 		return "", fmt.Errorf("%w: %s", errNotInBundle, executable)
+	}
+
+	if strings.Contains(bundle, translocationMarker) {
+		return "", fmt.Errorf("%w: %s", errTranslocated, bundle)
 	}
 
 	return bundle, nil
