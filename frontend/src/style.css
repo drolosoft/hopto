@@ -294,10 +294,14 @@ header {
     flex-direction: column;
     min-width: 0;
     line-height: 1.15;
+    overflow: hidden;
 }
 
 .row .name {
     font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .row .aside {

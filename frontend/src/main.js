@@ -4,7 +4,7 @@
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {Items, Categories, Usage, Settings, LibraryStatus, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/main/App';
-import {decorate, rankItems, filterByCategory, sections, unifiedSearch} from './filter.js';
+import {decorate, filterByCategory, sections, unifiedSearch} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems} from './state.js';
 import {otherTab} from './tabs.js';
@@ -25,14 +25,6 @@ let state = initialState('apps');
 let t = translator('en');
 
 const search = searchBox();
-
-/**
- * The items of the current tab, decorated with the usage.
- * @returns {object[]}
- */
-function tabItems() {
-    return state.tab === 'links' ? state.links : state.apps;
-}
 
 /**
  * What the list shows for the state: the unified search while typing, a
@@ -190,26 +182,34 @@ function decorateAll() {
  * app installed in the meantime shows up without restarting the launcher.
  */
 async function refresh() {
-    const [apps, appCategories, links, linkCategories, usage, settings, status] = await Promise.all([
-        Items('apps'),
-        Categories('apps'),
-        Items('links'),
-        Categories('links'),
-        Usage(),
-        Settings(),
-        LibraryStatus(),
-    ]);
+    try {
+        const [apps, appCategories, links, linkCategories, usage, settings, status] = await Promise.all([
+            Items('apps'),
+            Categories('apps'),
+            Items('links'),
+            Categories('links'),
+            Usage(),
+            Settings(),
+            LibraryStatus(),
+        ]);
 
-    // Belt and braces: the page never trusts the shape of what it gets.
-    state.usage = {opens: usage?.opens ?? {}, lastOpened: usage?.lastOpened ?? {}, favorites: usage?.favorites ?? []};
-    state.settings = settings ?? state.settings;
-    state.status = status ?? state.status;
-    state.appCategories = appCategories ?? [];
-    state.linkCategories = linkCategories ?? [];
-    state.apps = decorate(apps ?? [], state.usage);
-    state.links = decorate(links ?? [], state.usage);
+        // Belt and braces: the page never trusts the shape of what it gets.
+        state.usage = {opens: usage?.opens ?? {}, lastOpened: usage?.lastOpened ?? {}, favorites: usage?.favorites ?? []};
+        state.settings = settings ?? state.settings;
+        state.status = status ?? state.status;
+        state.appCategories = appCategories ?? [];
+        state.linkCategories = linkCategories ?? [];
+        state.apps = decorate(apps ?? [], state.usage);
+        state.links = decorate(links ?? [], state.usage);
 
-    t = translator(resolveLanguage(state.settings.language, navigator.language));
+        t = translator(resolveLanguage(state.settings.language, navigator.language));
+    } catch (error) {
+        // A failed call must not strand the caller's .then(): the search
+        // box still has to get focus, and the page still has to paint
+        // whatever it already knew before this refresh.
+        Debug(`refresh: ${error}`);
+    }
+
     render();
 }
 
@@ -217,9 +217,14 @@ async function refresh() {
  * Re-reads only the items, keeping query and selection: an icon landed.
  */
 async function refreshItems() {
-    const [apps, links] = await Promise.all([Items('apps'), Items('links')]);
-    state.apps = decorate(apps ?? [], state.usage);
-    state.links = decorate(links ?? [], state.usage);
+    try {
+        const [apps, links] = await Promise.all([Items('apps'), Items('links')]);
+        state.apps = decorate(apps ?? [], state.usage);
+        state.links = decorate(links ?? [], state.usage);
+    } catch (error) {
+        Debug(`refreshItems: ${error}`);
+    }
+
     render();
 }
 
