@@ -14,6 +14,12 @@ import (
 // errDialogBusy answers a second PickApp while the first panel is up.
 var errDialogBusy = errors.New("a file dialog is already open")
 
+// errPanelHidden answers PickApp when a hotkey hid the panel just before
+// the sheet could attach: a sheet on a hidden window never gets an
+// answer, which would leave dialogOpen stuck refusing toggle, Hide and
+// reopen until Quit.
+var errPanelHidden = errors.New("the panel is hidden")
+
 // pickFolder is where the open panel starts: where apps are installed.
 const pickFolder = "/Applications"
 
@@ -35,8 +41,8 @@ type AppDraft struct {
 // panel is up the window stays shown and leaves the floating level, so
 // the panel is never under it; both come back when it closes.
 func (a *App) PickApp() (AppDraft, error) {
-	if !a.beginDialog() {
-		return AppDraft{}, errDialogBusy
+	if err := a.beginDialog(); err != nil {
+		return AppDraft{}, err
 	}
 	defer a.endDialog()
 
@@ -54,19 +60,28 @@ func (a *App) PickApp() (AppDraft, error) {
 }
 
 // beginDialog marks a dialog as open and takes the window off the
-// floating level; false when one is already open.
-func (a *App) beginDialog() bool {
+// floating level. It refuses a second dialog while one is already open,
+// and refuses one on a hidden panel: a hotkey hide landing between the
+// page asking for the dialog and the sheet attaching would otherwise
+// leave a sheet nobody can answer, and dialogOpen stuck until Quit.
+func (a *App) beginDialog() error {
 	a.mu.Lock()
 	if a.dialogOpen {
 		a.mu.Unlock()
-		return false
+		return errDialogBusy
 	}
+
+	if !a.visible {
+		a.mu.Unlock()
+		return errPanelHidden
+	}
+
 	a.dialogOpen = true
 	a.mu.Unlock()
 
 	a.window.SetAlwaysOnTop(false)
 
-	return true
+	return nil
 }
 
 // endDialog puts the window back on the floating level and gives it the

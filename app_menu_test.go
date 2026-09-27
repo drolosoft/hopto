@@ -110,9 +110,10 @@ func TestMenuOpenHelpEditQuit(t *testing.T) {
 // With the open panel up the menu does not touch the window either.
 func TestShowPanelWaitsForTheDialog(t *testing.T) {
 	app, win, _ := newTestApp(t)
+	app.visible = true
 
-	if !app.beginDialog() {
-		t.Fatal("dialog refused")
+	if err := app.beginDialog(); err != nil {
+		t.Fatalf("dialog refused: %v", err)
 	}
 	defer app.endDialog()
 

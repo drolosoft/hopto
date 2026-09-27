@@ -33,6 +33,7 @@ func looseBundle(t *testing.T, name string) string {
 // again afterwards, with the focus back.
 func TestPickAppWithdrawsAlwaysOnTop(t *testing.T) {
 	app, win, _ := newTestApp(t)
+	app.visible = true
 
 	draft, err := app.PickApp()
 	if err != nil || draft.Path != "" {
@@ -49,6 +50,7 @@ func TestPickAppWithdrawsAlwaysOnTop(t *testing.T) {
 // discovered copy of the same app is named as the duplicate.
 func TestPickAppReadsTheBundle(t *testing.T) {
 	app, win, _ := newTestApp(t)
+	app.visible = true
 	win.pickPath = fakeBundle(t, app, "Alpha", "com.example.alpha") + "/"
 
 	draft, err := app.PickApp()
@@ -74,6 +76,7 @@ func TestPickAppReadsTheBundle(t *testing.T) {
 // ~/Applications is reported, not silently accepted.
 func TestPickAppOutsideTheRoots(t *testing.T) {
 	app, win, _ := newTestApp(t)
+	app.visible = true
 	win.pickPath = looseBundle(t, "Loose")
 
 	draft, err := app.PickApp()
@@ -93,6 +96,7 @@ func TestPickAppOutsideTheRoots(t *testing.T) {
 // An error from the panel is passed on, and the window floats again.
 func TestPickAppPassesErrorsOn(t *testing.T) {
 	app, win, _ := newTestApp(t)
+	app.visible = true
 	win.pickErr = errors.New("panel broke")
 
 	if _, err := app.PickApp(); err == nil {
@@ -110,8 +114,8 @@ func TestHideAndToggleWaitForTheDialog(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	app.toggle(tabApps)
 
-	if !app.beginDialog() {
-		t.Fatal("the first dialog was refused")
+	if err := app.beginDialog(); err != nil {
+		t.Fatalf("the first dialog was refused: %v", err)
 	}
 
 	app.Hide()
@@ -130,5 +134,24 @@ func TestHideAndToggleWaitForTheDialog(t *testing.T) {
 
 	if !strings.HasSuffix(win.joined(), "hide") {
 		t.Errorf("not hidden after the dialog: %q", win.joined())
+	}
+}
+
+// A hotkey hide landing just before PickApp must not attach the sheet to
+// a hidden window: it would never get an answer, leaving dialogOpen
+// stuck refusing toggle, Hide and reopen until Quit.
+func TestPickAppRefusesOnAHiddenPanel(t *testing.T) {
+	app, win, _ := newTestApp(t)
+
+	if _, err := app.PickApp(); !errors.Is(err, errPanelHidden) {
+		t.Errorf("hidden panel: %v", err)
+	}
+
+	if app.dialogOpen {
+		t.Error("dialogOpen left true")
+	}
+
+	if strings.Contains(win.joined(), "ontop") {
+		t.Errorf("touched AlwaysOnTop: %q", win.joined())
 	}
 }
