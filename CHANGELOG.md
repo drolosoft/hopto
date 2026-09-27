@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The first run shows a welcome with the shortcuts, whether each one registered, and a warning when macOS keeps ⌘⌥Space for the Finder.
 - The help names the version, the commit and where library.toml lives; the broken-file notice has a button that opens the file.
 
+### Changed
+- The category id `hidden` is reserved for the chip of hidden apps; a library using it for its own category is refused.
+
 ### Fixed
 - A corrupt usage.json is no longer overwritten on the first opening.
 - The selection no longer disappears when moving up on a short apps grid.
