@@ -9,5 +9,12 @@
   "author": {
     "name": "Drolosoft",
     "email": "forge@drolosoft.com"
+  },
+  "info": {
+    "companyName": "Drolosoft",
+    "productName": "hopto",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright © 2026 Drolosoft",
+    "comments": "Keyboard launcher for macOS apps and links"
   }
 }

@@ -2,7 +2,7 @@
 # run build itself (see wails.json), and it is what writes frontend/wailsjs
 # and frontend/dist, which go:embed needs — running npm separately first
 # would fail on a fresh clone before wailsjs exists.
-.PHONY: build test e2e lint hooks clean
+.PHONY: build test e2e lint hooks clean dist
 
 # What `make build` stamps into the binary for the help panel: what git
 # describes (the tag, or the commit, plus -dirty for local changes), the
@@ -13,8 +13,11 @@ COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.builtAt=$(BUILT)
 
+# wails build -clean empties frontend/dist, the tracked gitkeep included;
+# the touch puts that empty file back so the tree stays clean.
 build:
 	wails build -clean -ldflags "$(LDFLAGS)"
+	touch frontend/dist/gitkeep
 
 test:
 	cd frontend && npm test
@@ -24,6 +27,24 @@ test:
 # Browser tests against the built page; needs frontend/dist (make build).
 e2e:
 	cd frontend && npm run test:e2e
+
+# The release artefact, in build/dist: a universal .app (Apple silicon and
+# Intel) zipped the way the Finder does it, and its SHA-256. -trimpath
+# keeps the folders of the machine that builds it, its user name
+# included, out of the binary, and the check after the build refuses a
+# binary that still carries $HOME. A tag builds
+# hopto-v0.1.0-macos-universal.zip.
+DIST := build/dist
+ZIP := $(DIST)/hopto-$(VERSION)-macos-universal.zip
+
+dist:
+	wails build -clean -trimpath -platform darwin/universal -ldflags "$(LDFLAGS)"
+	touch frontend/dist/gitkeep
+	test -z "$$(strings build/bin/hopto.app/Contents/MacOS/hopto | grep -F "$$HOME")"
+	mkdir -p $(DIST)
+	rm -f $(ZIP) $(ZIP).sha256
+	ditto -c -k --keepParent build/bin/hopto.app $(ZIP)
+	cd $(DIST) && shasum -a 256 $(notdir $(ZIP)) > $(notdir $(ZIP)).sha256
 
 lint:
 	test -z "$$(gofmt -l .)"
