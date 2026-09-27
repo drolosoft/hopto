@@ -43,7 +43,8 @@ func Normalize(data []byte, maxSide int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %v", ErrNotAnImage, err)
 	}
 
-	if config.Width <= 0 || config.Height <= 0 || config.Width > maxSourceSide || config.Height > maxSourceSide {
+	tooBig := config.Width > maxSourceSide || config.Height > maxSourceSide
+	if config.Width <= 0 || config.Height <= 0 || tooBig {
 		return nil, fmt.Errorf("%w: %dx%d", ErrTooBig, config.Width, config.Height)
 	}
 
@@ -81,12 +82,16 @@ func fit(source image.Image, maxSide int) image.Image {
 // box filter). It works on premultiplied RGBA so transparent edges do not
 // bleed their colour, and it only ever shrinks, which is all an icon needs.
 // Written by hand to keep golang.org/x/image out of the dependencies.
-func downscale(source image.Image, targetWidth, targetHeight int) *image.RGBA {
+func downscale(
+	source image.Image, targetWidth, targetHeight int,
+) *image.RGBA {
 	bounds := source.Bounds()
 	sourceWidth, sourceHeight := bounds.Dx(), bounds.Dy()
 
 	premultiplied := image.NewRGBA(image.Rect(0, 0, sourceWidth, sourceHeight))
-	draw.Draw(premultiplied, premultiplied.Bounds(), source, bounds.Min, draw.Src)
+	draw.Draw(
+		premultiplied, premultiplied.Bounds(), source, bounds.Min, draw.Src,
+	)
 
 	target := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
 

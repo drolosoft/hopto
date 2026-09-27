@@ -24,7 +24,8 @@ var icnsTypes = []string{"ic08", "ic07", "ic09", "ic13", "ic12"}
 // (including the 8-byte entry header) + data, after an 8-byte file header.
 func PNG(icnsPath string) ([]byte, bool) {
 	data, err := os.ReadFile(icnsPath)
-	if err != nil || len(data) < 2*icnsHeaderBytes || string(data[:4]) != "icns" {
+	if err != nil || len(data) < 2*icnsHeaderBytes ||
+		string(data[:4]) != "icns" {
 		return nil, false
 	}
 

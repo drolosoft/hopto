@@ -100,10 +100,14 @@ func TestNormalizeRejects(t *testing.T) {
 	// Patch the IHDR width to 20000: DecodeConfig reads it before any
 	// pixel, and a 20000x20000 canvas is 1.6 GB of memory if decoded.
 	hugeHeader = append([]byte{}, hugeHeader...)
-	hugeHeader[16], hugeHeader[17], hugeHeader[18], hugeHeader[19] = 0, 0, 0x4e, 0x20
+	hugeHeader[16] = 0
+	hugeHeader[17] = 0
+	hugeHeader[18] = 0x4e
+	hugeHeader[19] = 0x20
 	// The decoder checks the IHDR checksum before looking at the size, so
 	// the patched chunk needs a matching CRC (type + data, bytes 12 to 28).
-	binary.BigEndian.PutUint32(hugeHeader[29:33], crc32.ChecksumIEEE(hugeHeader[12:29]))
+	crc := crc32.ChecksumIEEE(hugeHeader[12:29])
+	binary.BigEndian.PutUint32(hugeHeader[29:33], crc)
 
 	cases := []struct {
 		name string
