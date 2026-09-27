@@ -29,9 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - config.example.toml: the first-run library with a comment on every setting, kept equal to it by a test.
 - scripts/verify-hopto.sh drives the built app from the shell on a library of its own and checks the shortcuts, opening, hiding, the Dock and Quit, then puts your data back.
 - A README with a demo, the shortcuts, the configuration and troubleshooting; scripts/record-demo.sh records the demo from the real app on a library with nothing personal in it.
+- `make dist` builds the release: one universal app for Apple silicon and Intel, zipped with its SHA-256; pushing a version tag publishes it as a GitHub release with the notes of this file.
 
 ### Changed
 - The category id `hidden` is reserved for the chip of hidden apps; a library using it for its own category is refused.
+- The app reports its own version in the Finder and asks for macOS 12 or later, the oldest macOS that Go 1.27 runs on.
 
 ### Fixed
 - A corrupt usage.json is no longer overwritten on the first opening.

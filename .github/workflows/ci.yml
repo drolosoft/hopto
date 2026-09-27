@@ -33,6 +33,11 @@ jobs:
       - name: Guard self-test
         run: bash scripts/check-internal-files_test.sh
 
+      # The release notes come out of CHANGELOG.md through this script; a
+      # change that broke it would otherwise show only on the next tag.
+      - name: Release notes self-test
+        run: bash scripts/changelog-section_test.sh
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

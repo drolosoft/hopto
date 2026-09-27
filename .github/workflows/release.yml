@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+# Publishing the release writes to the repository's releases; nothing
+# else is needed.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Carbon and Cocoa only build on macOS, and the universal binary needs
+    # the Apple toolchain for both architectures.
+    runs-on: macos-latest
+
+    steps:
+      # The whole history, so git describe gives the tag to make dist.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The tag and the bundle's own version must agree, or the zip would
+      # say one version and the Finder another.
+      - name: Tag matches wails.json
+        run: |
+          want="v$(jq -r .info.productVersion wails.json)"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "tag $GITHUB_REF_NAME, but wails.json says $want" >&2
+            exit 1
+          fi
+
+      # A release is public for good: the guard runs here too.
+      - name: Guard against internal files
+        run: bash scripts/check-internal-files.sh --tree
+
+      # Fails early, before a long build, when the notes are missing.
+      - name: Release notes
+        run: bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > release-notes.md
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
+      - name: Frontend tests
+        run: cd frontend && npm ci && npm test
+
+      # make dist builds the universal .app, refuses a binary that carries
+      # the runner's home folder, and writes the zip and its SHA-256.
+      - name: Universal build and zip
+        run: make dist
+
+      # The Go package embeds frontend/dist, which the build just wrote.
+      - name: Go tests
+        run: go vet ./... && go test -race -count=1 ./...
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/dist/*.zip build/dist/*.sha256 \
+            --title "hopto $GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag
