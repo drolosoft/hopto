@@ -22,6 +22,11 @@ type fakeWindow struct {
 	// error.
 	pickPath string
 	pickErr  error
+
+	// Where the last Center asked for the window: the mode and the
+	// display screenChoice picked.
+	centerMode    string
+	centerDisplay uint32
 }
 
 func (w *fakeWindow) record(call string) {
@@ -33,11 +38,19 @@ func (w *fakeWindow) record(call string) {
 
 func (w *fakeWindow) Show()     { w.record("show") }
 func (w *fakeWindow) Hide()     { w.record("hide") }
-func (w *fakeWindow) Center()   { w.record("center") }
 func (w *fakeWindow) Activate() { w.record("activate") }
 
 func (w *fakeWindow) Emit(name string, data any) {
 	w.record(fmt.Sprintf("emit:%s:%v", name, data))
+}
+
+func (w *fakeWindow) Center(mode string, display uint32) {
+	w.mu.Lock()
+	w.centerMode = mode
+	w.centerDisplay = display
+	w.mu.Unlock()
+
+	w.record("center")
 }
 
 func (w *fakeWindow) SetClipboard(text string) error {
@@ -131,6 +144,11 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	app.appRoots = []string{filepath.Join(home, "Applications")}
 	app.edgeDir = filepath.Join(home, "Applications", "Edge Apps.localized")
 	app.offline = true
+
+	// The real screen readers wait on the main thread, which go test
+	// never runs: no screen under the window, and one display attached.
+	app.windowDisplay = func() uint32 { return 0 }
+	app.attachedDisplays = func() []uint32 { return []uint32{1} }
 
 	t.Cleanup(app.background.Wait)
 

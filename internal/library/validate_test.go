@@ -67,6 +67,9 @@ func TestValidateRejects(t *testing.T) {
 		{"empty apps hotkey", func(lib *Library) { lib.Settings.HotkeyApps = "" }, "hotkey_apps"},
 		{"empty links hotkey", func(lib *Library) { lib.Settings.HotkeyLinks = "" }, "hotkey_links"},
 		{"unknown language", func(lib *Library) { lib.Settings.Language = "fr" }, "language"},
+		{"unknown screen", func(lib *Library) {
+			lib.Settings.Screen = "left"
+		}, "screen"},
 		{"unknown icon service", func(lib *Library) { lib.Settings.IconServices = []string{"bing"} }, "icon_services"},
 		{"icon over http instead of https", func(lib *Library) { lib.Links[0].Icon = "http://example.com/icon.png" }, "icon"},
 		{"icon with a file scheme", func(lib *Library) { lib.Links[0].Icon = "file:///etc/passwd" }, "icon"},

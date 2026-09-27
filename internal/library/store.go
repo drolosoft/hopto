@@ -308,6 +308,10 @@ func Decode(data []byte) (Library, error) {
 		lib.Settings.HotkeyLinks = Default().Settings.HotkeyLinks
 	}
 
+	if lib.Settings.Screen == "" {
+		lib.Settings.Screen = Default().Settings.Screen
+	}
+
 	return withoutNils(lib), nil
 }
 

@@ -4,6 +4,7 @@ version = 1
 language = "auto"
 hotkey_apps = "cmd+shift+space"
 hotkey_links = "cmd+option+space"
+screen = "last"
 scan_applications = true
 discover_edge_apps = true
 icon_services = ["site"]

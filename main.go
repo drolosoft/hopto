@@ -39,6 +39,13 @@ func main() {
 		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		OnStartup:         app.startup,
 		Bind:              []interface{}{app},
+
+		// A second launch (`open -n`, or a launcher that starts a new
+		// copy) quits at once and shows this copy's panel instead.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "com.drolosoft.hopto",
+			OnSecondInstanceLaunch: app.secondInstance,
+		},
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,

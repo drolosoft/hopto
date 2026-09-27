@@ -8,6 +8,12 @@ func becomeAccessory() {}
 
 func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {}
 
-func centerOnActiveScreen() {}
+func centerWindow(mode string, display uint32) {}
+
+func currentDisplay() uint32 { return 0 }
+
+func activeDisplays() []uint32 { return nil }
+
+func handleReopen(show func()) {}
 
 func activateApp() {}

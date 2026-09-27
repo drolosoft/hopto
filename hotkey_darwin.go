@@ -2,14 +2,17 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Carbon -framework Cocoa
+#cgo LDFLAGS: -framework Carbon -framework Cocoa -framework CoreGraphics
 
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
+#include <CoreGraphics/CoreGraphics.h>
+#include <objc/runtime.h>
 
 // Implemented in Go below; Carbon calls the C handler, which calls these.
 extern void launcherHotkeyPressed(UInt32 id);
 extern void launcherHotkeyRegistered(UInt32 id, OSStatus status);
+extern void launcherReopened(void);
 
 // One handler serves every shortcut: the hot key id stored at registration
 // comes back in the event, and Go decides what each id means.
@@ -57,16 +60,68 @@ static NSScreen *screenUnderMouse(void) {
 	return [NSScreen mainScreen];
 }
 
-// Centres the window on the screen under the mouse, a little above the
-// middle so it reads as an overlay, and makes sure the window behaves as
-// one: present in every Space (with "displays have separate Spaces" a
-// window bound to one Space made macOS switch Spaces, so the launcher
-// seemed to jump to the other display), allowed over full-screen apps,
-// with a shadow. Synchronous so the window is in place before it is shown;
-// the caller is never the main thread, otherwise this would deadlock.
-static void centerOnActiveScreen(void) {
+// How centerOnScreen picks the screen; centerWindow maps the setting.
+enum { placeMain = 0, placeMouse = 1, placeDisplay = 2 };
+
+// hopto's own window. Looked up by the Wails class rather than taken as
+// the first window: the menu bar item is a window of the app as well.
+static NSWindow *launcherWindow(void) {
+	Class wailsClass = NSClassFromString(@"WailsWindow");
+	for (NSWindow *window in [NSApp windows]) {
+		if (wailsClass != nil && [window isKindOfClass:wailsClass]) {
+			return window;
+		}
+	}
+	return [NSApp windows].firstObject;
+}
+
+// The id macOS gives a screen, which is its CGDirectDisplayID; 0 for no
+// screen at all.
+static uint32_t displayNumber(NSScreen *screen) {
+	NSNumber *number = screen.deviceDescription[@"NSScreenNumber"];
+	return number.unsignedIntValue;
+}
+
+// The attached screen with that id, or nil once it has been unplugged.
+static NSScreen *screenWithNumber(uint32_t display) {
+	for (NSScreen *screen in [NSScreen screens]) {
+		if (displayNumber(screen) == display) {
+			return screen;
+		}
+	}
+	return nil;
+}
+
+// The screen for this show. The main screen is the one with the menu
+// bar, the first of [NSScreen screens]: mainScreen is the one holding
+// the key window, which says nothing while the panel is hidden. A
+// display unplugged since Go checked falls back to the main screen too.
+static NSScreen *chosenScreen(int placement, uint32_t display) {
+	if (placement == placeMouse) {
+		return screenUnderMouse();
+	}
+
+	if (placement == placeDisplay) {
+		NSScreen *screen = screenWithNumber(display);
+		if (screen != nil) {
+			return screen;
+		}
+	}
+
+	NSScreen *primary = [NSScreen screens].firstObject;
+	return primary != nil ? primary : [NSScreen mainScreen];
+}
+
+// Centres the window on the chosen screen, a little above the middle so
+// it reads as an overlay, and makes sure the window behaves as one:
+// present in every Space (with "displays have separate Spaces" a window
+// bound to one Space made macOS switch Spaces, so the launcher seemed to
+// jump to the other display), allowed over full-screen apps, with a
+// shadow. Synchronous so the window is in place before it is shown; the
+// caller is never the main thread, otherwise this would deadlock.
+static void centerOnScreen(int placement, uint32_t display) {
 	dispatch_sync(dispatch_get_main_queue(), ^{
-		NSWindow *window = [NSApp windows].firstObject;
+		NSWindow *window = launcherWindow();
 		window.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces
 			| NSWindowCollectionBehaviorFullScreenAuxiliary
 			| NSWindowCollectionBehaviorStationary;
@@ -95,12 +150,73 @@ static void centerOnActiveScreen(void) {
 			}
 		}
 
-		NSRect screen = screenUnderMouse().visibleFrame;
+		NSRect screen = chosenScreen(placement, display).visibleFrame;
 		NSRect frame = window.frame;
 
 		frame.origin.x = screen.origin.x + (screen.size.width - frame.size.width) / 2;
 		frame.origin.y = screen.origin.y + (screen.size.height - frame.size.height) / 2 + screen.size.height * 0.08;
 		[window setFrameOrigin:frame.origin];
+	});
+}
+
+// The display hopto's window is on now, 0 when it is on none. AppKit
+// only answers on the main thread, so this waits for it: never call it
+// from the main thread.
+static uint32_t windowDisplayNumber(void) {
+	__block uint32_t display = 0;
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		display = displayNumber(launcherWindow().screen);
+	});
+	return display;
+}
+
+// Fills ids with the attached displays, at most max, and says how many.
+// CoreGraphics answers from any thread, so there is no dispatch here.
+static int listDisplays(uint32_t *ids, int max) {
+	uint32_t count = 0;
+	if (CGGetActiveDisplayList(max, ids, &count) != kCGErrorSuccess) {
+		return 0;
+	}
+	return (int)count;
+}
+
+// The delegate's own reopen method, if it ever has one: ours runs first
+// and then hands over to it.
+static IMP originalReopen = NULL;
+
+// What macOS calls when the running app is launched again (Alfred,
+// `open -a`, the Finder, the Dock). Go only takes note; the window is
+// shown from a goroutine, never from here.
+static BOOL reopenHandler(id delegate, SEL command, NSApplication *app, BOOL visible) {
+	launcherReopened();
+
+	if (originalReopen != NULL) {
+		return ((BOOL (*)(id, SEL, NSApplication *, BOOL))originalReopen)(delegate, command, app, visible);
+	}
+
+	// NO: hopto has shown its panel itself, AppKit has nothing to add.
+	return NO;
+}
+
+// Wails' AppDelegate has no applicationShouldHandleReopen:, so a launch
+// of the running app does nothing. The method is added to the delegate's
+// class at run time, or put in front of the one it has. The block runs
+// on the main queue, which only starts once Wails has set the delegate.
+static void installReopenHandler(void) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		id delegate = [NSApp delegate];
+		if (delegate == nil) {
+			return;
+		}
+
+		Class delegateClass = object_getClass(delegate);
+		SEL selector = @selector(applicationShouldHandleReopen:hasVisibleWindows:);
+		struct objc_method_description description = protocol_getMethodDescription(@protocol(NSApplicationDelegate), selector, NO, YES);
+
+		if (!class_addMethod(delegateClass, selector, (IMP)reopenHandler, description.types)) {
+			Method existing = class_getInstanceMethod(delegateClass, selector);
+			originalReopen = method_setImplementation(existing, (IMP)reopenHandler);
+		}
 	});
 }
 
@@ -136,6 +252,13 @@ import "log"
 // the C side knowing about it.
 var onHotkey = func(tab string) {}
 
+// onReopen is what a launch of the running app ends in; startup puts
+// showFromOutside here through handleReopen.
+var onReopen = func() {}
+
+// maxDisplays is more screens than a Mac drives at once.
+const maxDisplays = 16
+
 //export launcherHotkeyPressed
 func launcherHotkeyPressed(id C.UInt32) {
 	tab := tabForHotkey(uint32(id))
@@ -159,6 +282,15 @@ func launcherHotkeyRegistered(id C.UInt32, status C.OSStatus) {
 	log.Printf("hotkey %d registered", id)
 }
 
+//export launcherReopened
+func launcherReopened() {
+	log.Printf("reopen: hopto launched again")
+
+	// The delegate calls this on the main thread; the Wails runtime is
+	// only ever used from a goroutine, as for the hotkeys.
+	go onReopen()
+}
+
 // becomeAccessory removes the launcher from the Dock and from Cmd+Tab once
 // the Wails main loop is up. Called from startup.
 func becomeAccessory() {
@@ -174,11 +306,46 @@ func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
 	C.registerHotkey(hotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers))
 }
 
-// centerOnActiveScreen moves the hidden window to the middle of the screen
-// under the mouse and sets the overlay window behaviour. Call it from a
-// goroutine, never from the main thread.
-func centerOnActiveScreen() {
-	C.centerOnActiveScreen()
+// centerWindow moves the hidden window to the middle of the screen
+// screenChoice picked and sets the overlay window behaviour. Call it
+// from a goroutine, never from the main thread.
+func centerWindow(mode string, display uint32) {
+	placement := C.placeMain
+	switch mode {
+	case screenMouse:
+		placement = C.placeMouse
+	case screenLast:
+		placement = C.placeDisplay
+	}
+
+	C.centerOnScreen(C.int(placement), C.uint32_t(display))
+}
+
+// currentDisplay is the display hopto's window is on, 0 for none. Call
+// it from a goroutine, never from the main thread.
+func currentDisplay() uint32 {
+	return uint32(C.windowDisplayNumber())
+}
+
+// activeDisplays lists the attached displays, so screenChoice can tell
+// whether the remembered one is still there.
+func activeDisplays() []uint32 {
+	var ids [maxDisplays]C.uint32_t
+	count := int(C.listDisplays(&ids[0], maxDisplays))
+
+	displays := make([]uint32, 0, count)
+	for _, id := range ids[:count] {
+		displays = append(displays, uint32(id))
+	}
+
+	return displays
+}
+
+// handleReopen makes a launch of the running app call show. Called from
+// startup, like registerToggleHotkeys.
+func handleReopen(show func()) {
+	onReopen = show
+	C.installReopenHandler()
 }
 
 // activateApp brings the launcher to the front so the shown window has focus.

@@ -81,6 +81,7 @@ var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true, 
 var (
 	languages    = map[string]bool{"auto": true, "es": true, "en": true}
 	iconServices = map[string]bool{"site": true, "duckduckgo": true, "google": true}
+	screens      = map[string]bool{"last": true, "mouse": true, "main": true}
 )
 
 // Validate checks a whole library: the version, the limits, every entry and
@@ -417,6 +418,13 @@ func checkCategoryRef(id, category, tab string, tabs map[string]string) error {
 func checkSettings(settings Settings) error {
 	if !languages[settings.Language] {
 		return &Problem{Field: "language", Key: "settings.language", Detail: "language must be auto, es or en"}
+	}
+
+	if !screens[settings.Screen] {
+		return &Problem{
+			Field: "screen", Key: "settings.screen",
+			Detail: "screen must be last, mouse or main",
+		}
 	}
 
 	for _, service := range settings.IconServices {

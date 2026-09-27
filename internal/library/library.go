@@ -25,15 +25,19 @@ type Library struct {
 }
 
 // Settings are the few knobs of hopto. Language "auto" follows the system;
-// the hotkeys are specs like "cmd+shift+space" parsed by the app; the icon
-// services are third parties asked for a favicon, in order, and are opt-in
-// because they receive the host of every link; the secondary browser is the
-// bundle id ⌘↩ opens links with; and allow_private_icon_hosts lets the icon
-// fetch reach loopback and private addresses.
+// the hotkeys are specs like "cmd+shift+space" parsed by the app; screen
+// is where the panel appears ("last": the display it was last shown on,
+// else the main one; "mouse": the one under the pointer; "main"); the
+// icon services are third parties asked for a favicon, in order, and are
+// opt-in because they receive the host of every link; the secondary
+// browser is the bundle id ⌘↩ opens links with; and
+// allow_private_icon_hosts lets the icon fetch reach loopback and private
+// addresses.
 type Settings struct {
 	Language              string   `toml:"language"`
 	HotkeyApps            string   `toml:"hotkey_apps"`
 	HotkeyLinks           string   `toml:"hotkey_links"`
+	Screen                string   `toml:"screen"`
 	ScanApplications      bool     `toml:"scan_applications"`
 	DiscoverEdgeApps      bool     `toml:"discover_edge_apps"`
 	IconServices          []string `toml:"icon_services"`
@@ -88,6 +92,7 @@ func Default() Library {
 			Language:         "auto",
 			HotkeyApps:       "cmd+shift+space",
 			HotkeyLinks:      "cmd+option+space",
+			Screen:           "last",
 			ScanApplications: true,
 			DiscoverEdgeApps: true,
 			IconServices:     []string{"site"},

@@ -12,6 +12,7 @@ func dataDir(home string) string {
 const (
 	libraryFile = "library.toml"
 	usageFile   = "usage.json"
+	windowFile  = "window.json"
 	iconsFolder = "icons"
 )
 

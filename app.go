@@ -37,7 +37,9 @@ const maxDebugRunes = 500
 type window interface {
 	Show()
 	Hide()
-	Center()
+	// Center places the hidden window on a screen: mode is one of the
+	// screen settings, display the CGDirectDisplayID for "last".
+	Center(mode string, display uint32)
 	Activate()
 	Emit(name string, data any)
 	SetClipboard(text string) error
@@ -54,11 +56,16 @@ type wailsWindow struct {
 
 func (w *wailsWindow) Show()     { runtime.WindowShow(w.ctx) }
 func (w *wailsWindow) Hide()     { runtime.WindowHide(w.ctx) }
-func (w *wailsWindow) Center()   { centerOnActiveScreen() }
 func (w *wailsWindow) Activate() { activateApp() }
 
 func (w *wailsWindow) Emit(name string, data any) {
 	runtime.EventsEmit(w.ctx, name, data)
+}
+
+// Center goes through the cgo helper of hotkey_darwin.go, which also
+// sets the overlay behaviour of the window.
+func (w *wailsWindow) Center(mode string, display uint32) {
+	centerWindow(mode, display)
 }
 
 func (w *wailsWindow) SetClipboard(text string) error {
@@ -123,6 +130,14 @@ type App struct {
 	// offline skips the background icon fetches; the tests set it so a
 	// unit test never reaches the network by accident.
 	offline bool
+
+	// display is the screen the panel was last shown on (a
+	// CGDirectDisplayID, 0 for none yet), kept in window.json and
+	// guarded by mu. The two functions read the real screens; the tests
+	// replace them, since the real ones wait on the main thread.
+	display          uint32
+	windowDisplay    func() uint32
+	attachedDisplays func() []uint32
 
 	mu      sync.Mutex
 	visible bool
@@ -189,6 +204,11 @@ func newApp(
 		fetchGeneration: map[string]int{},
 	}
 
+	// Where the panel was last shown, and how to read the real screens.
+	app.display = readWindowState(filepath.Join(dataDir, windowFile))
+	app.windowDisplay = currentDisplay
+	app.attachedDisplays = activeDisplays
+
 	usageStore, err := usage.Open(filepath.Join(dataDir, usageFile))
 	if err != nil {
 		log.Printf(
@@ -224,7 +244,8 @@ func newApp(
 
 // startup stores the context, leaves the Dock and registers the global
 // shortcuts from the library. The window starts hidden; the shortcuts are
-// the only way in, like Cmd+Tab. It also puts the item in the menu bar.
+// the only way in, like Cmd+Tab. It also puts the item in the menu bar and
+// answers a launch of the running app by showing the panel.
 func (a *App) startup(ctx context.Context) {
 	if a.window == nil {
 		a.window = &wailsWindow{ctx: ctx}
@@ -242,6 +263,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.installMenu()
+
+	// A launch of the running app (Alfred, `open -a`, the Finder) shows
+	// the panel like the shortcut does.
+	handleReopen(a.showFromOutside)
 }
 
 // Toggle shows the launcher on the apps tab, or hides it when that tab is
@@ -271,13 +296,14 @@ func (a *App) toggle(tab string) {
 	}
 
 	if a.visible && a.tab == tab {
+		a.rememberDisplay()
 		a.window.Hide()
 		a.visible = false
 		return
 	}
 
 	if !a.visible {
-		a.window.Center()
+		a.placeWindow()
 		a.window.Show()
 		a.window.Activate()
 		a.visible = true
@@ -304,13 +330,18 @@ func (a *App) TabChanged(tab string) {
 
 // Hide is called from the page on Escape or when the window loses focus,
 // and by every successful opening. While a dialog is open it does
-// nothing: the page's blur fires as the sheet takes the focus.
+// nothing: the page's blur fires as the sheet takes the focus. Before
+// hiding it notes the display the window is on, for the next show.
 func (a *App) Hide() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.dialogOpen {
 		return
+	}
+
+	if a.visible {
+		a.rememberDisplay()
 	}
 
 	a.window.Hide()
