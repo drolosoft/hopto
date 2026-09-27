@@ -275,7 +275,10 @@ func launcherHotkeyRegistered(id C.UInt32, status C.OSStatus) {
 	recordHotkeyStatus(uint32(id), int32(status))
 
 	if status != 0 {
-		log.Printf("hotkey %d: RegisterEventHotKey failed with status %d", id, status)
+		log.Printf(
+			"hotkey %d: RegisterEventHotKey failed with status %d",
+			id, status,
+		)
 		return
 	}
 
@@ -302,8 +305,12 @@ func becomeAccessory() {
 // defaults are in hotkeyspec.go.
 func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
 	onHotkey = toggle
-	C.registerHotkey(hotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers))
-	C.registerHotkey(hotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers))
+	C.registerHotkey(
+		hotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers),
+	)
+	C.registerHotkey(
+		hotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers),
+	)
 }
 
 // centerWindow moves the hidden window to the middle of the screen

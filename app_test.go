@@ -160,14 +160,17 @@ func fakeBundle(t *testing.T, app *App, name, bundleID string) string {
 	t.Helper()
 
 	bundle := filepath.Join(app.home, "Applications", name+".app")
-	if err := os.MkdirAll(filepath.Join(bundle, "Contents", "Resources"), 0o755); err != nil {
+	resources := filepath.Join(bundle, "Contents", "Resources")
+	if err := os.MkdirAll(resources, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	plist := `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>` +
+	plist := `<?xml version="1.0" encoding="UTF-8"?>` +
+		`<plist version="1.0"><dict>` +
 		`<key>CFBundleIdentifier</key><string>` + bundleID + `</string>` +
 		`<key>CFBundleIconFile</key><string>App</string></dict></plist>`
-	if err := os.WriteFile(filepath.Join(bundle, "Contents", "Info.plist"), []byte(plist), 0o644); err != nil {
+	infoPath := filepath.Join(bundle, "Contents", "Info.plist")
+	if err := os.WriteFile(infoPath, []byte(plist), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -176,7 +179,8 @@ func fakeBundle(t *testing.T, app *App, name, bundleID string) string {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(bundle, "Contents", "Resources", "App.icns"), icns, 0o644); err != nil {
+	icnsPath := filepath.Join(resources, "App.icns")
+	if err := os.WriteFile(icnsPath, icns, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -206,11 +210,28 @@ func TestToggle(t *testing.T) {
 		wantVisible bool
 		wantCalls   string
 	}{
-		{"hidden, apps shows apps", false, tabApps, tabApps, true, "center show activate emit:shown:apps"},
-		{"hidden, links shows links", false, tabApps, tabLinks, true, "center show activate emit:shown:links"},
-		{"apps showing, apps hides", true, tabApps, tabApps, false, "hide"},
-		{"links showing, links hides", true, tabLinks, tabLinks, false, "hide"},
-		{"apps showing, links switches", true, tabApps, tabLinks, true, "emit:shown:links"},
+		{
+			"hidden, apps shows apps",
+			false, tabApps, tabApps, true,
+			"center show activate emit:shown:apps",
+		},
+		{
+			"hidden, links shows links",
+			false, tabApps, tabLinks, true,
+			"center show activate emit:shown:links",
+		},
+		{
+			"apps showing, apps hides",
+			true, tabApps, tabApps, false, "hide",
+		},
+		{
+			"links showing, links hides",
+			true, tabLinks, tabLinks, false, "hide",
+		},
+		{
+			"apps showing, links switches",
+			true, tabApps, tabLinks, true, "emit:shown:links",
+		},
 	}
 
 	for _, tc := range cases {
@@ -243,7 +264,12 @@ func TestItemsListsTheSeedLinks(t *testing.T) {
 	}
 
 	github := links[0]
-	if github.ID != "github" || github.Key != "links:github" || github.Kind != kindLink || github.Source != sourceLibrary || github.Host != "github.com" {
+	wrongGithub := github.ID != "github" ||
+		github.Key != "links:github" ||
+		github.Kind != kindLink ||
+		github.Source != sourceLibrary ||
+		github.Host != "github.com"
+	if wrongGithub {
 		t.Errorf("github = %+v", github)
 	}
 
@@ -252,7 +278,9 @@ func TestItemsListsTheSeedLinks(t *testing.T) {
 	}
 
 	categories := app.Categories(tabLinks)
-	if len(categories) != 2 || categories[0].ID != "dev" || categories[0].Virtual {
+	wrongCategories := len(categories) != 2 ||
+		categories[0].ID != "dev" || categories[0].Virtual
+	if wrongCategories {
 		t.Errorf("categories = %+v", categories)
 	}
 }
@@ -262,7 +290,10 @@ func TestItemsListsTheSeedLinks(t *testing.T) {
 func TestItemsListsDiscoveredApps(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	fakeBundle(t, app, "Alpha", "com.example.alpha")
-	addApp(t, app, library.AppEntry{ID: "mine", Name: "Mine", BundleID: "com.example.mine", Category: "tools"})
+	addApp(t, app, library.AppEntry{
+		ID: "mine", Name: "Mine",
+		BundleID: "com.example.mine", Category: "tools",
+	})
 
 	err := app.library.Apply(func(lib *library.Library) error {
 		lib.Hidden = append(lib.Hidden, library.Hidden{ID: "app-alpha"})
@@ -273,12 +304,17 @@ func TestItemsListsDiscoveredApps(t *testing.T) {
 	}
 
 	apps := app.Items(tabApps)
-	if len(apps) != 2 || apps[0].ID != "mine" || apps[1].ID != "app-alpha" {
+	wrongApps := len(apps) != 2 ||
+		apps[0].ID != "mine" || apps[1].ID != "app-alpha"
+	if wrongApps {
 		t.Fatalf("apps = %+v", apps)
 	}
 
 	alpha := apps[1]
-	if alpha.Source != "applications" || alpha.Category != "applications" || !alpha.Hidden || alpha.Key != "apps:app-alpha" {
+	wrongAlpha := alpha.Source != "applications" ||
+		alpha.Category != "applications" ||
+		!alpha.Hidden || alpha.Key != "apps:app-alpha"
+	if wrongAlpha {
 		t.Errorf("alpha = %+v", alpha)
 	}
 
@@ -341,7 +377,11 @@ func TestHiddenChipComesAndGoes(t *testing.T) {
 // A hand-added app whose path is gone is listed as missing.
 func TestItemsFlagsMissingApps(t *testing.T) {
 	app, _, _ := newTestApp(t)
-	addApp(t, app, library.AppEntry{ID: "gone", Name: "Gone", Path: filepath.Join(app.home, "Applications", "Gone.app"), Category: "tools"})
+	addApp(t, app, library.AppEntry{
+		ID: "gone", Name: "Gone",
+		Path:     filepath.Join(app.home, "Applications", "Gone.app"),
+		Category: "tools",
+	})
 
 	apps := app.Items(tabApps)
 	if len(apps) != 1 || !apps[0].Missing {
@@ -353,16 +393,22 @@ func TestLaunch(t *testing.T) {
 	t.Run("unknown id opens nothing", func(t *testing.T) {
 		app, _, open := newTestApp(t)
 
-		if err := app.Launch("nope"); !errors.Is(err, errUnknownItem) || len(open.calls) != 0 {
+		err := app.Launch("nope")
+		if !errors.Is(err, errUnknownItem) || len(open.calls) != 0 {
 			t.Errorf("err %v calls %v", err, open.calls)
 		}
 	})
 
 	t.Run("missing path is reported", func(t *testing.T) {
 		app, _, open := newTestApp(t)
-		addApp(t, app, library.AppEntry{ID: "gone", Name: "Gone", Path: filepath.Join(app.home, "Applications", "Gone.app"), Category: "tools"})
+		addApp(t, app, library.AppEntry{
+			ID: "gone", Name: "Gone",
+			Path:     filepath.Join(app.home, "Applications", "Gone.app"),
+			Category: "tools",
+		})
 
-		if err := app.Launch("gone"); !errors.Is(err, errNotInstalled) || len(open.calls) != 0 {
+		err := app.Launch("gone")
+		if !errors.Is(err, errNotInstalled) || len(open.calls) != 0 {
 			t.Errorf("err %v calls %v", err, open.calls)
 		}
 	})
@@ -384,37 +430,52 @@ func TestLaunch(t *testing.T) {
 
 	t.Run("success opens by bundle id, counts and hides", func(t *testing.T) {
 		app, win, open := newTestApp(t)
-		addApp(t, app, library.AppEntry{ID: "mine", Name: "Mine", BundleID: "com.example.mine", Category: "tools"})
+		addApp(t, app, library.AppEntry{
+			ID: "mine", Name: "Mine",
+			BundleID: "com.example.mine", Category: "tools",
+		})
 		app.visible = true
 
 		if err := app.Launch("mine"); err != nil {
 			t.Fatal(err)
 		}
 
-		if len(open.calls) != 1 || strings.Join(open.calls[0], " ") != "-b com.example.mine" {
+		opened := len(open.calls) != 1 ||
+			strings.Join(open.calls[0], " ") != "-b com.example.mine"
+		if opened {
 			t.Errorf("open calls %v", open.calls)
 		}
 
-		if win.joined() != "hide" || app.visible || app.Usage().Opens["apps:mine"] != 1 {
-			t.Errorf("calls %q visible %v opens %v", win.joined(), app.visible, app.Usage().Opens)
+		wrong := win.joined() != "hide" || app.visible ||
+			app.Usage().Opens["apps:mine"] != 1
+		if wrong {
+			t.Errorf(
+				"calls %q visible %v opens %v",
+				win.joined(), app.visible, app.Usage().Opens,
+			)
 		}
 	})
 
-	t.Run("discovered app is found without a prior Items call", func(t *testing.T) {
-		app, _, open := newTestApp(t)
-		bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
+	t.Run(
+		"discovered app is found without a prior Items call",
+		func(t *testing.T) {
+			app, _, open := newTestApp(t)
+			bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
 
-		if err := app.Launch("app-alpha"); err != nil || open.calls[0][0] != bundle {
-			t.Errorf("err %v calls %v", err, open.calls)
-		}
-	})
+			err := app.Launch("app-alpha")
+			if err != nil || open.calls[0][0] != bundle {
+				t.Errorf("err %v calls %v", err, open.calls)
+			}
+		},
+	)
 }
 
 // Only library ids reach `open`: a URL, a scheme, anything else is unknown.
 func TestOpenLinkNeverOpensAnythingButLibraryURLs(t *testing.T) {
 	app, win, open := newTestApp(t)
 
-	for _, id := range []string{"javascript:alert(1)", "https://evil.test", "", "../x"} {
+	ids := []string{"javascript:alert(1)", "https://evil.test", "", "../x"}
+	for _, id := range ids {
 		if err := app.OpenLink(id); !errors.Is(err, errUnknownItem) {
 			t.Errorf("%q: err = %v", id, err)
 		}
@@ -428,7 +489,10 @@ func TestOpenLinkNeverOpensAnythingButLibraryURLs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if strings.Join(open.calls[0], " ") != "https://github.com" || win.joined() != "hide" || app.Usage().Opens["links:github"] != 1 {
+	wrong := strings.Join(open.calls[0], " ") != "https://github.com" ||
+		win.joined() != "hide" ||
+		app.Usage().Opens["links:github"] != 1
+	if wrong {
 		t.Errorf("calls %v window %q", open.calls, win.joined())
 	}
 }
@@ -437,11 +501,12 @@ func TestOpenLinkNeverOpensAnythingButLibraryURLs(t *testing.T) {
 func TestOpenLinkWith(t *testing.T) {
 	app, _, open := newTestApp(t)
 
-	if err := app.OpenLinkWith("github"); !errors.Is(err, errNoSecondaryBrowser) || len(open.calls) != 0 {
+	err := app.OpenLinkWith("github")
+	if !errors.Is(err, errNoSecondaryBrowser) || len(open.calls) != 0 {
 		t.Fatalf("err %v calls %v", err, open.calls)
 	}
 
-	err := app.library.Apply(func(lib *library.Library) error {
+	err = app.library.Apply(func(lib *library.Library) error {
 		lib.Settings.SecondaryBrowser = "com.apple.Safari"
 		return nil
 	})
@@ -453,7 +518,8 @@ func TestOpenLinkWith(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if strings.Join(open.calls[0], " ") != "-b com.apple.Safari https://github.com" {
+	wantCall := "-b com.apple.Safari https://github.com"
+	if strings.Join(open.calls[0], " ") != wantCall {
 		t.Errorf("calls %v", open.calls)
 	}
 }
@@ -461,35 +527,46 @@ func TestOpenLinkWith(t *testing.T) {
 func TestCopyAndReveal(t *testing.T) {
 	app, win, open := newTestApp(t)
 	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
-	addApp(t, app, library.AppEntry{ID: "mine", Name: "Mine", BundleID: "com.example.mine", Category: "tools"})
+	addApp(t, app, library.AppEntry{
+		ID: "mine", Name: "Mine",
+		BundleID: "com.example.mine", Category: "tools",
+	})
 	app.Items(tabApps)
 
-	if err := app.CopyTarget("github"); err != nil || win.clipboard != "https://github.com" {
-		t.Errorf("link: err %v clipboard %q", err, win.clipboard)
+	linkErr := app.CopyTarget("github")
+	if linkErr != nil || win.clipboard != "https://github.com" {
+		t.Errorf("link: err %v clipboard %q", linkErr, win.clipboard)
 	}
 
-	if err := app.CopyTarget("app-alpha"); err != nil || win.clipboard != bundle {
-		t.Errorf("app: err %v clipboard %q", err, win.clipboard)
+	appErr := app.CopyTarget("app-alpha")
+	if appErr != nil || win.clipboard != bundle {
+		t.Errorf("app: err %v clipboard %q", appErr, win.clipboard)
 	}
 
-	if err := app.CopyTarget("mine"); err != nil || win.clipboard != "com.example.mine" {
-		t.Errorf("bundle id: err %v clipboard %q", err, win.clipboard)
+	bundleErr := app.CopyTarget("mine")
+	if bundleErr != nil || win.clipboard != "com.example.mine" {
+		t.Errorf("bundle id: err %v clipboard %q", bundleErr, win.clipboard)
 	}
 
-	if err := app.RevealInFinder("app-alpha"); err != nil || strings.Join(open.calls[0], " ") != "-R "+bundle {
-		t.Errorf("reveal: err %v calls %v", err, open.calls)
+	revealErr := app.RevealInFinder("app-alpha")
+	if revealErr != nil || strings.Join(open.calls[0], " ") != "-R "+bundle {
+		t.Errorf("reveal: err %v calls %v", revealErr, open.calls)
 	}
 
 	if err := app.RevealInFinder("github"); !errors.Is(err, errNoPath) {
 		t.Errorf("reveal link: err %v", err)
 	}
 
-	if err := app.RevealLibrary(); err != nil || strings.Join(open.calls[1], " ") != "-R "+app.library.Path() {
-		t.Errorf("reveal library: %v %v", err, open.calls)
+	libErr := app.RevealLibrary()
+	wantReveal := "-R " + app.library.Path()
+	if libErr != nil || strings.Join(open.calls[1], " ") != wantReveal {
+		t.Errorf("reveal library: %v %v", libErr, open.calls)
 	}
 
-	if err := app.EditLibrary(); err != nil || strings.Join(open.calls[2], " ") != "-t "+app.library.Path() {
-		t.Errorf("edit library: %v %v", err, open.calls)
+	editErr := app.EditLibrary()
+	wantEdit := "-t " + app.library.Path()
+	if editErr != nil || strings.Join(open.calls[2], " ") != wantEdit {
+		t.Errorf("edit library: %v %v", editErr, open.calls)
 	}
 }
 
@@ -497,7 +574,8 @@ func TestCopyAndReveal(t *testing.T) {
 func TestToggleFavoriteRequiresAnExistingKey(t *testing.T) {
 	app, _, _ := newTestApp(t)
 
-	for _, key := range []string{"links:nope", "apps:github", "github", "links:../x"} {
+	keys := []string{"links:nope", "apps:github", "github", "links:../x"}
+	for _, key := range keys {
 		if _, err := app.ToggleFavorite(key); !errors.Is(err, errUnknownItem) {
 			t.Errorf("%q: err = %v", key, err)
 		}
@@ -507,7 +585,8 @@ func TestToggleFavoriteRequiresAnExistingKey(t *testing.T) {
 		t.Errorf("on %v err %v", on, err)
 	}
 
-	if favorites := app.Usage().Favorites; len(favorites) != 1 || favorites[0] != "links:github" {
+	favorites := app.Usage().Favorites
+	if len(favorites) != 1 || favorites[0] != "links:github" {
 		t.Errorf("favorites = %v", favorites)
 	}
 }
@@ -519,7 +598,10 @@ func TestSettingsAndStatus(t *testing.T) {
 	app.language = languageSpanish
 
 	settings := app.Settings()
-	if settings.Language != languageSpanish || settings.HotkeyApps != defaultAppsHotkey || settings.IconServices == nil {
+	wrongSettings := settings.Language != languageSpanish ||
+		settings.HotkeyApps != defaultAppsHotkey ||
+		settings.IconServices == nil
+	if wrongSettings {
 		t.Errorf("settings = %+v", settings)
 	}
 
@@ -527,7 +609,8 @@ func TestSettingsAndStatus(t *testing.T) {
 		t.Errorf("status = %+v", status)
 	}
 
-	if err := os.WriteFile(app.library.Path(), []byte("version = 1\n\n[[links]\nbroken\n"), 0o600); err != nil {
+	broken := []byte("version = 1\n\n[[links]\nbroken\n")
+	if err := os.WriteFile(app.library.Path(), broken, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -538,14 +621,17 @@ func TestSettingsAndStatus(t *testing.T) {
 	// BurntSushi reports the unterminated "[[links]" at the line after the
 	// one holding it, once it reaches the newline it did not expect there.
 	status := app.LibraryStatus()
-	if !status.ReadOnly || status.Line != 4 || !strings.HasSuffix(status.Path, "library.toml") {
+	wrongStatus := !status.ReadOnly || status.Line != 4 ||
+		!strings.HasSuffix(status.Path, "library.toml")
+	if wrongStatus {
 		t.Errorf("status = %+v", status)
 	}
 }
 
 // Debug lines are cut and cleaned before they reach the log.
 func TestDebugIsSanitised(t *testing.T) {
-	if got := debugLine(strings.Repeat("a", 600) + "\x1b[31m\n"); len([]rune(got)) != maxDebugRunes || strings.ContainsAny(got, "\x1b\n") {
+	got := debugLine(strings.Repeat("a", 600) + "\x1b[31m\n")
+	if len([]rune(got)) != maxDebugRunes || strings.ContainsAny(got, "\x1b\n") {
 		t.Errorf("debugLine = %q (%d runes)", got, len([]rune(got)))
 	}
 }

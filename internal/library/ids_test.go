@@ -4,6 +4,13 @@ import "testing"
 
 // Names become slugs the way a person would write them by hand.
 func TestSlug(t *testing.T) {
+	// Slug caps at 64 characters; this checks the cut lands on a dash
+	// instead of splitting a word in half.
+	longInput := "a-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-" +
+		"and-on-and-on-and-on"
+	truncated := "a-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-" +
+		"and-on"
+
 	cases := map[string]string{
 		"GitHub":               "github",
 		"La Porra · Champions": "la-porra-champions",
@@ -12,7 +19,7 @@ func TestSlug(t *testing.T) {
 		"!!!":                  "item",
 		"":                     "item",
 		"edge-something":       "item-edge-something",
-		"a-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-and-on-and-on-and-on": "a-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-and-on",
+		longInput:              truncated,
 	}
 
 	for name, want := range cases {

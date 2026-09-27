@@ -31,7 +31,9 @@ func (p *Problem) Error() string {
 }
 
 // ErrFutureVersion is returned for a file written by a newer hopto.
-var ErrFutureVersion = errors.New("library: the file comes from a newer version of hopto")
+var ErrFutureVersion = errors.New(
+	"library: the file comes from a newer version of hopto",
+)
 
 // ErrTooLarge is returned when the file holds more than the page can show.
 var ErrTooLarge = errors.New("library: too many entries")
@@ -87,8 +89,10 @@ var reservedCategoryIDs = map[string]bool{
 // The values settings accept.
 var (
 	languages    = map[string]bool{"auto": true, "es": true, "en": true}
-	iconServices = map[string]bool{"site": true, "duckduckgo": true, "google": true}
-	screens      = map[string]bool{"last": true, "mouse": true, "main": true}
+	iconServices = map[string]bool{
+		"site": true, "duckduckgo": true, "google": true,
+	}
+	screens = map[string]bool{"last": true, "mouse": true, "main": true}
 )
 
 // Validate checks a whole library: the version, the limits, every entry and
@@ -102,10 +106,17 @@ func Validate(lib Library, home string) error {
 	// A negative version cannot come from a real hopto write; only a hand
 	// edit could put one there.
 	if lib.Version < 0 {
-		return &Problem{Field: "version", Key: "version.invalid", Detail: "version cannot be negative"}
+		return &Problem{
+			Field:  "version",
+			Key:    "version.invalid",
+			Detail: "version cannot be negative",
+		}
 	}
 
-	if len(lib.Links)+len(lib.Apps) > maxItems || len(lib.Categories) > maxCategories {
+	// Named so the line fits: too many entries, or too many chips.
+	tooMany := len(lib.Links)+len(lib.Apps) > maxItems ||
+		len(lib.Categories) > maxCategories
+	if tooMany {
 		return ErrTooLarge
 	}
 
@@ -120,7 +131,12 @@ func Validate(lib Library, home string) error {
 		}
 
 		if _, seen := tabs[category.ID]; seen {
-			return &Problem{Field: "id", ID: category.ID, Key: "id.duplicate", Detail: "duplicate category id"}
+			return &Problem{
+				Field:  "id",
+				ID:     category.ID,
+				Key:    "id.duplicate",
+				Detail: "duplicate category id",
+			}
 		}
 
 		tabs[category.ID] = category.Tab
@@ -136,12 +152,19 @@ func Validate(lib Library, home string) error {
 		}
 
 		if linkIDs[link.ID] {
-			return &Problem{Field: "id", ID: link.ID, Key: "id.duplicate", Detail: "duplicate link id"}
+			return &Problem{
+				Field:  "id",
+				ID:     link.ID,
+				Key:    "id.duplicate",
+				Detail: "duplicate link id",
+			}
 		}
 
 		linkIDs[link.ID] = true
 
-		if err := checkCategoryRef(link.ID, link.Category, TabLinks, tabs); err != nil {
+		if err := checkCategoryRef(
+			link.ID, link.Category, TabLinks, tabs,
+		); err != nil {
 			return err
 		}
 	}
@@ -153,16 +176,28 @@ func Validate(lib Library, home string) error {
 		}
 
 		if appIDs[app.ID] {
-			return &Problem{Field: "id", ID: app.ID, Key: "id.duplicate", Detail: "duplicate app id"}
+			return &Problem{
+				Field:  "id",
+				ID:     app.ID,
+				Key:    "id.duplicate",
+				Detail: "duplicate app id",
+			}
 		}
 
 		if linkIDs[app.ID] {
-			return &Problem{Field: "id", ID: app.ID, Key: "id.duplicate", Detail: "id used by both a link and an app"}
+			return &Problem{
+				Field:  "id",
+				ID:     app.ID,
+				Key:    "id.duplicate",
+				Detail: "id used by both a link and an app",
+			}
 		}
 
 		appIDs[app.ID] = true
 
-		if err := checkCategoryRef(app.ID, app.Category, TabApps, tabs); err != nil {
+		if err := checkCategoryRef(
+			app.ID, app.Category, TabApps, tabs,
+		); err != nil {
 			return err
 		}
 	}
@@ -170,17 +205,33 @@ func Validate(lib Library, home string) error {
 	seenHidden := make(map[string]bool, len(lib.Hidden))
 	for _, hidden := range lib.Hidden {
 		if !idPattern.MatchString(hidden.ID) {
-			return &Problem{Field: "id", ID: hidden.ID, Key: "id.invalid", Detail: "hidden entry with an invalid id"}
+			return &Problem{
+				Field:  "id",
+				ID:     hidden.ID,
+				Key:    "id.invalid",
+				Detail: "hidden entry with an invalid id",
+			}
 		}
 
 		// Only a discovered app (an "edge-" or "app-" id) can be hidden;
 		// a user entry is removed instead of hidden.
 		if !hasReservedPrefix(hidden.ID) {
-			return &Problem{Field: "id", ID: hidden.ID, Key: "hidden.prefix", Detail: "hidden entries must be discovered apps, prefixed edge- or app-"}
+			return &Problem{
+				Field: "id",
+				ID:    hidden.ID,
+				Key:   "hidden.prefix",
+				Detail: "hidden entries must be discovered apps, " +
+					"prefixed edge- or app-",
+			}
 		}
 
 		if seenHidden[hidden.ID] {
-			return &Problem{Field: "id", ID: hidden.ID, Key: "id.duplicate", Detail: "duplicate hidden id"}
+			return &Problem{
+				Field:  "id",
+				ID:     hidden.ID,
+				Key:    "id.duplicate",
+				Detail: "duplicate hidden id",
+			}
 		}
 
 		seenHidden[hidden.ID] = true
@@ -193,11 +244,23 @@ func Validate(lib Library, home string) error {
 // apps. It returns nil when the id is fine.
 func CheckID(id string) *Problem {
 	if !idPattern.MatchString(id) {
-		return &Problem{Field: "id", ID: id, Key: "id.invalid", Detail: "id must be lowercase letters, digits and dashes, 1 to 64 characters"}
+		return &Problem{
+			Field: "id",
+			ID:    id,
+			Key:   "id.invalid",
+			Detail: "id must be lowercase letters, digits and " +
+				"dashes, 1 to 64 characters",
+		}
 	}
 
 	if hasReservedPrefix(id) {
-		return &Problem{Field: "id", ID: id, Key: "id.reserved", Detail: "ids starting with edge- or app- belong to discovered apps"}
+		return &Problem{
+			Field: "id",
+			ID:    id,
+			Key:   "id.reserved",
+			Detail: "ids starting with edge- or app- belong to " +
+				"discovered apps",
+		}
 	}
 
 	return nil
@@ -224,15 +287,24 @@ func CheckLink(link Link) []Problem {
 		problems = append(problems, *problem)
 	}
 
-	problems = append(problems, checkText("name", link.ID, link.Name, maxNameRunes, true)...)
-	problems = append(problems, checkText("description", link.ID, link.Description, maxDescRunes, false)...)
+	problems = append(problems, checkText(
+		"name", link.ID, link.Name, maxNameRunes, true,
+	)...)
+	problems = append(problems, checkText(
+		"description", link.ID, link.Description, maxDescRunes, false,
+	)...)
 
 	if _, err := HostOf(link.URL); err != nil {
-		problems = append(problems, Problem{Field: "url", ID: link.ID, Key: "url.invalid", Detail: err.Error()})
+		problems = append(problems, Problem{
+			Field: "url", ID: link.ID, Key: "url.invalid",
+			Detail: err.Error(),
+		})
 	}
 
 	for _, keyword := range link.Keywords {
-		problems = append(problems, checkText("keywords", link.ID, keyword, maxNameRunes, true)...)
+		problems = append(problems, checkText(
+			"keywords", link.ID, keyword, maxNameRunes, true,
+		)...)
 	}
 
 	if problem := checkIcon(link.ID, link.Icon); problem != nil {
@@ -253,20 +325,33 @@ func CheckApp(app AppEntry, home string) []Problem {
 		problems = append(problems, *problem)
 	}
 
-	problems = append(problems, checkText("name", app.ID, app.Name, maxNameRunes, true)...)
-	problems = append(problems, checkText("description", app.ID, app.Description, maxDescRunes, false)...)
+	problems = append(problems, checkText(
+		"name", app.ID, app.Name, maxNameRunes, true,
+	)...)
+	problems = append(problems, checkText(
+		"description", app.ID, app.Description, maxDescRunes, false,
+	)...)
 
 	if app.Path == "" && app.BundleID == "" {
-		problems = append(problems, Problem{Field: "path", ID: app.ID, Key: "app.target", Detail: "an app needs a path or a bundle_id"})
+		problems = append(problems, Problem{
+			Field: "path", ID: app.ID, Key: "app.target",
+			Detail: "an app needs a path or a bundle_id",
+		})
 	}
 
 	if app.BundleID != "" && !bundlePattern.MatchString(app.BundleID) {
-		problems = append(problems, Problem{Field: "bundle_id", ID: app.ID, Key: "app.bundle", Detail: "bundle_id must look like com.example.App"})
+		problems = append(problems, Problem{
+			Field: "bundle_id", ID: app.ID, Key: "app.bundle",
+			Detail: "bundle_id must look like com.example.App",
+		})
 	}
 
 	if app.Path != "" {
 		if detail := checkAppPath(app.Path, home); detail != "" {
-			problems = append(problems, Problem{Field: "path", ID: app.ID, Key: "app.path", Detail: detail})
+			problems = append(problems, Problem{
+				Field: "path", ID: app.ID, Key: "app.path",
+				Detail: detail,
+			})
 		}
 	}
 
@@ -277,14 +362,26 @@ func CheckApp(app AppEntry, home string) []Problem {
 func CheckCategory(category Category) []Problem {
 	var problems []Problem
 
-	if !idPattern.MatchString(category.ID) || reservedCategoryIDs[category.ID] {
-		problems = append(problems, Problem{Field: "id", ID: category.ID, Key: "id.invalid", Detail: "invalid or reserved category id"})
+	// Named so the line fits: an id that fails the slug shape, or one
+	// that collides with a virtual chip such as "hidden".
+	badID := !idPattern.MatchString(category.ID) ||
+		reservedCategoryIDs[category.ID]
+	if badID {
+		problems = append(problems, Problem{
+			Field: "id", ID: category.ID, Key: "id.invalid",
+			Detail: "invalid or reserved category id",
+		})
 	}
 
-	problems = append(problems, checkText("name", category.ID, category.Name, maxNameRunes, true)...)
+	problems = append(problems, checkText(
+		"name", category.ID, category.Name, maxNameRunes, true,
+	)...)
 
 	if category.Tab != TabApps && category.Tab != TabLinks {
-		problems = append(problems, Problem{Field: "tab", ID: category.ID, Key: "category.tab", Detail: "tab must be apps or links"})
+		problems = append(problems, Problem{
+			Field: "tab", ID: category.ID, Key: "category.tab",
+			Detail: "tab must be apps or links",
+		})
 	}
 
 	return problems
@@ -307,8 +404,13 @@ func HostOf(raw string) (string, error) {
 		return "", errors.New("URL longer than 2048 bytes")
 	}
 
-	if strings.ContainsFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) || isInvisible(r) }) {
-		return "", errors.New("URL contains spaces, control or invisible characters")
+	hasBadRune := func(r rune) bool {
+		return unicode.IsSpace(r) || unicode.IsControl(r) || isInvisible(r)
+	}
+	if strings.ContainsFunc(raw, hasBadRune) {
+		return "", errors.New(
+			"URL contains spaces, control or invisible characters",
+		)
 	}
 
 	parsed, err := url.Parse(raw)
@@ -351,11 +453,15 @@ func checkIcon(id, icon string) *Problem {
 		return nil
 	}
 
-	if _, err := HostOf(icon); err == nil && strings.HasPrefix(icon, "https://") {
+	_, err := HostOf(icon)
+	if err == nil && strings.HasPrefix(icon, "https://") {
 		return nil
 	}
 
-	return &Problem{Field: "icon", ID: id, Key: "icon.invalid", Detail: "icon must be sh:<name> or an https URL"}
+	return &Problem{
+		Field: "icon", ID: id, Key: "icon.invalid",
+		Detail: "icon must be sh:<name> or an https URL",
+	}
 }
 
 // isInvisible catches the format characters (Unicode category Cf) that
@@ -368,21 +474,34 @@ func isInvisible(r rune) bool {
 
 // checkText applies the length and character rules of names, descriptions
 // and keywords.
-func checkText(field, id, text string, maxRunes int, required bool) []Problem {
+func checkText(
+	field, id, text string, maxRunes int, required bool,
+) []Problem {
 	if text == "" {
 		if required {
-			return []Problem{{Field: field, ID: id, Key: field + ".required", Detail: field + " is required"}}
+			return []Problem{{
+				Field: field, ID: id, Key: field + ".required",
+				Detail: field + " is required",
+			}}
 		}
 
 		return nil
 	}
 
 	if utf8.RuneCountInString(text) > maxRunes {
-		return []Problem{{Field: field, ID: id, Key: field + ".long", Detail: fmt.Sprintf("%s longer than %d characters", field, maxRunes)}}
+		return []Problem{{
+			Field: field, ID: id, Key: field + ".long",
+			Detail: fmt.Sprintf(
+				"%s longer than %d characters", field, maxRunes,
+			),
+		}}
 	}
 
 	if strings.ContainsFunc(text, unicode.IsControl) {
-		return []Problem{{Field: field, ID: id, Key: field + ".control", Detail: field + " contains control characters"}}
+		return []Problem{{
+			Field: field, ID: id, Key: field + ".control",
+			Detail: field + " contains control characters",
+		}}
 	}
 
 	return nil
@@ -404,18 +523,27 @@ func checkAppPath(path, home string) string {
 		}
 	}
 
-	return "path must be under /Applications, /System/Applications or ~/Applications"
+	return "path must be under /Applications, /System/Applications " +
+		"or ~/Applications"
 }
 
 // checkCategoryRef makes sure an entry points at a chip of its own tab.
-func checkCategoryRef(id, category, tab string, tabs map[string]string) error {
+func checkCategoryRef(
+	id, category, tab string, tabs map[string]string,
+) error {
 	found, ok := tabs[category]
 	if !ok {
-		return &Problem{Field: "category", ID: id, Key: "category.unknown", Detail: "unknown category " + category}
+		return &Problem{
+			Field: "category", ID: id, Key: "category.unknown",
+			Detail: "unknown category " + category,
+		}
 	}
 
 	if found != tab {
-		return &Problem{Field: "category", ID: id, Key: "category.tab", Detail: "category " + category + " belongs to the other tab"}
+		return &Problem{
+			Field: "category", ID: id, Key: "category.tab",
+			Detail: "category " + category + " belongs to the other tab",
+		}
 	}
 
 	return nil
@@ -424,7 +552,10 @@ func checkCategoryRef(id, category, tab string, tabs map[string]string) error {
 // checkSettings accepts only the values the app understands.
 func checkSettings(settings Settings) error {
 	if !languages[settings.Language] {
-		return &Problem{Field: "language", Key: "settings.language", Detail: "language must be auto, es or en"}
+		return &Problem{
+			Field: "language", Key: "settings.language",
+			Detail: "language must be auto, es or en",
+		}
 	}
 
 	if !screens[settings.Screen] {
@@ -436,22 +567,39 @@ func checkSettings(settings Settings) error {
 
 	for _, service := range settings.IconServices {
 		if !iconServices[service] {
-			return &Problem{Field: "icon_services", Key: "settings.icons", Detail: "unknown icon service " + service}
+			return &Problem{
+				Field: "icon_services", Key: "settings.icons",
+				Detail: "unknown icon service " + service,
+			}
 		}
 	}
 
 	// Each hotkey is reported on its own field, so the page can point at
 	// the exact one that is empty instead of always naming hotkey_apps.
 	if settings.HotkeyApps == "" {
-		return &Problem{Field: "hotkey_apps", Key: "settings.hotkey", Detail: "hotkeys cannot be empty"}
+		return &Problem{
+			Field: "hotkey_apps", Key: "settings.hotkey",
+			Detail: "hotkeys cannot be empty",
+		}
 	}
 
 	if settings.HotkeyLinks == "" {
-		return &Problem{Field: "hotkey_links", Key: "settings.hotkey", Detail: "hotkeys cannot be empty"}
+		return &Problem{
+			Field: "hotkey_links", Key: "settings.hotkey",
+			Detail: "hotkeys cannot be empty",
+		}
 	}
 
-	if settings.SecondaryBrowser != "" && !bundlePattern.MatchString(settings.SecondaryBrowser) {
-		return &Problem{Field: "secondary_browser", Key: "settings.browser", Detail: "secondary_browser must be a bundle id like com.apple.Safari"}
+	// Named so the line fits: a browser set but not shaped like a
+	// bundle id.
+	badBrowser := settings.SecondaryBrowser != "" &&
+		!bundlePattern.MatchString(settings.SecondaryBrowser)
+	if badBrowser {
+		return &Problem{
+			Field: "secondary_browser", Key: "settings.browser",
+			Detail: "secondary_browser must be a bundle id like " +
+				"com.apple.Safari",
+		}
 	}
 
 	return nil

@@ -35,7 +35,9 @@ func languageFor(setting, system string) string {
 		return languageEnglish
 	}
 
-	if system == languageSpanish || strings.HasPrefix(system, languageSpanish+"-") {
+	spanish := system == languageSpanish ||
+		strings.HasPrefix(system, languageSpanish+"-")
+	if spanish {
 		return languageSpanish
 	}
 

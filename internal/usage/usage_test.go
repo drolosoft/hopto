@@ -49,7 +49,10 @@ func TestStoreStartsEmptyAndPersists(t *testing.T) {
 	}
 
 	if !snapshot.LastOpened["links:mdn"].Equal(fixedNow) {
-		t.Fatalf("lastOpened = %v, want %v", snapshot.LastOpened["links:mdn"], fixedNow)
+		t.Fatalf(
+			"lastOpened = %v, want %v",
+			snapshot.LastOpened["links:mdn"], fixedNow,
+		)
 	}
 }
 
@@ -77,8 +80,9 @@ func TestCorruptFileIsNeverOverwritten(t *testing.T) {
 		t.Fatalf("RecordOpen error = %v, want ErrReadOnly", err)
 	}
 
-	if _, err := store.ToggleFavorite("links:mdn"); !errors.Is(err, ErrReadOnly) {
-		t.Fatalf("ToggleFavorite error = %v, want ErrReadOnly", err)
+	_, toggleErr := store.ToggleFavorite("links:mdn")
+	if !errors.Is(toggleErr, ErrReadOnly) {
+		t.Fatalf("ToggleFavorite error = %v, want ErrReadOnly", toggleErr)
 	}
 
 	data, _ := os.ReadFile(path)
@@ -93,7 +97,8 @@ func TestCorruptFileIsNeverOverwritten(t *testing.T) {
 func TestFavoritesNeverWrittenBackAsNull(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "usage.json")
 
-	if err := os.WriteFile(path, []byte(`{"opens": {}, "lastOpened": {}, "favorites": null}`), 0o600); err != nil {
+	nullFavorites := `{"opens": {}, "lastOpened": {}, "favorites": null}`
+	if err := os.WriteFile(path, []byte(nullFavorites), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -123,7 +128,8 @@ func TestFavoritesNeverWrittenBackAsNull(t *testing.T) {
 func TestNullMapsDoNotPanic(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "usage.json")
 
-	if err := os.WriteFile(path, []byte(`{"opens": null, "lastOpened": null, "favorites": null}`), 0o600); err != nil {
+	allNull := `{"opens": null, "lastOpened": null, "favorites": null}`
+	if err := os.WriteFile(path, []byte(allNull), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -191,7 +197,8 @@ func TestSnapshotIsACopyWithoutNulls(t *testing.T) {
 	snapshot.Favorites = append(snapshot.Favorites, "links:mdn")
 	snapshot.Opens["links:mdn"] = 9
 
-	if len(store.Snapshot().Favorites) != 0 || store.Snapshot().Opens["links:mdn"] != 0 {
+	stored := store.Snapshot()
+	if len(stored.Favorites) != 0 || stored.Opens["links:mdn"] != 0 {
 		t.Fatal("the snapshot shares memory with the store")
 	}
 
@@ -205,7 +212,11 @@ func TestSnapshotIsACopyWithoutNulls(t *testing.T) {
 func TestInvalidKeysAreRefused(t *testing.T) {
 	store := openAt(t, filepath.Join(t.TempDir(), "usage.json"))
 
-	for _, key := range []string{"", "mdn", "links:", "links:MDN", "links:../x", "other:mdn", "links:" + string(make([]byte, 70))} {
+	keys := []string{
+		"", "mdn", "links:", "links:MDN", "links:../x", "other:mdn",
+		"links:" + string(make([]byte, 70)),
+	}
+	for _, key := range keys {
 		if err := store.RecordOpen(key); !errors.Is(err, ErrInvalidKey) {
 			t.Errorf("RecordOpen(%q) error = %v, want ErrInvalidKey", key, err)
 		}

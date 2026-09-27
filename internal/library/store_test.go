@@ -82,8 +82,9 @@ func TestOpenAcceptsAnEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if store.Snapshot().Version != CurrentVersion || len(store.Snapshot().Links) != 0 {
-		t.Fatalf("snapshot = %+v", store.Snapshot())
+	snapshot := store.Snapshot()
+	if snapshot.Version != CurrentVersion || len(snapshot.Links) != 0 {
+		t.Fatalf("snapshot = %+v", snapshot)
 	}
 
 	if info, _ := os.Stat(path); info.Size() != 0 {
@@ -110,7 +111,10 @@ func TestOpenKeepsACorruptFileIntact(t *testing.T) {
 		t.Fatalf("status = %+v, want read only at line 3", status)
 	}
 
-	applyErr := store.Apply(func(lib *Library) error { lib.Links = nil; return nil })
+	applyErr := store.Apply(func(lib *Library) error {
+		lib.Links = nil
+		return nil
+	})
 	if !errors.Is(applyErr, ErrReadOnly) {
 		t.Fatalf("Apply error = %v, want ErrReadOnly", applyErr)
 	}
@@ -141,7 +145,10 @@ func TestApplyRejectsAnInvalidResult(t *testing.T) {
 	before, _ := os.ReadFile(path)
 
 	err := store.Apply(func(lib *Library) error {
-		lib.Links = append(lib.Links, Link{ID: "bad", Name: "Bad", URL: "file:///x", Category: "dev"})
+		lib.Links = append(lib.Links, Link{
+			ID: "bad", Name: "Bad",
+			URL: "file:///x", Category: "dev",
+		})
 		return nil
 	})
 
@@ -162,7 +169,11 @@ func TestApplyWritesAndKeepsABackup(t *testing.T) {
 	store, path := openSample(t)
 
 	err := store.Apply(func(lib *Library) error {
-		lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev", Keywords: []string{"web"}})
+		lib.Links = append(lib.Links, Link{
+			ID: "mdn", Name: "MDN",
+			URL:      "https://developer.mozilla.org",
+			Category: "dev", Keywords: []string{"web"},
+		})
 		return nil
 	})
 	if err != nil {
@@ -179,7 +190,10 @@ func TestApplyWritesAndKeepsABackup(t *testing.T) {
 	}
 
 	links := again.Snapshot().Links
-	if len(links) != 2 || links[0].ID != "github" || links[1].ID != "mdn" || links[1].Keywords[0] != "web" {
+	wrong := len(links) != 2 ||
+		links[0].ID != "github" || links[1].ID != "mdn" ||
+		links[1].Keywords[0] != "web"
+	if wrong {
 		t.Fatalf("links = %+v", links)
 	}
 }
@@ -190,7 +204,9 @@ func TestApplyWritesAndKeepsABackup(t *testing.T) {
 func TestApplySeesAHandEdit(t *testing.T) {
 	store, path := openSample(t)
 
-	edited := sampleTOML + "\n[[links]]\nid = \"by-hand\"\nname = \"By hand\"\nurl = \"https://example.com\"\ncategory = \"dev\"\n"
+	edited := sampleTOML +
+		"\n[[links]]\nid = \"by-hand\"\nname = \"By hand\"\n" +
+		"url = \"https://example.com\"\ncategory = \"dev\"\n"
 	// Same second as the seed write is possible on a fast disk: force a
 	// different size so the change is noticed either way.
 	if err := os.WriteFile(path, []byte(edited), 0o600); err != nil {
@@ -198,7 +214,10 @@ func TestApplySeesAHandEdit(t *testing.T) {
 	}
 
 	err := store.Apply(func(lib *Library) error {
-		lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev"})
+		lib.Links = append(lib.Links, Link{
+			ID: "mdn", Name: "MDN",
+			URL: "https://developer.mozilla.org", Category: "dev",
+		})
 		return nil
 	})
 	if err != nil {
@@ -219,7 +238,8 @@ func TestApplySeesAHandEdit(t *testing.T) {
 // next reload, keeping the last good library in memory.
 func TestReloadKeepsTheLastGoodLibrary(t *testing.T) {
 	store, path := openSample(t)
-	if err := os.WriteFile(path, []byte("version = 1\n[[links]\n"), 0o600); err != nil {
+	broken := []byte("version = 1\n[[links]\n")
+	if err := os.WriteFile(path, broken, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -271,7 +291,10 @@ func TestApplySeesASameSizedEditInTheSameSecond(t *testing.T) {
 	}
 
 	err = store.Apply(func(lib *Library) error {
-		lib.Links = append(lib.Links, Link{ID: "mdn", Name: "MDN", URL: "https://developer.mozilla.org", Category: "dev"})
+		lib.Links = append(lib.Links, Link{
+			ID: "mdn", Name: "MDN",
+			URL: "https://developer.mozilla.org", Category: "dev",
+		})
 		return nil
 	})
 	if err != nil {
@@ -301,7 +324,8 @@ func TestApplyRefusesWhenTheFileVanished(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.Apply(func(lib *Library) error { return nil }); err != nil || store.Status().ReadOnly {
+	err = store.Apply(func(lib *Library) error { return nil })
+	if err != nil || store.Status().ReadOnly {
 		t.Fatalf("store did not recover: err=%v status=%+v", err, store.Status())
 	}
 }
@@ -320,13 +344,15 @@ func TestOpenReportsASeedThatCannotBeWritten(t *testing.T) {
 		}
 	})
 
-	store, err := Open(filepath.Join(dir, "library.toml"), []byte(sampleTOML), home)
+	seedPath := filepath.Join(dir, "library.toml")
+	store, err := Open(seedPath, []byte(sampleTOML), home)
 	if err == nil {
 		t.Fatal("expected a write error")
 	}
 
-	if !store.Status().ReadOnly || len(store.Snapshot().Links) != 1 {
-		t.Fatalf("status = %+v, links = %d", store.Status(), len(store.Snapshot().Links))
+	links := len(store.Snapshot().Links)
+	if !store.Status().ReadOnly || links != 1 {
+		t.Fatalf("status = %+v, links = %d", store.Status(), links)
 	}
 }
 
@@ -335,9 +361,12 @@ func TestSnapshotIsADeepCopy(t *testing.T) {
 	store, _ := openSample(t)
 	snapshot := store.Snapshot()
 	snapshot.Links[0].Name = "changed"
-	snapshot.Categories = append(snapshot.Categories, Category{ID: "x", Name: "X", Tab: TabApps})
+	snapshot.Categories = append(snapshot.Categories, Category{
+		ID: "x", Name: "X", Tab: TabApps,
+	})
 
-	if store.Snapshot().Links[0].Name != "GitHub" || len(store.Snapshot().Categories) != 1 {
+	stored := store.Snapshot()
+	if stored.Links[0].Name != "GitHub" || len(stored.Categories) != 1 {
 		t.Fatal("the snapshot shares memory with the store")
 	}
 }
@@ -368,7 +397,11 @@ func TestSnapshotDeepCopiesKeywords(t *testing.T) {
 // Decode fills the defaults an old or hand-written file may lack, and
 // reports keys hopto does not know instead of failing on them.
 func TestDecodeDefaultsAndUnknownKeys(t *testing.T) {
-	lib, err := Decode([]byte("[[categories]]\nid = \"dev\"\nname = \"Dev\"\ntab = \"links\"\ncolour = \"red\"\n"))
+	// A hand-written category with a key hopto has never had.
+	withUnknownKey := "[[categories]]\nid = \"dev\"\nname = \"Dev\"\n" +
+		"tab = \"links\"\ncolour = \"red\"\n"
+
+	lib, err := Decode([]byte(withUnknownKey))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +412,7 @@ func TestDecodeDefaultsAndUnknownKeys(t *testing.T) {
 		t.Fatalf("lib = %+v", lib)
 	}
 
-	unknown := UnknownKeys([]byte("[[categories]]\nid = \"dev\"\nname = \"Dev\"\ntab = \"links\"\ncolour = \"red\"\n"))
+	unknown := UnknownKeys([]byte(withUnknownKey))
 	if len(unknown) != 1 || unknown[0] != "categories.colour" {
 		t.Fatalf("unknown = %v", unknown)
 	}
@@ -403,7 +436,10 @@ func TestEncodeRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if back.Links[0].URL != "https://github.com" || back.Categories[0].Tab != TabLinks || back.Settings.HotkeyApps != "cmd+shift+space" {
+	wrong := back.Links[0].URL != "https://github.com" ||
+		back.Categories[0].Tab != TabLinks ||
+		back.Settings.HotkeyApps != "cmd+shift+space"
+	if wrong {
 		t.Fatalf("round trip lost data: %+v", back)
 	}
 }
@@ -467,7 +503,8 @@ func TestApplyRecoversWhenTheFileComesBackIdentical(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.Apply(func(lib *Library) error { return nil }); !errors.Is(err, ErrReadOnly) {
+	err = store.Apply(func(lib *Library) error { return nil })
+	if !errors.Is(err, ErrReadOnly) {
 		t.Fatalf("err = %v, want ErrReadOnly", err)
 	}
 
@@ -496,7 +533,9 @@ func TestEncodeThenHandAddedAppsTableStillDecodes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handAdded := string(data) + "\n[[apps]]\nid = \"safari\"\nname = \"Safari\"\npath = \"/Applications/Safari.app\"\ncategory = \"tools\"\n"
+	handAdded := string(data) +
+		"\n[[apps]]\nid = \"safari\"\nname = \"Safari\"\n" +
+		"path = \"/Applications/Safari.app\"\ncategory = \"tools\"\n"
 
 	decoded, err := Decode([]byte(handAdded))
 	if err != nil {

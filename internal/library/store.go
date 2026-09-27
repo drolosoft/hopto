@@ -16,7 +16,9 @@ import (
 // ErrReadOnly is returned by Apply while the file on disk cannot be used
 // (it does not parse, is too large, comes from a newer hopto or has
 // vanished): hopto never rewrites a file it does not understand.
-var ErrReadOnly = errors.New("library: the file on disk cannot be used, refusing to overwrite it")
+var ErrReadOnly = errors.New(
+	"library: the file on disk cannot be used, refusing to overwrite it",
+)
 
 // maxFileBytes is the largest library.toml hopto will read. 2000 entries
 // (the cap Validate enforces) encode to well under this; anything bigger
@@ -26,7 +28,8 @@ const maxFileBytes = 1 << 20
 
 // header opens every file hopto writes. The comments a user adds are lost
 // on the next write, and the header says so.
-const header = `# hopto library. The app rewrites this file when you add, edit or delete;
+const header = `# hopto library. The app rewrites this file when you` +
+	` add, edit or delete;
 # you can edit it by hand too: it is read again every time the panel opens.
 # Comments you add are lost on the next write.
 
@@ -67,8 +70,12 @@ func Open(path string, seed []byte, home string) (*Store, error) {
 
 	// Stat before reading: a file past the cap is never even loaded into
 	// memory, let alone handed to the TOML parser.
-	if info, statErr := os.Stat(path); statErr == nil && info.Size() > maxFileBytes {
-		store.loadErr = fmt.Errorf("%w: file is %d bytes, the cap is %d", ErrTooLarge, info.Size(), maxFileBytes)
+	info, statErr := os.Stat(path)
+	if statErr == nil && info.Size() > maxFileBytes {
+		store.loadErr = fmt.Errorf(
+			"%w: file is %d bytes, the cap is %d",
+			ErrTooLarge, info.Size(), maxFileBytes,
+		)
 		store.lib, _ = Decode(seed)
 		return store, store.loadErr
 	}
@@ -200,8 +207,12 @@ func (s *Store) Apply(op func(*Library) error) error {
 func (s *Store) reloadIfChanged() error {
 	// Stat before reading: a file that grew past the cap since the last
 	// reload is refused without being parsed, the same as at Open.
-	if info, statErr := os.Stat(s.path); statErr == nil && info.Size() > maxFileBytes {
-		s.loadErr = fmt.Errorf("%w: file is %d bytes, the cap is %d", ErrTooLarge, info.Size(), maxFileBytes)
+	info, statErr := os.Stat(s.path)
+	if statErr == nil && info.Size() > maxFileBytes {
+		s.loadErr = fmt.Errorf(
+			"%w: file is %d bytes, the cap is %d",
+			ErrTooLarge, info.Size(), maxFileBytes,
+		)
 		s.loadLine = 0
 		s.checksum = [32]byte{}
 
@@ -354,7 +365,9 @@ func Encode(lib Library) ([]byte, error) {
 // clone deep-copies a library, slices included.
 func clone(lib Library) Library {
 	copied := lib
-	copied.Settings.IconServices = append([]string{}, lib.Settings.IconServices...)
+	copied.Settings.IconServices = append(
+		[]string{}, lib.Settings.IconServices...,
+	)
 	copied.Categories = append([]Category{}, lib.Categories...)
 	copied.Apps = append([]AppEntry{}, lib.Apps...)
 	copied.Hidden = append([]Hidden{}, lib.Hidden...)

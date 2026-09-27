@@ -20,19 +20,27 @@ func TestSeedsAreValidAndAligned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for name, lib := range map[string]library.Library{"en": english, "es": spanish} {
+	byLanguage := map[string]library.Library{"en": english, "es": spanish}
+	for name, lib := range byLanguage {
 		if err := library.Validate(lib, "/Users/someone"); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 
 		if len(lib.Links) < 5 || len(lib.Categories) != 3 {
-			t.Fatalf("%s: seed has %d links and %d categories", name, len(lib.Links), len(lib.Categories))
+			t.Fatalf(
+				"%s: seed has %d links and %d categories",
+				name, len(lib.Links), len(lib.Categories),
+			)
 		}
 	}
 
 	for index, link := range english.Links {
-		if spanish.Links[index].ID != link.ID || spanish.Links[index].URL != link.URL {
-			t.Errorf("link %d differs between languages: %s vs %s", index, link.ID, spanish.Links[index].ID)
+		other := spanish.Links[index]
+		if other.ID != link.ID || other.URL != link.URL {
+			t.Errorf(
+				"link %d differs between languages: %s vs %s",
+				index, link.ID, other.ID,
+			)
 		}
 	}
 

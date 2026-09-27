@@ -17,7 +17,8 @@ func TestNormalizeURL(t *testing.T) {
 		}
 	}
 
-	if NormalizeURL("https://github.com/drolosoft") == NormalizeURL("https://github.com") {
+	deeper := NormalizeURL("https://github.com/drolosoft")
+	if deeper == NormalizeURL("https://github.com") {
 		t.Fatal("different paths compared equal")
 	}
 
@@ -33,15 +34,17 @@ func TestFindDuplicateAndNeighbours(t *testing.T) {
 		{ID: "drolosoft-gh", URL: "https://github.com/drolosoft"},
 	}
 
-	if duplicate, ok := FindDuplicateLink(links, "https://www.github.com/"); !ok || duplicate.ID != "github" {
+	duplicate, ok := FindDuplicateLink(links, "https://www.github.com/")
+	if !ok || duplicate.ID != "github" {
 		t.Fatalf("duplicate = %+v ok=%v", duplicate, ok)
 	}
 
-	if _, ok := FindDuplicateLink(links, "https://github.com/drolosoft/hopto"); ok {
+	sameOther := "https://github.com/drolosoft/hopto"
+	if _, ok := FindDuplicateLink(links, sameOther); ok {
 		t.Fatal("a different path was reported as duplicate")
 	}
 
-	if neighbours := LinksOnSameHost(links, "https://github.com/drolosoft/hopto"); len(neighbours) != 2 {
+	if neighbours := LinksOnSameHost(links, sameOther); len(neighbours) != 2 {
 		t.Fatalf("neighbours = %d, want 2", len(neighbours))
 	}
 }

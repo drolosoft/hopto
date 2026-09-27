@@ -30,7 +30,9 @@ type Usage struct {
 
 // ErrReadOnly is returned by every write when the file on disk could not
 // be parsed: the store refuses to replace a file it does not understand.
-var ErrReadOnly = errors.New("usage: file is corrupt, refusing to overwrite it")
+var ErrReadOnly = errors.New(
+	"usage: file is corrupt, refusing to overwrite it",
+)
 
 // ErrInvalidKey is returned for a key that does not look like "<tab>:<id>";
 // the page can send any string, so the check happens here.
@@ -65,7 +67,9 @@ func DefaultPath() string {
 		return ""
 	}
 
-	return filepath.Join(home, "Library", "Application Support", "hopto", "usage.json")
+	return filepath.Join(
+		home, "Library", "Application Support", "hopto", "usage.json",
+	)
 }
 
 // ValidKey reports whether key has the "<tab>:<id>" shape.

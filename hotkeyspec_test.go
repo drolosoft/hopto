@@ -12,10 +12,22 @@ func TestParseHotkey(t *testing.T) {
 		spec string
 		want Hotkey
 	}{
-		{"cmd+shift+space", Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierShift}},
-		{"cmd+option+space", Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierOption}},
-		{" Cmd + Shift + Space ", Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierShift}},
-		{"ctrl+option+l", Hotkey{KeyCode: 37, Modifiers: modifierControl | modifierOption}},
+		{
+			"cmd+shift+space",
+			Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierShift},
+		},
+		{
+			"cmd+option+space",
+			Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierOption},
+		},
+		{
+			" Cmd + Shift + Space ",
+			Hotkey{KeyCode: 49, Modifiers: modifierCmd | modifierShift},
+		},
+		{
+			"ctrl+option+l",
+			Hotkey{KeyCode: 37, Modifiers: modifierControl | modifierOption},
+		},
 		{"cmd+f12", Hotkey{KeyCode: 111, Modifiers: modifierCmd}},
 		{"option+1", Hotkey{KeyCode: 18, Modifiers: modifierOption}},
 	}
@@ -37,7 +49,12 @@ func TestParseHotkey(t *testing.T) {
 // refused with the spec in the message, so the log says which line of the
 // library is wrong.
 func TestParseHotkeyRejects(t *testing.T) {
-	for _, spec := range []string{"", "space", "shift+space", "cmd+space", "cmd+tab", "cmd+", "cmd+shift+", "cmd+shift+nosuchkey", "super+space", "cmd+shift+space+a"} {
+	specs := []string{
+		"", "space", "shift+space", "cmd+space", "cmd+tab", "cmd+",
+		"cmd+shift+", "cmd+shift+nosuchkey", "super+space",
+		"cmd+shift+space+a",
+	}
+	for _, spec := range specs {
 		if _, err := ParseHotkey(spec); err == nil {
 			t.Errorf("%q: expected an error", spec)
 		}
@@ -72,7 +89,9 @@ func TestHotkeysFromSettings(t *testing.T) {
 	broken.HotkeyApps = "cmd+space"
 
 	apps, links = hotkeysFromSettings(broken)
-	if apps != mustHotkey(defaultAppsHotkey) || links != mustHotkey(defaultLinksHotkey) {
+	wrong := apps != mustHotkey(defaultAppsHotkey) ||
+		links != mustHotkey(defaultLinksHotkey)
+	if wrong {
 		t.Errorf("broken: apps %+v links %+v", apps, links)
 	}
 

@@ -19,7 +19,8 @@ func NormalizeURL(raw string) string {
 	host = strings.TrimPrefix(host, "www.")
 
 	port := parsed.Port()
-	isDefaultPort := (parsed.Scheme == "https" && port == "443") || (parsed.Scheme == "http" && port == "80")
+	isDefaultPort := (parsed.Scheme == "https" && port == "443") ||
+		(parsed.Scheme == "http" && port == "80")
 	if port != "" && !isDefaultPort {
 		host += ":" + port
 	}
