@@ -271,6 +271,17 @@ function renderFooter(state, layout, t) {
 }
 
 /**
+ * The footer while the editor is open: what Enter does there, and no
+ * hints on the right, since the editor lists its own keys in its hints
+ * line. The totals stay as the list left them.
+ * @param {Function} t
+ */
+export function renderEditingFooter(t) {
+    elements.action.textContent = footerAction(undefined, t, true);
+    elements.hints.textContent = '';
+}
+
+/**
  * Texts that do not depend on the list: the dialog label and the search
  * box, in the current language.
  * @param {Function} t

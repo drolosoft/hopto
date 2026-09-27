@@ -96,12 +96,19 @@ export function totalsText(state, t) {
 }
 
 /**
- * The footer's middle: what Enter does with the selected item.
+ * The footer's middle: what Enter does with the selected item, or in the
+ * editor while it has the panel (the row under it is not on screen, and
+ * naming it would promise something Enter no longer does).
  * @param {object|undefined} entry
  * @param {Function} t
+ * @param {boolean} [editing] whether the editor has the panel
  * @returns {string}
  */
-export function footerAction(entry, t) {
+export function footerAction(entry, t, editing = false) {
+    if (editing) {
+        return t('footer.save');
+    }
+
     if (!entry) {
         return '';
     }

@@ -7,6 +7,7 @@
 import {InspectURL, AddLink, UpdateLink, AddCategory, PickApp, AddApp, UpdateApp, Debug} from '../wailsjs/go/main/App';
 import {looksLikeURL, withScheme, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withPick, appInput, withSaveResult} from './draft.js';
 import {mountEditor, refreshEditor, hideEditor, focusField, focusedField} from './editor.js';
+import {renderEditingFooter} from './render.js';
 
 // How long the URL field has to rest before the page is read: long
 // enough not to fire on every keystroke, short enough to feel immediate.
@@ -79,6 +80,10 @@ export function openEditor(draft) {
     setDraft(draft);
 
     mountEditor(draft, editableCategories(draft.tab), host.t(), handlers);
+
+    // Nothing repaints the list while the editor is up, so the footer
+    // is told here; closing goes through render(), which puts it back.
+    renderEditingFooter(host.t());
 
     // A new app starts from the dialog: there is nothing to type before
     // a .app is picked, and focusing "name" here would make it the DOM's

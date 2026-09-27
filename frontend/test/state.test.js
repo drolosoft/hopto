@@ -77,6 +77,12 @@ test('footerAction names the selected item or the pair', () => {
     assert.equal(footerAction(undefined, t), '');
 });
 
+test('footerAction says what Enter does in the open editor, whatever row is under it', () => {
+    assert.equal(footerAction({name: 'Alpha', kind: 'app'}, t, true), '↩ Save');
+    assert.equal(footerAction(undefined, t, true), '↩ Save');
+    assert.equal(footerAction(undefined, translator('es'), true), '↩ Guardar');
+});
+
 test('removalOf: links and hand-added apps are deleted, found apps hidden, hidden ones unhidden', () => {
     assert.equal(removalOf({kind: 'link', source: 'library'}), 'delete');
     assert.equal(removalOf({kind: 'app', source: 'library'}), 'delete');

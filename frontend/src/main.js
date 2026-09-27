@@ -9,7 +9,7 @@ import {nextIndex} from './keys.js';
 import {initialState, chipItems, removalOf} from './state.js';
 import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
-import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout, renameBox} from './render.js';
+import {renderAll, renderHelp, renderEditingFooter, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout, renameBox} from './render.js';
 import {installKeyboard} from './keyboard.js';
 import {addOffer, newDraft, editDraft, adoptDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
@@ -120,9 +120,11 @@ export function layoutOf(current) {
  */
 function render() {
     // While the editor is open the list is not on screen; only the editor
-    // repaints, so the search box and chips keep what they had.
+    // repaints, so the search box and chips keep what they had, and the
+    // footer says what Enter does there.
     if (state.editing && state.draft) {
         refreshEditorView();
+        renderEditingFooter(t);
         return;
     }
 

@@ -185,3 +185,18 @@ test('plan 3 minor (b): the menu bar Help closes the editor before it shows', as
     expect(await payloads(page, 'AddLink')).toEqual([]);
     expect(await calls(page)).not.toContain('Hide');
 });
+
+test('plan 3 minor (d): the footer says ↩ Save while the editor is open, and the row again after', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.type('example.org');
+    await expect(page.locator('#action')).toHaveText('↩ Add');
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#editor')).toBeVisible();
+    await expect(page.locator('#action')).toHaveText('↩ Save');
+    await expect(page.locator('#hints')).toHaveText('');
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#editor')).toBeHidden();
+    await expect(page.locator('#action')).toHaveText('↩ Add');
+});
