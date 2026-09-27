@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/drolosoft/hopto/internal/discover"
 )
 
 // Entry is one app of the launcher. Bundle is the .app name on disk; the
@@ -30,7 +32,7 @@ type Entry struct {
 // new ones only need a line here and the id on each entry.
 var appCategories = []Category{
 	{ID: "utilidades", Name: "Utilidades"},
-	{ID: edgeCategory, Name: "Apps de Edge"},
+	{ID: discover.SourceEdge, Name: "Apps de Edge"},
 }
 
 // catalog lists "mis apps" in the order they appear on screen. Adding an app
@@ -61,13 +63,22 @@ func locations(repoRoot string, app Entry) []string {
 }
 
 // resolve fills Path for every catalog entry and appends the Edge web apps
-// found under the home folder. A bundle counts as present when its folder
-// exists; anything else is reported to the page as not installed.
+// found under the home folder, until App is rebuilt on the library.
 func resolve(repoRoot string) []Entry {
 	apps := resolveCatalog(repoRoot)
 
 	if home, err := os.UserHomeDir(); err == nil {
-		apps = append(apps, scanEdgeApps(filepath.Join(home, edgeAppsDir))...)
+		edgeDir := discover.EdgeAppsDir(home)
+		for _, app := range discover.ScanEdgeApps(edgeDir) {
+			apps = append(apps, Entry{
+				ID:          app.ID,
+				Name:        app.Name,
+				Description: app.Description,
+				Bundle:      filepath.Base(app.Path),
+				Category:    discover.SourceEdge,
+				Path:        app.Path,
+			})
+		}
 	}
 
 	return apps
