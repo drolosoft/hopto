@@ -33,6 +33,14 @@ var (
 	// already worked out a Problems or Duplicate answer; the store must
 	// not write anything, but the caller must not see it as a real error.
 	errAnswered = errors.New("answered without writing")
+
+	// errAlreadyAdopted answers HideApp on the id of a discovered app
+	// that a hand-added entry already opens: the UI never offers it (a
+	// twin never reaches the grid under its discovered id), and hiding
+	// it would recreate the dead [[hidden]] row AddApp otherwise drops.
+	errAlreadyAdopted = errors.New(
+		"already added by hand, cannot be hidden under its discovered id",
+	)
 )
 
 // iconFilePerm keeps the icons private like the rest of the data folder.
@@ -231,6 +239,13 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 		}
 
 		draft.Apps = append(draft.Apps, app)
+
+		// The app just adopted by hand may be the one a [[hidden]] row
+		// still names by its discovered id; appViews will never show
+		// that id again, so the row would be a dead one otherwise, the
+		// "Hidden" chip on an empty list the final review found.
+		dropTwinHidden(draft, a.discover(draft.Settings), app)
+
 		result = SaveResult{ID: id, Problems: map[string]string{}}
 
 		return nil
@@ -243,6 +258,25 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	}
 
 	return result, nil
+}
+
+// dropTwinHidden removes the [[hidden]] row of a discovered app once the
+// user has just adopted it by hand under app's id.
+func dropTwinHidden(
+	draft *library.Library, discovered []discover.App, app library.AppEntry,
+) {
+	for _, found := range discovered {
+		sameApp := found.Path == app.Path ||
+			(app.BundleID != "" && found.BundleID == app.BundleID)
+		if !sameApp {
+			continue
+		}
+
+		draft.Hidden = slices.DeleteFunc(
+			draft.Hidden,
+			func(hidden library.Hidden) bool { return hidden.ID == found.ID },
+		)
+	}
 }
 
 // UpdateApp replaces the fields of a hand-added app, checking them inside
@@ -294,7 +328,10 @@ func (a *App) DeleteApp(id string) error {
 	return nil
 }
 
-// HideApp keeps a discovered app out of the list. Hiding twice is fine.
+// HideApp keeps a discovered app out of the list. Hiding twice is fine;
+// hiding the discovered id of an app already adopted by hand is refused,
+// since it is unreachable from the UI (a twin never reaches the grid
+// under that id) and would only recreate the dead row AddApp drops.
 func (a *App) HideApp(id string) error {
 	isDiscovered := strings.HasPrefix(id, discover.PrefixApplications) ||
 		strings.HasPrefix(id, discover.PrefixEdge)
@@ -303,6 +340,13 @@ func (a *App) HideApp(id string) error {
 	}
 
 	return a.library.Apply(func(draft *library.Library) error {
+		twins := adoptedTwins(draft.Apps)
+		for _, found := range a.discover(draft.Settings) {
+			if found.ID == id && isAdopted(twins, found.Path, found.BundleID) {
+				return fmt.Errorf("%w: %s", errAlreadyAdopted, id)
+			}
+		}
+
 		for _, hidden := range draft.Hidden {
 			if hidden.ID == id {
 				return nil

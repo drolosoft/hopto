@@ -120,9 +120,19 @@ func (a *App) Categories(tab string) []CategoryView {
 		hidden[entry.ID] = true
 	}
 
+	// A discovered app already adopted by a hand-added entry never
+	// reaches the grid (appViews skips it), so it must not count towards
+	// either chip: counting it here is what left a "Hidden" chip open on
+	// an empty list once its only hidden app had been adopted by hand.
+	twins := adoptedTwins(lib.Apps)
+
 	present := map[string]bool{}
 	anyHidden := false
 	for _, app := range a.discover(lib.Settings) {
+		if isAdopted(twins, app.Path, app.BundleID) {
+			continue
+		}
+
 		// A search-only app is never on the grid, so it cannot be the
 		// reason its chip exists.
 		if !a.searchOnly(app.Path) {
@@ -258,21 +268,10 @@ func (a *App) appViews(lib library.Library) []ItemView {
 
 	// An app the user also added by hand (it is how a discovered app
 	// gets a category) is listed once, as the hand-added entry.
-	adopted := map[string]bool{}
-	for _, app := range lib.Apps {
-		if app.Path != "" {
-			adopted["path:"+app.Path] = true
-		}
-
-		if app.BundleID != "" {
-			adopted["bundle:"+app.BundleID] = true
-		}
-	}
+	adopted := adoptedTwins(lib.Apps)
 
 	for _, app := range a.discover(lib.Settings) {
-		twin := adopted["path:"+app.Path] ||
-			(app.BundleID != "" && adopted["bundle:"+app.BundleID])
-		if twin {
+		if isAdopted(adopted, app.Path, app.BundleID) {
 			continue
 		}
 
@@ -372,4 +371,31 @@ func (a *App) iconSource(id string) (string, bool) {
 func (a *App) searchOnly(path string) bool {
 	return a.systemApps != "" &&
 		strings.HasPrefix(path, a.systemApps+string(filepath.Separator))
+}
+
+// adoptedTwins is the set of hand-added apps' paths and bundle ids, keyed
+// twice over (once per kind of match), so a discovered app sharing either
+// is the same app the user already has under another id. appViews and
+// Categories both need it, so it lives here once instead of twice.
+func adoptedTwins(apps []library.AppEntry) map[string]bool {
+	twins := map[string]bool{}
+
+	for _, app := range apps {
+		if app.Path != "" {
+			twins["path:"+app.Path] = true
+		}
+
+		if app.BundleID != "" {
+			twins["bundle:"+app.BundleID] = true
+		}
+	}
+
+	return twins
+}
+
+// isAdopted reports whether a discovered app, named by its path and
+// bundle id, already has a hand-added twin in the set adoptedTwins built.
+func isAdopted(twins map[string]bool, path, bundleID string) bool {
+	return twins["path:"+path] ||
+		(bundleID != "" && twins["bundle:"+bundleID])
 }

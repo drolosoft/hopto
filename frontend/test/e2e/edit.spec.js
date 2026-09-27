@@ -128,6 +128,27 @@ test('a found app is hidden after asking, and comes back from the Hidden chip at
     await expect(page.locator('#categories .chip[aria-pressed="true"] .label')).toHaveText('All');
 });
 
+test('adopting a hidden app by hand closes the Hidden chip', async ({page}) => {
+    await shown(page, 'apps');
+    await page.keyboard.press('ArrowRight');
+    await expect(selected(page).locator('.name')).toHaveText('Mail');
+
+    await page.keyboard.press('Meta+Backspace');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#categories .chip', {hasText: 'Hidden'})).toHaveCount(1);
+
+    await page.locator('#categories .chip', {hasText: 'Hidden'}).click();
+    await page.keyboard.press('Meta+e');
+    await expect(page.locator('#editor h2')).toHaveText('New app');
+    await expect(page.locator('#editor-path')).toHaveValue('/Applications/Mail.app');
+
+    await page.keyboard.press('Enter');
+    const [saved] = await payloads(page, 'AddApp');
+    expect(JSON.parse(saved)).toEqual({path: '/Applications/Mail.app', bundleId: 'com.apple.mail', name: 'Mail', description: '', category: 'tools'});
+
+    await expect(page.locator('#categories .chip', {hasText: 'Hidden'})).toHaveCount(0);
+});
+
 test('a hand-added app is deleted, not hidden', async ({page}) => {
     await shown(page, 'apps');
     await page.keyboard.press('Meta+Backspace');

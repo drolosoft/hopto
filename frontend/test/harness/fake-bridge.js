@@ -66,6 +66,30 @@ const queuedSave = () => {
     return answer;
 };
 
+/**
+ * Throws once when a test has armed window.nextSaveThrow, so saveEditor's
+ * failure path (the category was already created, the save itself was
+ * not) can be exercised without a real network failure.
+ */
+const maybeThrowOnSave = () => {
+    if (window.nextSaveThrow) {
+        const message = window.nextSaveThrow;
+        window.nextSaveThrow = null;
+        throw new Error(message);
+    }
+};
+
+/**
+ * Whether a discovered app is the one being adopted by hand: the same
+ * rule Go's AddApp uses to drop a twin's row, matched by path or bundle
+ * id so the fixture never lists the same app twice after AddApp.
+ * @param {object} app
+ * @param {{path: string, bundleId: string}} input
+ * @returns {boolean}
+ */
+const isDiscoveredTwin = (app, input) => app.source !== 'library'
+    && (app.path === input.path || (input.bundleId !== '' && app.bundleId === input.bundleId));
+
 const call = (name) => async (...args) => {
     window.calls.push([name, ...args].join(':'));
 };
@@ -108,6 +132,7 @@ window.go = {main: {App: {
     },
     AddLink: async (input) => {
         window.calls.push(`AddLink:${JSON.stringify(input)}`);
+        maybeThrowOnSave();
         const queued = queuedSave();
         if (queued) {
             return queued;
@@ -188,6 +213,13 @@ window.go = {main: {App: {
             return queued;
         }
         const id = slug(input.name);
+        // Like Go's AddApp, adopting a discovered app by hand drops its
+        // old row: keeping both would duplicate it on the grid and leave
+        // a hidden twin's "Hidden" chip open on nothing to show.
+        const twinIndex = apps.findIndex((app) => isDiscoveredTwin(app, input));
+        if (twinIndex >= 0) {
+            apps.splice(twinIndex, 1);
+        }
         apps.push({id, key: `apps:${id}`, kind: 'app', source: 'library', name: input.name, description: input.description, url: '', host: '', path: input.path, bundleId: input.bundleId, category: input.category, keywords: [], iconUrl: '', hidden: false, missing: false});
         return {id, problems: {}, duplicate: null};
     },

@@ -327,6 +327,54 @@ func TestAppCRUDAndHiding(t *testing.T) {
 	}
 }
 
+// Adopting a hidden discovered app by hand must close its "Hidden" chip,
+// not leave it pointing at nothing: AddApp drops the twin's [[hidden]]
+// row in the same commit that adds the hand-added entry.
+func TestAddAppDropsAHiddenTwinsHiddenRow(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
+
+	if err := app.HideApp("app-alpha"); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := app.AddApp(AppInput{Path: bundle, Category: "tools"})
+	if err != nil || result.ID != "alpha" {
+		t.Fatalf("add: %+v %v", result, err)
+	}
+
+	for _, category := range app.Categories(tabApps) {
+		if category.ID == hiddenChip {
+			t.Error("hidden chip survives the twin's adoption")
+		}
+	}
+
+	if hidden := app.library.Snapshot().Hidden; len(hidden) != 0 {
+		t.Errorf("the discovered twin's hidden row was not dropped: %+v", hidden)
+	}
+}
+
+// HideApp on the discovered id of an app already adopted by hand is
+// unreachable from the UI (a twin never reaches the grid under that id):
+// calling it directly is refused rather than recreating the dead row
+// AddApp just learned to drop.
+func TestHideAppRefusesAnAlreadyAdoptedTwin(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
+
+	addApp(t, app, library.AppEntry{
+		ID: "alpha", Name: "Alpha", Path: bundle, Category: "tools",
+	})
+
+	if err := app.HideApp("app-alpha"); !errors.Is(err, errAlreadyAdopted) {
+		t.Errorf("hiding an adopted twin: %v", err)
+	}
+
+	if hidden := app.library.Snapshot().Hidden; len(hidden) != 0 {
+		t.Errorf("an adopted twin gained a hidden row: %+v", hidden)
+	}
+}
+
 // An app named like an existing link must not take its id: the two would
 // collide on icons/<id>.png and confuse CopyTarget, RevealInFinder and
 // iconURL, none of which know which tab an id came from.
