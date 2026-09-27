@@ -22,7 +22,7 @@ BLOCKED_PATTERNS=(
   '^\.claude/'                       # AI session config, custom commands
   '^\.superpowers/'                  # skill workspace
   '^CLAUDE\.md$'                     # AI project instructions
-  '^CONTINUE\.md$'                   # cross-session status notes (cross-session status notes)
+  '^CONTINUE\.md$'                   # cross-session status notes
   '^docs/superpowers/'               # specs & plans
   '^docs/prompts/'                   # prompt drafts
   '^reports/'                        # daily/marketing reports
@@ -36,9 +36,7 @@ BLOCKED_PATTERNS=(
   '^library\.toml(\.bak)?$'          # the owner's own launcher data, never the shipped example
   '\.local\.toml$'                   # any per-machine override left at the root
   '^icons/'                          # exported icon renders dropped at the root for review
-  # '^links\.json$'                  # enable in plan 2, once links.json stops being the
-                                      # generic seed of the links tab and starts holding
-                                      # the owner's real bookmarks
+  '^links\.json$'                    # the old launcher's bookmarks file, never the seed
 )
 
 # Root-level Markdown allow-list. Working notes tend to be dropped at the

@@ -73,8 +73,9 @@ var iconShPattern = regexp.MustCompile(`^sh:[a-z0-9][a-z0-9-]{0,63}$`)
 // look like one, or hiding and usage keys would get confused.
 var reservedPrefixes = []string{"edge-", "app-"}
 
-// reservedCategoryIDs are the virtual chips of the page.
-var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true}
+// reservedCategoryIDs are the virtual chips of the page: the favourites
+// filter and the two groups of discovered apps.
+var reservedCategoryIDs = map[string]bool{"favoritos": true, "favorites": true, "applications": true, "edge": true}
 
 // The values settings accept.
 var (
@@ -425,6 +426,10 @@ func checkSettings(settings Settings) error {
 
 	if settings.HotkeyLinks == "" {
 		return &Problem{Field: "hotkey_links", Key: "settings.hotkey", Detail: "hotkeys cannot be empty"}
+	}
+
+	if settings.SecondaryBrowser != "" && !bundlePattern.MatchString(settings.SecondaryBrowser) {
+		return &Problem{Field: "secondary_browser", Key: "settings.browser", Detail: "secondary_browser must be a bundle id like com.apple.Safari"}
 	}
 
 	return nil

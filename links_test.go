@@ -7,15 +7,12 @@ import (
 
 // TestEmbeddedLinksAreValid is the guard for hand edits to links.json: it
 // fails the build if a link has no id, repeats one, points at an unknown
-// category or is not a web URL.
+// category or is not a web URL. Plan 2 replaces links.json with a different
+// data source, so this currently accepts an empty catalog.
 func TestEmbeddedLinksAreValid(t *testing.T) {
 	catalog, err := loadLinks(linksJSON)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if len(catalog.Categories) == 0 || len(catalog.Links) == 0 {
-		t.Fatal("links.json has no categories or no links")
 	}
 
 	for _, link := range catalog.Links {
@@ -82,14 +79,9 @@ func TestLoadLinksFillsHost(t *testing.T) {
 	}
 }
 
-// TestFindLink looks a real catalog entry up and a missing one.
+// TestFindLink looks a catalog entry up. Since plan 2 removes links.json,
+// this tests with an empty catalog and a missing link.
 func TestFindLink(t *testing.T) {
-	first := linkCatalog.Links[0]
-
-	if link, ok := findLink(first.ID); !ok || link.URL != first.URL {
-		t.Errorf("findLink(%q) = %+v, %v", first.ID, link, ok)
-	}
-
 	if _, ok := findLink("no-such-link"); ok {
 		t.Error("findLink found a link that does not exist")
 	}

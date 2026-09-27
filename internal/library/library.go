@@ -27,14 +27,18 @@ type Library struct {
 // Settings are the few knobs of hopto. Language "auto" follows the system;
 // the hotkeys are specs like "cmd+shift+space" parsed by the app; the icon
 // services are third parties asked for a favicon, in order, and are opt-in
-// because they receive the host of every link.
+// because they receive the host of every link; the secondary browser is the
+// bundle id ⌘↩ opens links with; and allow_private_icon_hosts lets the icon
+// fetch reach loopback and private addresses.
 type Settings struct {
-	Language         string   `toml:"language"`
-	HotkeyApps       string   `toml:"hotkey_apps"`
-	HotkeyLinks      string   `toml:"hotkey_links"`
-	ScanApplications bool     `toml:"scan_applications"`
-	DiscoverEdgeApps bool     `toml:"discover_edge_apps"`
-	IconServices     []string `toml:"icon_services"`
+	Language              string   `toml:"language"`
+	HotkeyApps            string   `toml:"hotkey_apps"`
+	HotkeyLinks           string   `toml:"hotkey_links"`
+	ScanApplications      bool     `toml:"scan_applications"`
+	DiscoverEdgeApps      bool     `toml:"discover_edge_apps"`
+	IconServices          []string `toml:"icon_services"`
+	SecondaryBrowser      string   `toml:"secondary_browser,omitempty"`
+	AllowPrivateIconHosts bool     `toml:"allow_private_icon_hosts"`
 }
 
 // Category is one filter chip. The array order in the file is the order of

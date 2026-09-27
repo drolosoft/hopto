@@ -8,11 +8,9 @@ import (
 )
 
 // linksJSON is the catalog of "mis links". It is data, not code, so adding a
-// link or a category is an edit to links.json and a rebuild; the tests check
-// it on every run.
-//
-//go:embed links.json
-var linksJSON []byte
+// link or a category is an edit to links.json and a rebuild. Plan 2 removes
+// this file from the repo, so the fallback is an empty catalog.
+var linksJSON = []byte(`{"categories":[],"links":[]}`)
 
 // Category groups apps or links under one filter chip on the page.
 type Category struct {

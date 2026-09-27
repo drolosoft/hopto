@@ -46,8 +46,8 @@ frontend/src/assets/icons/hopto.svg
 .github/workflows/ci.yml
 PUBLIC
 
-echo "▶ links.json is still today's generic seed, so it must pass for now:"
-must_allow links.json
+echo "▶ links.json is the old launcher's bookmarks file, not the public seed:"
+must_block links.json
 
 echo "▶ a root .md that matches no named pattern still falls through to the allow-list check:"
 must_block NOTES.md

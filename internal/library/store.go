@@ -13,10 +13,10 @@ import (
 	"github.com/drolosoft/hopto/internal/atomicfile"
 )
 
-// ErrReadOnly is returned by Apply while the file on disk cannot be parsed
-// or comes from a newer version: hopto never rewrites a file it does not
-// understand.
-var ErrReadOnly = errors.New("library: the file cannot be parsed, refusing to overwrite it")
+// ErrReadOnly is returned by Apply while the file on disk cannot be used
+// (it does not parse, is too large, comes from a newer hopto or has
+// vanished): hopto never rewrites a file it does not understand.
+var ErrReadOnly = errors.New("library: the file on disk cannot be used, refusing to overwrite it")
 
 // maxFileBytes is the largest library.toml hopto will read. 2000 entries
 // (the cap Validate enforces) encode to well under this; anything bigger
@@ -253,7 +253,10 @@ func (s *Store) load(data []byte) error {
 }
 
 // write encodes and saves, keeping the previous file in .bak, and remembers
-// the checksum of what it wrote so the next reload knows this write was ours.
+// the checksum of what it wrote so the next reload knows this write was
+// ours. Apply refuses to run while the file is broken, so the file .bak
+// replaces is always one that parsed: .bak is the last good version, not
+// merely the previous bytes.
 func (s *Store) write(lib Library) error {
 	data, err := Encode(lib)
 	if err != nil {

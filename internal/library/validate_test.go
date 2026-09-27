@@ -153,3 +153,40 @@ func TestValidateRefusesTooManyItems(t *testing.T) {
 		t.Fatalf("error = %v, want ErrTooLarge", err)
 	}
 }
+
+// The secondary browser is handed to `open -b`, so it has to be a bundle
+// id; an empty value means "no secondary browser" and is fine.
+func TestValidateSecondaryBrowser(t *testing.T) {
+	cases := map[string]bool{
+		"":                      true,
+		"com.apple.Safari":      true,
+		"org.mozilla.firefox":   true,
+		"Safari":                false,
+		"/Applications/Safari":  false,
+		"com.apple.Safari; rm":  false,
+	}
+
+	for browser, ok := range cases {
+		lib := Default()
+		lib.Settings.SecondaryBrowser = browser
+
+		err := Validate(lib, "/Users/someone")
+		if ok && err != nil {
+			t.Errorf("%q: unexpected error %v", browser, err)
+		}
+
+		if !ok && err == nil {
+			t.Errorf("%q: expected an error", browser)
+		}
+	}
+}
+
+// The virtual chips of the apps tab cannot be taken by a user category.
+func TestCheckCategoryRefusesVirtualIDs(t *testing.T) {
+	for _, id := range []string{"favoritos", "favorites", "applications", "edge"} {
+		problems := CheckCategory(Category{ID: id, Name: "X", Tab: TabApps})
+		if len(problems) == 0 {
+			t.Errorf("%q accepted as a category id", id)
+		}
+	}
+}
