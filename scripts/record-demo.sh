@@ -34,8 +34,14 @@ record_seconds=16
 gif_fps=12
 gif_width=800
 
-# Points of shadow kept around the panel when cropping.
-margin=24
+# The panel's own corners are the frame now, so the crop stops right
+# at its edge; kept as a variable in case a future recording ever
+# needs breathing room again.
+margin=0
+
+# Radius, in points, of the panel's own rounded corners; the corner
+# rounding below scales it down to whatever width the GIF ends up at.
+corner_radius=20
 
 # The panel is translucent (vibrancy), so the recording always shows
 # whatever sits behind it. This flat, neutral colour reads well behind
@@ -203,12 +209,28 @@ crop="$(awk -v pixels="$movie_width" -v points="$screen_width" \
     printf "%d:%d:%d:%d", (width + 2 * margin) * factor, (height + 2 * margin) * factor, (left - margin) * factor, (top - margin) * factor
 }')"
 
+# The radius shrinks with the same factor the crop grows by: points of
+# panel times the GIF's own width divided by the panel's width in points.
+corner_radius_px="$(awk -v gif_width="$gif_width" -v points="$width" \
+    -v radius="$corner_radius" 'BEGIN {
+    printf "%.2f", radius * gif_width / points
+}')"
+
 mkdir -p "$repo/assets"
 # -ss 2, not 1: with the backdrop in place the first second is a still
 # frame of flat colour rather than bare desktop, and skipping a little
 # further in leaves the GIF starting once the panel is already moving.
+#
+# A GIF's transparency is 1-bit: a pixel is either opaque or invisible,
+# never in between. That is enough here, because the corners are the
+# only pixels that need to disappear; the panel itself is translucent
+# (vibrancy), so its interior stays a solid, opaque read of whatever
+# backdrop colour sat behind it during recording. The geq step paints
+# alpha 0 outside a rounded-rectangle mask and 255 inside it, and
+# palettegen/paletteuse are told to keep that one transparent colour
+# instead of dithering it away.
 ffmpeg -loglevel error -y -ss 2 -i "$work/demo.mov" \
-    -vf "crop=$crop,fps=$gif_fps,scale=$gif_width:-1:flags=lanczos,split[frames][copy];[copy]palettegen=stats_mode=diff[palette];[frames][palette]paletteuse=dither=bayer:bayer_scale=4" \
+    -vf "crop=$crop,fps=$gif_fps,scale=$gif_width:-1:flags=lanczos,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*lt(hypot(max(0,abs(X-(W-1)/2)-((W-1)/2-$corner_radius_px)),max(0,abs(Y-(H-1)/2)-((H-1)/2-$corner_radius_px))),$corner_radius_px+0.5)',split[frames][copy];[copy]palettegen=reserve_transparent=1:stats_mode=diff[palette];[frames][palette]paletteuse=alpha_threshold=128:dither=bayer:bayer_scale=4" \
     "$repo/assets/demo.gif"
 
 size="$(stat -f %z "$repo/assets/demo.gif")"

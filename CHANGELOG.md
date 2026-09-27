@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `record-demo.sh` no longer closes Preview windows that were already open before the recording; it now closes only the backdrop image it created itself.
 - A version tag now fails to release unless the tagged commit's CI run was green, instead of publishing a build that had skipped golangci-lint, gofmt and Playwright.
 - "Open at login" refuses a translocated copy of hopto.app, which would otherwise stop working the first time the Mac restarts.
+- The demo GIF shows the panel alone, with transparent rounded corners, instead of a dark frame around it.
 
 ## [v0.1.0] - 2026-09-27
 
