@@ -4,10 +4,12 @@ on:
   push:
     tags: ['v*']
 
-# Publishing the release writes to the repository's releases; nothing
-# else is needed.
+# Publishing the release writes to the repository's releases; reading
+# check-runs needs its own scope, since declaring any permissions here
+# sets every other one to none.
 permissions:
   contents: write
+  checks: read
 
 jobs:
   release:
@@ -38,6 +40,21 @@ jobs:
       # Fails early, before a long build, when the notes are missing.
       - name: Release notes
         run: bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > release-notes.md
+
+      # This job skips golangci-lint, gofmt and Playwright, all of which
+      # CI already ran on this same commit: a tag must sit on a commit
+      # CI passed, or this release would publish a build CI would have
+      # refused.
+      - name: Require CI green on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+              --jq '[.check_runs[] | select(.name=="test") | .conclusion] | first')"
+          if [ "$conclusion" != "success" ]; then
+            echo "CI's test job on $GITHUB_SHA is not green (got: ${conclusion:-none})" >&2
+            exit 1
+          fi
 
       - uses: actions/setup-go@v5
         with:
