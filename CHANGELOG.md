@@ -17,7 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typing searches apps and links together, ranked by name, host, keywords and description; the empty panel shows favourites, recent items and each category.
 - ⌘C copies the URL or path, ⌘↩ opens a link in the secondary browser, ⌥↩ reveals an app in the Finder, ⌘⇧↩ opens every item of a chip, ? shows the shortcuts.
 - The interface speaks English and Spanish, following the system unless the settings say otherwise.
+- Typing something that is not there offers "＋ Add": Enter opens the editor in the panel, reads the page's name, description and icon, ⌘1-9 picks the category (or types a new one) and Enter saves.
+- ⌘E edits the selected link or app; ⌘⌫ asks in the row before deleting a link or hiding a found app, and hidden apps come back from their own chip.
+- ⌘⇧E renames the active category in place and ⌘⇧⌫ deletes it once it is empty.
+- Apps are added by hand through the native dialog (⌘N or "Search Applications…" on the apps tab), which is also how a found app gets a category.
+- Apps in /System/Applications are found by typing without filling the grid.
+- A menu bar item with Open, Help, Edit library.toml, Open at login and Quit.
+- The first run shows a welcome with the shortcuts, whether each one registered, and a warning when macOS keeps ⌘⌥Space for the Finder.
+- The help names the version, the commit and where library.toml lives; the broken-file notice has a button that opens the file.
 
 ### Fixed
 - A corrupt usage.json is no longer overwritten on the first opening.
 - The selection no longer disappears when moving up on a short apps grid.
+- An Edge web app no longer swallows a link to another page of the same host.
+- Editing a link keeps its icon hint, and an edit racing an add can no longer leave two links to the same page.
