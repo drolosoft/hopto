@@ -149,6 +149,30 @@ test('adopting a hidden app by hand closes the Hidden chip', async ({page}) => {
     await expect(page.locator('#categories .chip', {hasText: 'Hidden'})).toHaveCount(0);
 });
 
+test('a save that fails after creating its category does not mint a second one on retry', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.press('Meta+n');
+    await page.keyboard.type('https://new.example.org');
+    await page.keyboard.press('Meta+3');
+    await expect(page.locator('#editor-new-category')).toBeFocused();
+    await page.keyboard.type('Tools');
+
+    await page.evaluate(() => {
+        window.nextSaveThrow = 'offline';
+    });
+    await page.keyboard.press('Enter');
+
+    await expect(page.locator('#toast')).toContainText('offline');
+    expect(await payloads(page, 'AddCategory')).toEqual(['links:Tools']);
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#editor')).toBeHidden();
+
+    expect(await payloads(page, 'AddCategory')).toEqual(['links:Tools']);
+    const [saved] = await payloads(page, 'AddLink');
+    expect(JSON.parse(saved).category).toBe('tools');
+});
+
 test('a hand-added app is deleted, not hidden', async ({page}) => {
     await shown(page, 'apps');
     await page.keyboard.press('Meta+Backspace');

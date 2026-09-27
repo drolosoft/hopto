@@ -257,6 +257,14 @@ export async function saveEditor() {
 
     try {
         const ready = await withCategory(currentDraft());
+
+        // withCategory may have already created the category before
+        // persist can throw; storing its answer now means a retry after
+        // that failure sees newCategory already cleared, instead of
+        // running AddCategory again for the same typed name and minting
+        // a second chip ("foo-2") for it.
+        setDraft(ready);
+
         const result = await persist(ready);
 
         // A `shown` may have wiped the editor while Go was writing.
