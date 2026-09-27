@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalize, matches, filterItems, decorate, sortByUse, FAVORITES} from '../src/filter.js';
+import {normalize, score, decorate, rankItems, filterByCategory, sections, unifiedSearch, pairByHost, FAVORITES} from '../src/filter.js';
 
-const items = [
-    {id: 'cronometro', name: 'Cronómetro', description: 'Cuenta atrás de 1:05 con semáforo', category: 'utilidades'},
-    {id: 'gitea', name: 'Gitea', description: 'Los repos, en el servidor', host: 'repos.example.com', category: 'ecosistema'},
-    {id: 'go-doc', name: 'Go', description: 'Documentación oficial de Go', host: 'go.dev', category: 'documentacion'},
+const links = [
+    {id: 'gitea', key: 'links:gitea', kind: 'link', name: 'Gitea', description: 'Repos en el servidor', host: 'repos.example.com', category: 'eco', keywords: ['git']},
+    {id: 'go-doc', key: 'links:go-doc', kind: 'link', name: 'Go', description: 'Documentación oficial de Go', host: 'go.dev', category: 'docs', keywords: []},
+    {id: 'github', key: 'links:github', kind: 'link', name: 'GitHub', description: 'Pull requests', host: 'github.com', category: 'eco', keywords: []},
+];
+
+const apps = [
+    {id: 'app-mail', key: 'apps:app-mail', kind: 'app', source: 'applications', name: 'Mail', description: '', category: 'applications', keywords: []},
+    {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', host: 'github.com', category: 'edge', keywords: []},
 ];
 
 test('normalize strips accents and case', () => {
@@ -13,49 +18,84 @@ test('normalize strips accents and case', () => {
     assert.equal(normalize(undefined), '');
 });
 
-test('an empty query matches everything', () => {
-    assert.ok(items.every((item) => matches(item, '')));
-    assert.ok(items.every((item) => matches(item, '   ')));
+test('score ranks name prefix over word prefix over substring, and text fields at half', () => {
+    assert.equal(score(links[0], 'git'), 3);
+    assert.equal(score({...links[0], name: 'My Gitea'}, 'git'), 2);
+    // links[0] keeps its keywords: ['git'], so the exact match in that
+    // field also scores (a text field at half of NAME_PREFIX, 3 × 0.5 =
+    // 1.5), which outranks the name's own substring hit (1).
+    assert.equal(score({...links[0], name: 'Agitea'}, 'git'), 1.5);
+    assert.equal(score(links[1], 'oficial'), 1, 'word prefix in a text field: 2 × 0.5');
+    assert.equal(score(links[0], 'repos'), 1.5, 'prefix of the host or the description: 3 × 0.5');
+    assert.equal(score(links[0], 'nothing'), 0);
+    assert.equal(score(links[0], ''), 0);
 });
 
-test('matches ignores accents and searches name, description and host', () => {
-    assert.ok(matches(items[0], 'cronometro'));
-    assert.ok(matches(items[0], 'semaforo'));
-    assert.ok(matches(items[1], 'repos.example'));
-    assert.ok(!matches(items[1], 'cronometro'));
+test('every word of the query has to match somewhere, scores add up', () => {
+    assert.equal(score(links[0], 'gitea servidor'), 4);
+    assert.equal(score(links[0], 'gitea vps'), 0);
 });
 
-test('every word of the query has to match', () => {
-    assert.ok(matches(items[1], 'gitea servidor'));
-    assert.ok(!matches(items[1], 'gitea vps'));
-});
+test('decorate adds favourite, opens and lastOpened from the usage file', () => {
+    const usage = {opens: {'links:gitea': 4}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: ['links:go-doc']};
+    const decorated = decorate(links, usage);
 
-test('filterItems combines category and query', () => {
-    assert.deepEqual(filterItems(items, '', '').map((item) => item.id), ['cronometro', 'gitea', 'go-doc']);
-    assert.deepEqual(filterItems(items, 'documentacion', '').map((item) => item.id), ['go-doc']);
-    assert.deepEqual(filterItems(items, 'documentacion', 'gitea'), []);
-    assert.deepEqual(filterItems(items, '', 'go').map((item) => item.id), ['go-doc']);
-});
-
-test('decorate adds key, opens and favorite from the usage file', () => {
-    const usage = {opens: {'links:gitea': 4}, favorites: ['links:go-doc']};
-    const decorated = decorate(items, 'links', usage);
-
-    assert.deepEqual(decorated.map((item) => [item.key, item.opens, item.favorite]), [
-        ['links:cronometro', 0, false],
-        ['links:gitea', 4, false],
-        ['links:go-doc', 0, true],
+    assert.deepEqual(decorated.map((item) => [item.opens, item.favorite, item.lastOpened > 0]), [
+        [4, false, true],
+        [0, true, false],
+        [0, false, false],
     ]);
-    assert.equal(items[1].opens, undefined, 'the catalog must not be touched');
+    assert.equal(links[0].opens, undefined, 'the catalog must not be touched');
 });
 
-test('sortByUse puts the most opened first and keeps catalog order otherwise', () => {
-    const decorated = decorate(items, 'links', {opens: {'links:go-doc': 2, 'links:gitea': 2, 'links:cronometro': 1}, favorites: []});
-    assert.deepEqual(sortByUse(decorated).map((item) => item.id), ['gitea', 'go-doc', 'cronometro']);
+test('rankItems orders by score, then favourite, then recency, then use', () => {
+    const decorated = decorate(links, {opens: {'links:github': 9, 'links:gitea': 1}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: []});
+    assert.deepEqual(rankItems(decorated, 'git').map((item) => item.id), ['gitea', 'github'], 'recency beats use on a tie; "go" does not contain "git"');
+    assert.deepEqual(rankItems(decorated, 'g').map((item) => item.id), ['gitea', 'github', 'go-doc']);
+
+    const favourite = decorate(links, {opens: {}, lastOpened: {}, favorites: ['links:github']});
+    assert.deepEqual(rankItems(favourite, 'g').map((item) => item.id), ['github', 'gitea', 'go-doc']);
+    assert.deepEqual(rankItems(favourite, 'zzz'), []);
 });
 
-test('the favourites chip filters on the flag and combines with the query', () => {
-    const decorated = decorate(items, 'links', {opens: {}, favorites: ['links:gitea', 'links:go-doc']});
-    assert.deepEqual(filterItems(decorated, FAVORITES, '').map((item) => item.id), ['gitea', 'go-doc']);
-    assert.deepEqual(filterItems(decorated, FAVORITES, 'repos').map((item) => item.id), ['gitea']);
+test('filterByCategory keeps everything, the favourites, or one chip', () => {
+    const decorated = decorate(links, {opens: {}, lastOpened: {}, favorites: ['links:go-doc']});
+    assert.equal(filterByCategory(decorated, '').length, 3);
+    assert.deepEqual(filterByCategory(decorated, FAVORITES).map((item) => item.id), ['go-doc']);
+    assert.deepEqual(filterByCategory(decorated, 'eco').map((item) => item.id), ['gitea', 'github']);
+});
+
+test('sections split favourites, the five most recent and the rest by category', () => {
+    const usage = {
+        opens: {},
+        lastOpened: {'links:gitea': '2026-09-26T10:00:00Z', 'links:github': '2026-09-25T10:00:00Z'},
+        favorites: ['links:github'],
+    };
+    const categories = [{id: 'eco', name: 'Eco'}, {id: 'docs', name: 'Docs'}];
+    const result = sections(decorate(links, usage), categories, 5);
+
+    assert.deepEqual(result.map((section) => [section.id, section.items.map((item) => item.id)]), [
+        ['favorites', ['github']],
+        ['recent', ['gitea']],
+        ['docs', ['go-doc']],
+    ]);
+});
+
+test('sections without favourites or recents is just the categories, hidden items left out', () => {
+    const result = sections(decorate([...links, {...apps[0], hidden: true}], {opens: {}, lastOpened: {}, favorites: []}), [{id: 'eco', name: 'Eco'}, {id: 'docs', name: 'Docs'}, {id: 'applications', name: 'Apps'}], 5);
+    assert.deepEqual(result.map((section) => section.id), ['eco', 'docs']);
+});
+
+test('unifiedSearch mixes both tabs by score and pairs an Edge app with its link', () => {
+    const usage = {opens: {}, lastOpened: {}, favorites: []};
+    const rows = unifiedSearch(decorate(apps, usage), decorate(links, usage), 'git');
+
+    assert.deepEqual(rows.map((row) => row.key), ['links:gitea', 'apps:edge-github']);
+    assert.equal(rows[1].web.id, 'github', 'the link rides along on the Edge app');
+});
+
+test('pairByHost leaves unpaired items alone', () => {
+    const rows = pairByHost([apps[0], links[0]]);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].web, undefined);
 });
