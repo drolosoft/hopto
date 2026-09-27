@@ -245,3 +245,13 @@ test('the help names the build and the library file', async ({page}) => {
         'Library: /Users/someone/Library/Application Support/hopto/library.toml',
     ]);
 });
+
+test('the menu bar Help opens the help panel over a fresh list', async ({page}) => {
+    await shown(page, 'apps');
+    await page.evaluate(() => window.listeners.help(true));
+
+    await expect(page.locator('#help')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#help')).toBeHidden();
+    expect(await calls(page)).not.toContain('Hide');
+});

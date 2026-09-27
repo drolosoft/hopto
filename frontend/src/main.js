@@ -521,6 +521,13 @@ EventsOn('icons', () => {
     refreshItems();
 });
 
+// The menu bar item's Help: Go shows the panel first (which resets the
+// state), then asks for the help on top of it.
+EventsOn('help', () => {
+    state.helpOpen = true;
+    renderHelp(state, t);
+});
+
 /**
  * Asks Go once for the build facts the help panel shows; they do not
  * change while the app runs.

@@ -42,6 +42,7 @@ type window interface {
 	SetClipboard(text string) error
 	SetAlwaysOnTop(on bool)
 	PickFile(directory string) (string, error)
+	Quit()
 }
 
 // wailsWindow is the real window. Center and Activate go through the cgo
@@ -82,6 +83,9 @@ func (w *wailsWindow) PickFile(directory string) (string, error) {
 	})
 }
 
+// Quit ends the app; the only way out besides pkill, from the menu.
+func (w *wailsWindow) Quit() { runtime.Quit(w.ctx) }
+
 // runOpen is /usr/bin/open, the only way hopto starts anything: it handles
 // bundles and URLs the way a double click in the Finder does.
 func runOpen(args ...string) error {
@@ -105,6 +109,11 @@ type App struct {
 	// Where discovery looks; the tests point them inside a temp home.
 	appRoots []string
 	edgeDir  string
+
+	// menu is the menu bar item and login the LaunchAgent behind its
+	// "Open at login" entry; the tests put fakes in both.
+	menu  menuBar
+	login loginAgent
 
 	// background counts the icon fetches in flight, so the tests (and a
 	// future clean shutdown) can wait for them.
@@ -159,7 +168,11 @@ func newApp(
 		appRoots: []string{
 			"/Applications", filepath.Join(home, "Applications"),
 		},
-		edgeDir:         discover.EdgeAppsDir(home),
+		edgeDir: discover.EdgeAppsDir(home),
+		login: loginAgent{
+			path:       launchAgentPath(home),
+			executable: os.Executable,
+		},
 		tab:             tabApps,
 		discovered:      map[string]discover.App{},
 		fetched:         map[string]bool{},
@@ -197,7 +210,7 @@ func newApp(
 
 // startup stores the context, leaves the Dock and registers the global
 // shortcuts from the library. The window starts hidden; the shortcuts are
-// the only way in, like Cmd+Tab.
+// the only way in, like Cmd+Tab. It also puts the item in the menu bar.
 func (a *App) startup(ctx context.Context) {
 	if a.window == nil {
 		a.window = &wailsWindow{ctx: ctx}
@@ -207,6 +220,14 @@ func (a *App) startup(ctx context.Context) {
 
 	apps, links := hotkeysFromSettings(a.library.Snapshot().Settings)
 	registerToggleHotkeys(a.toggle, apps, links)
+
+	// The menu bar item is the way to quit and to reach the help or the
+	// file without the shortcuts.
+	if a.menu == nil {
+		a.menu = statusBar{}
+	}
+
+	a.installMenu()
 }
 
 // Toggle shows the launcher on the apps tab, or hides it when that tab is

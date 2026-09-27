@@ -62,6 +62,42 @@ func (w *fakeWindow) PickFile(directory string) (string, error) {
 	return w.pickPath, w.pickErr
 }
 
+func (w *fakeWindow) Quit() { w.record("quit") }
+
+// fakeMenu records what App puts in the menu bar item.
+type fakeMenu struct {
+	mu      sync.Mutex
+	items   []menuItem
+	checked map[int]bool
+}
+
+func (m *fakeMenu) Install(items []menuItem) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.items = items
+	m.checked = map[int]bool{}
+
+	for _, item := range items {
+		m.checked[item.Tag] = item.Checked
+	}
+}
+
+func (m *fakeMenu) SetChecked(tag int, on bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.checked[tag] = on
+}
+
+// isChecked reads one tick under the lock.
+func (m *fakeMenu) isChecked(tag int) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.checked[tag]
+}
+
 // joined returns the calls as one string for assertions.
 func (w *fakeWindow) joined() string {
 	w.mu.Lock()
