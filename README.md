@@ -210,6 +210,7 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make test` | Page unit tests, `go vet`, Go tests with the race detector |
 | `make e2e` | Browser tests in WebKit against the built page (after `make build`) |
 | `make lint` | `gofmt` and `golangci-lint` |
+| `make dist` | The release zip, `build/dist/hopto-<version>-macos-universal.zip`, and its SHA-256 |
 | `make hooks` | Installs the pre-commit guard against internal files |
 | `make clean` | Removes the build output |
 
