@@ -11,6 +11,8 @@ frontend/package.json.md5
 # Coverage and scratch
 coverage.out
 *.tmp
+frontend/test-results/
+frontend/playwright-report/
 
 # OS and editors
 .DS_Store

@@ -2,7 +2,7 @@
 # run build itself (see wails.json), and it is what writes frontend/wailsjs
 # and frontend/dist, which go:embed needs — running npm separately first
 # would fail on a fresh clone before wailsjs exists.
-.PHONY: build test lint hooks clean
+.PHONY: build test e2e lint hooks clean
 
 build:
 	wails build -clean
@@ -11,6 +11,10 @@ test:
 	cd frontend && npm test
 	go vet ./...
 	go test -race -count=1 -cover ./...
+
+# Browser tests against the built page; needs frontend/dist (make build).
+e2e:
+	cd frontend && npm run test:e2e
 
 lint:
 	test -z "$$(gofmt -l .)"
