@@ -45,10 +45,16 @@ static void statusBarInstall(void) {
 		statusBarTarget = statusBarNewTarget();
 		statusBarItem = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
 
-		NSImage *image = [NSImage imageWithSystemSymbolName:@"square.grid.2x2" accessibilityDescription:@"hopto"];
-		if (image != nil) {
-			image.template = YES;
-			statusBarItem.button.image = image;
+		// The symbol API is newer than the 10.13 deployment target, so a
+		// Mac on 10.13-10.15 must take the word instead, not crash.
+		if (@available(macOS 11.0, *)) {
+			NSImage *image = [NSImage imageWithSystemSymbolName:@"square.grid.2x2" accessibilityDescription:@"hopto"];
+			if (image != nil) {
+				image.template = YES;
+				statusBarItem.button.image = image;
+			} else {
+				statusBarItem.button.title = @"hopto";
+			}
 		} else {
 			statusBarItem.button.title = @"hopto";
 		}
