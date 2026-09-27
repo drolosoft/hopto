@@ -100,8 +100,11 @@ func (a *App) AddLink(in LinkInput) (SaveResult, error) {
 			return errAnswered
 		}
 
+		// An id is taken by either tab: a link and an app sharing one would
+		// collide on icons/<id>.png and confuse CopyTarget, RevealInFinder
+		// and iconURL.
 		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-			return hasLinkID(*draft, candidate)
+			return hasLinkID(*draft, candidate) || hasAppID(*draft, candidate)
 		})
 
 		link = linkFromInput(id, in)
@@ -206,8 +209,9 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	var result SaveResult
 
 	err := a.library.Apply(func(draft *library.Library) error {
+		// Same reasoning as AddLink: an id must not be taken on either tab.
 		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-			return hasAppID(*draft, candidate)
+			return hasLinkID(*draft, candidate) || hasAppID(*draft, candidate)
 		})
 
 		app := appFromInput(id, in)
@@ -431,9 +435,12 @@ func (a *App) InspectURL(raw string) (LinkDraft, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), inspect.Timeout)
 	defer cancel()
 
+	// AllowHTTP only follows a redirect down to plain text when the typed
+	// URL was already http://; an https:// URL must never be downgraded
+	// while inspecting it.
 	client := safehttp.NewClient(safehttp.Options{
 		AllowPrivate: lib.Settings.AllowPrivateIconHosts,
-		AllowHTTP:    true,
+		AllowHTTP:    strings.HasPrefix(raw, "http://"),
 		Timeout:      inspect.Timeout,
 	})
 	if page, err := inspect.Fetch(ctx, client, raw); err == nil {
@@ -513,6 +520,14 @@ func (a *App) RefetchIcon(tab, id string) (string, error) {
 // an icon file, once per id per run: a site that has no icon is not asked
 // again every time the panel opens.
 func (a *App) fetchMissingIcons(links []library.Link) {
+	// A broken library.toml is served from the last good snapshot, whose
+	// ids may not be the user's any more; fetching for them would leave
+	// the seed's icons behind in the real icons/ folder once the file is
+	// fixed and those ids no longer mean the same entries.
+	if a.library.Status().ReadOnly {
+		return
+	}
+
 	for _, link := range links {
 		if icons.FileURL(a.iconsDir(), link.ID) == "" {
 			a.fetchIconLater(link.ID, link.Icon, link.URL)
@@ -649,13 +664,17 @@ func (a *App) forgetItem(tab, id string) {
 		log.Printf("usage: %v", err)
 	}
 
+	// forgetFetch bumps the id's generation before the icon file is
+	// removed, so a fetch already in flight for the deleted item finds
+	// itself stale and drops its answer instead of writing an orphan
+	// icons/<id>.png after this function returns.
+	a.forgetFetch(id)
+
 	iconPath := filepath.Join(a.iconsDir(), id+".png")
 	err := os.Remove(iconPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Printf("icon %s: %v", id, err)
 	}
-
-	a.forgetFetch(id)
 }
 
 // tidyLinkInput trims every field, fills a missing scheme and drops empty

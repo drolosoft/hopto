@@ -289,7 +289,8 @@ func (a *App) iconURL(id string) string {
 		return ""
 	}
 
-	return icons.StampURL(id, info.ModTime().Unix())
+	// Nanoseconds, not seconds: see the comment on icons.FileURL.
+	return icons.StampURL(id, info.ModTime().UnixNano())
 }
 
 // iconSource is the handler's resolver: the .icns behind an app id, from

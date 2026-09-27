@@ -199,7 +199,10 @@ func FileURL(dir, id string) string {
 		return ""
 	}
 
-	return StampURL(id, info.ModTime().Unix())
+	// Nanoseconds, not seconds: a refetch that lands within the same
+	// second as the previous write must still change the query string,
+	// or the immutable cache header keeps the web view on the old bytes.
+	return StampURL(id, info.ModTime().UnixNano())
 }
 
 // StampURL builds the page URL of an icon from its id and a stamp (a

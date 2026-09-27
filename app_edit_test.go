@@ -320,6 +320,19 @@ func TestAppCRUDAndHiding(t *testing.T) {
 	}
 }
 
+// An app named like an existing link must not take its id: the two would
+// collide on icons/<id>.png and confuse CopyTarget, RevealInFinder and
+// iconURL, none of which know which tab an id came from.
+func TestAddAppAvoidsALinkID(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	bundle := fakeBundle(t, app, "GitHub", "com.example.github")
+
+	result, err := app.AddApp(AppInput{Path: bundle, Category: "tools"})
+	if err != nil || result.ID != "github-2" || len(result.Problems) != 0 {
+		t.Fatalf("add: %+v %v", result, err)
+	}
+}
+
 func TestCategories(t *testing.T) {
 	app, _, _ := newTestApp(t)
 
@@ -472,6 +485,40 @@ func TestBackgroundIconFetchNeverTouchesTheLibrary(t *testing.T) {
 	app.background.Wait()
 	if win.joined() != before {
 		t.Error("a second fetch was started for an icon that exists")
+	}
+}
+
+// While library.toml is broken, the page still shows the last good
+// snapshot, but its ids may not be the user's once the file is fixed; a
+// background fetch started for them now would leave the seed's icons
+// behind in the real icons/ folder for good.
+func TestNoIconFetchWhileReadOnly(t *testing.T) {
+	app, win, _ := newTestApp(t)
+	allowPrivate(t, app)
+
+	broken := []byte("version = 1\n\n[[links]\nbroken\n")
+	if err := os.WriteFile(app.library.Path(), broken, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	items := app.Items(tabLinks)
+	if len(items) == 0 {
+		t.Fatal("the last good snapshot did not stay on screen")
+	}
+
+	app.background.Wait()
+
+	if strings.Contains(win.joined(), "emit:icons") {
+		t.Error("an icon fetch ran while the library is read only")
+	}
+
+	entries, err := os.ReadDir(app.iconsDir())
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+
+	if len(entries) != 0 {
+		t.Errorf("icons written to disk while read only: %v", entries)
 	}
 }
 

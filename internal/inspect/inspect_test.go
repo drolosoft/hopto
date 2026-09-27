@@ -110,6 +110,21 @@ func TestParseCutsLongText(t *testing.T) {
 	}
 }
 
+// A zero-width space is invisible but not a control character; tidy must
+// still drop it, so a page cannot smuggle a title that looks identical to
+// another one but compares as different, the same reasoning library.HostOf
+// already applies to URLs.
+func TestParseDropsFormatCharacters(t *testing.T) {
+	html := "<html><head><title>Ex\u200bample</title></head></html>"
+	base, _ := url.Parse("https://example.test/")
+
+	page := Parse(strings.NewReader(html), base)
+
+	if page.Title != "Example" {
+		t.Errorf("title = %q, want %q", page.Title, "Example")
+	}
+}
+
 func TestFetchParsesAnHTMLPage(t *testing.T) {
 	server := newHTMLServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -44,6 +44,21 @@ const maxHeaderBytes = 64 << 10
 // IsPrivate does not cover it.
 var cgnat = netip.MustParsePrefix("100.64.0.0/10")
 
+// The special-purpose IPv4 ranges Go's IsPrivate and IsLoopback do not
+// cover: "this host on this network" (RFC 1122), the benchmarking range
+// (RFC 2544) and the reserved block, whose top end is the broadcast
+// address 255.255.255.255 (RFC 1112).
+var (
+	thisNetwork = netip.MustParsePrefix("0.0.0.0/8")
+	benchmark   = netip.MustParsePrefix("198.18.0.0/15")
+	reserved    = netip.MustParsePrefix("240.0.0.0/4")
+)
+
+// nat64 is 64:ff9b::/96, the well-known prefix a NAT64 gateway uses to
+// embed an IPv4 address in the last 32 bits (RFC 6052); the embedded
+// address is what actually gets dialled, so it is checked, not the prefix.
+var nat64 = netip.MustParsePrefix("64:ff9b::/96")
+
 // Options are the few knobs of a client.
 type Options struct {
 	// AllowPrivate lets connections reach loopback, private, link-local and
@@ -66,6 +81,13 @@ type Options struct {
 func IsPrivateAddr(addr netip.Addr) bool {
 	addr = addr.Unmap()
 
+	// Unmap only undoes the IPv4-mapped ::ffff:0:0/96 form; a NAT64
+	// address carries its IPv4 in the low 32 bits instead, so it is
+	// unwrapped by hand and the embedded address is checked in its place.
+	if nat64.Contains(addr) {
+		return IsPrivateAddr(embeddedIPv4(addr))
+	}
+
 	if addr.IsLoopback() || addr.IsPrivate() || addr.IsUnspecified() {
 		return true
 	}
@@ -75,7 +97,20 @@ func IsPrivateAddr(addr netip.Addr) bool {
 		return true
 	}
 
+	if addr.Is4() && (thisNetwork.Contains(addr) ||
+		benchmark.Contains(addr) || reserved.Contains(addr)) {
+		return true
+	}
+
 	return cgnat.Contains(addr)
+}
+
+// embeddedIPv4 pulls the last four bytes out of a NAT64 address, the
+// IPv4 address the gateway will actually dial.
+func embeddedIPv4(addr netip.Addr) netip.Addr {
+	bytes := addr.As16()
+
+	return netip.AddrFrom4([4]byte{bytes[12], bytes[13], bytes[14], bytes[15]})
 }
 
 // NewClient builds a client with the checks wired in. The environment proxy

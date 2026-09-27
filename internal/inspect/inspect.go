@@ -287,15 +287,23 @@ func finish(
 	return page
 }
 
-// tidy collapses whitespace, drops control characters and cuts to a
-// number of runes, so the text fits the library's rules as it is.
+// tidy collapses whitespace, drops control and invisible format
+// characters, and cuts to a number of runes, so the text fits the
+// library's rules as it is.
 func tidy(text string, maxRunes int) string {
 	clean := strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
+		switch {
+		case unicode.IsControl(r):
 			return ' '
+		case unicode.Is(unicode.Cf, r):
+			// A format character (zero-width space, bidi marks, the byte
+			// order mark) never means a word break the way a control
+			// character does, so it is dropped outright rather than
+			// turned into a space that would split one word into two.
+			return -1
+		default:
+			return r
 		}
-
-		return r
 	}, text)
 
 	words := strings.Fields(clean)

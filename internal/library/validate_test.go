@@ -91,6 +91,21 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
+// A link and an app must never share an id: they would collide on
+// icons/<id>.png and confuse CopyTarget, RevealInFinder and iconURL, which
+// all key off the id alone without knowing which tab it came from.
+func TestValidateRefusesAnIDSharedByLinkAndApp(t *testing.T) {
+	lib := validLibrary()
+	lib.Apps[0].ID = "github"
+
+	err := Validate(lib, "/Users/someone")
+
+	var problem *Problem
+	if !errors.As(err, &problem) || problem.Field != "id" || problem.Key != "id.duplicate" {
+		t.Fatalf("error = %v, want an id.duplicate Problem", err)
+	}
+}
+
 // http is allowed (ttyd, the tailnet) and so is the user's own Applications
 // folder; the app is valid whether or not the .app exists on this Mac.
 func TestValidateAllows(t *testing.T) {

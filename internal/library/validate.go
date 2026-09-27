@@ -118,34 +118,41 @@ func Validate(lib Library, home string) error {
 		tabs[category.ID] = category.Tab
 	}
 
-	seen := make(map[string]bool, len(lib.Links))
+	// Link ids are kept around past their own loop: an app sharing one
+	// would collide on icons/<id>.png and confuse CopyTarget, RevealInFinder
+	// and iconURL, so the apps loop below checks against this set too.
+	linkIDs := make(map[string]bool, len(lib.Links))
 	for _, link := range lib.Links {
 		if problems := CheckLink(link); len(problems) > 0 {
 			return &problems[0]
 		}
 
-		if seen[link.ID] {
+		if linkIDs[link.ID] {
 			return &Problem{Field: "id", ID: link.ID, Key: "id.duplicate", Detail: "duplicate link id"}
 		}
 
-		seen[link.ID] = true
+		linkIDs[link.ID] = true
 
 		if err := checkCategoryRef(link.ID, link.Category, TabLinks, tabs); err != nil {
 			return err
 		}
 	}
 
-	seen = make(map[string]bool, len(lib.Apps))
+	appIDs := make(map[string]bool, len(lib.Apps))
 	for _, app := range lib.Apps {
 		if problems := CheckApp(app, home); len(problems) > 0 {
 			return &problems[0]
 		}
 
-		if seen[app.ID] {
+		if appIDs[app.ID] {
 			return &Problem{Field: "id", ID: app.ID, Key: "id.duplicate", Detail: "duplicate app id"}
 		}
 
-		seen[app.ID] = true
+		if linkIDs[app.ID] {
+			return &Problem{Field: "id", ID: app.ID, Key: "id.duplicate", Detail: "id used by both a link and an app"}
+		}
+
+		appIDs[app.ID] = true
 
 		if err := checkCategoryRef(app.ID, app.Category, TabApps, tabs); err != nil {
 			return err
