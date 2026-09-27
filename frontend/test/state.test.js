@@ -46,7 +46,7 @@ test('counts drops a hidden app while searching, like the list does', () => {
 test('emptyMessage points at the other tab, or says there is nothing', () => {
     assert.equal(emptyMessage(stateWith({query: 'alp'}), t), 'Nothing here · 1 in Apps (⇥)');
     assert.equal(emptyMessage(stateWith({query: 'zzz'}), t), 'Nothing matches');
-    assert.equal(emptyMessage(stateWith({links: []}), t), 'No links yet');
+    assert.equal(emptyMessage(stateWith({links: []}), t), 'No links yet · ⌘N adds one');
     assert.equal(emptyMessage(stateWith({tab: 'apps', apps: []}), t), 'No apps in /Applications');
 });
 

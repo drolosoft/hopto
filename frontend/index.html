@@ -15,7 +15,7 @@
         <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-controls="grid" aria-expanded="true" autocomplete="off" spellcheck="false"/>
     </header>
     <nav id="categories"></nav>
-    <p id="status" hidden></p>
+    <div id="status" hidden><p class="text"></p><button type="button" class="fix"></button></div>
     <section id="content">
         <ul id="grid" role="listbox"></ul>
         <p id="empty" hidden></p>
@@ -32,6 +32,7 @@
         <ul></ul>
         <p class="close"></p>
     </section>
+    <section id="welcome" role="dialog" aria-modal="true" hidden></section>
 </main>
 <script src="./src/main.js" type="module"></script>
 </body>

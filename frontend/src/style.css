@@ -652,3 +652,90 @@ footer p {
 .row.action .tile {
     font-size: 18px;
 }
+
+/* The broken-file notice with its button, on one line. */
+#status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* As with the chips, the flex rule would beat [hidden]. */
+#status[hidden] {
+    display: none;
+}
+
+#status .text {
+    margin: 0;
+}
+
+#status .fix, #welcome button {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px 10px;
+    background: var(--fill);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}
+
+/* The welcome covers the list like the help, and is modal. */
+#welcome {
+    position: absolute;
+    inset: 64px 22px 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 22px;
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: 0 8px 30px var(--panel-shadow);
+    --wails-draggable: no-drag;
+}
+
+#welcome[hidden] {
+    display: none;
+}
+
+#welcome h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+#welcome p, #welcome ul {
+    margin: 0;
+    line-height: 1.6;
+}
+
+#welcome ul {
+    padding: 0;
+    list-style: none;
+    color: var(--text-muted);
+}
+
+#welcome .taken, #welcome .failed, #welcome .warning {
+    color: var(--warning);
+}
+
+#welcome .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: auto;
+}
+
+#welcome button {
+    font-size: 13px;
+    padding: 5px 14px;
+}
+
+#welcome-start {
+    background: var(--fill-strong);
+}
+
+#welcome button:focus-visible, #status .fix:focus-visible {
+    outline: 2px solid var(--selected-ring);
+}

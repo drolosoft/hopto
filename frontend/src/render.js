@@ -122,22 +122,27 @@ function renderCategories(state, t, handlers) {
 
 /**
  * The broken-file notice: the line of a TOML that does not parse, or why
- * the file cannot be used; nothing when all is well.
+ * the file cannot be used, and a button that opens it in the text
+ * editor, where the fix is; nothing when all is well.
  * @param {object} state
  * @param {Function} t
  */
 function renderStatus(state, t) {
     const status = state.status;
+    const text = elements.status.querySelector('.text');
+    const fix = elements.status.querySelector('.fix');
+
     elements.status.hidden = !status.readOnly;
 
     if (!status.readOnly) {
-        elements.status.textContent = '';
+        text.textContent = '';
         return;
     }
 
-    elements.status.textContent = status.line > 0
+    text.textContent = status.line > 0
         ? t('status.broken', {line: status.line, error: status.error})
         : t('status.readOnly', {error: status.error});
+    fix.textContent = t('status.edit');
 }
 
 /**

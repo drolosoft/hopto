@@ -3,7 +3,7 @@
  */
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
-import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/main/App';
+import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/main/App';
 import {decorate, filterByCategory, sections, unifiedSearch} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems} from './state.js';
@@ -14,6 +14,7 @@ import {installKeyboard} from './keyboard.js';
 import {addOffer, newDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
 import {installEditing, editableCategories, openEditor, closeEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView} from './editing.js';
+import {installWelcome, checkWelcome, hideWelcome, presentWelcome} from './welcome.js';
 
 // How many "Recent" items the empty-query layout shows.
 const RECENT_LIMIT = 5;
@@ -474,6 +475,13 @@ installEditing({
     toast: showToast,
 });
 
+installWelcome({t: () => t, onClosed: () => search.focus()});
+
+// The broken-file notice's button: the fix is in the file itself.
+document.querySelector('#status .fix').addEventListener('click', () => {
+    EditLibrary().catch((error) => Debug(`edit library: ${error}`));
+});
+
 search.addEventListener('input', () => {
     state.query = search.value;
     state.selected = 0;
@@ -511,9 +519,10 @@ document.addEventListener('securitypolicyviolation', (event) => {
 EventsOn('shown', (tab) => {
     Debug(`shown ${JSON.stringify(tab)}`);
     state = initialState(tab);
+    hideWelcome();
     search.value = '';
     animateAppearance();
-    refresh().then(() => search.focus());
+    refresh().then(() => search.focus()).then(checkWelcome);
 });
 
 // An icon fetched in the background is on disk: repaint with it.
@@ -543,4 +552,5 @@ async function loadAbout() {
 
 loadAbout();
 
-refresh();
+// Once the page has loaded, Go may show the panel for the welcome.
+refresh().then(presentWelcome);

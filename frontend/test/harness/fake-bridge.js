@@ -70,7 +70,7 @@ const call = (name) => async (...args) => {
 };
 
 window.go = {main: {App: {
-    Items: async (tab) => (tab === 'links' ? links : apps),
+    Items: async (tab) => (tab === 'links' ? (window.noLinks ? [] : links) : apps),
     Categories: async (tab) => (tab === 'links' ? linkCategories : appCategories),
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
     About: async () => ({version: 'v0.3.0-test', commit: 'abc1234', builtAt: '2026-09-27', goVersion: 'go1.27.1', libraryPath: '/Users/someone/Library/Application Support/hopto/library.toml'}),
@@ -122,6 +122,15 @@ window.go = {main: {App: {
         (tab === 'links' ? linkCategories : appCategories).push(view);
         return view;
     },
+    // The welcome: Welcome answers window.welcome (nothing due unless a
+    // test sets it); DismissWelcome makes it not due, as Go does.
+    Welcome: async () => window.welcome ?? {show: false, firstRun: false, hotkeys: [], finderConflict: false},
+    PresentWelcome: call('PresentWelcome'),
+    DismissWelcome: async () => {
+        window.calls.push('DismissWelcome');
+        window.welcome = {...window.welcome, show: false};
+    },
+    OpenKeyboardSettings: call('OpenKeyboardSettings'),
     Hide: call('Hide'),
     TabChanged: call('TabChanged'),
     Debug: call('Debug'),

@@ -150,7 +150,7 @@ test('? opens the help and Esc closes it; a broken library shows its line', asyn
     });
     await shown(page, 'links');
 
-    await expect(page.locator('#status')).toHaveText('library.toml, line 12: expected key');
+    await expect(page.locator('#status .text')).toHaveText('library.toml, line 12: expected key');
 
     await page.keyboard.press('?');
     await expect(page.locator('#help')).toBeVisible();
