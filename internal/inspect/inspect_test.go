@@ -46,6 +46,8 @@ func newHTMLServer(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
+// TestParseReadsTheHead takes the title, the site name, the description
+// and the icons from the head of a page.
 func TestParseReadsTheHead(t *testing.T) {
 	base, _ := url.Parse("https://example.test/docs/")
 
@@ -125,6 +127,8 @@ func TestParseDropsFormatCharacters(t *testing.T) {
 	}
 }
 
+// TestFetchParsesAnHTMLPage fetches a page through the safe client and
+// parses it.
 func TestFetchParsesAnHTMLPage(t *testing.T) {
 	server := newHTMLServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -180,6 +184,8 @@ func TestFetchIgnoresNonHTML(t *testing.T) {
 	}
 }
 
+// TestFetchReportsErrors reports a non-2xx status as an error instead of
+// parsing the body.
 func TestFetchReportsErrors(t *testing.T) {
 	server := httptest.NewServer(http.NotFoundHandler())
 	defer server.Close()

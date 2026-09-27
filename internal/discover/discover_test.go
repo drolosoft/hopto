@@ -167,6 +167,8 @@ func TestInspectBundleSurvivesBrokenBundles(t *testing.T) {
 	}
 }
 
+// TestScanEdgeApps lists the Edge web apps with the host of their page
+// as the description, and returns no apps for a missing folder.
 func TestScanEdgeApps(t *testing.T) {
 	plist, _ := os.ReadFile("testdata/edge-info.plist")
 	dir := t.TempDir()

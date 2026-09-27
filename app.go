@@ -58,10 +58,17 @@ type wailsWindow struct {
 	ctx context.Context
 }
 
-func (w *wailsWindow) Show()     { runtime.WindowShow(w.ctx) }
-func (w *wailsWindow) Hide()     { runtime.WindowHide(w.ctx) }
+// Show makes the window visible; Center has already placed it.
+func (w *wailsWindow) Show() { runtime.WindowShow(w.ctx) }
+
+// Hide takes the window off screen without quitting.
+func (w *wailsWindow) Hide() { runtime.WindowHide(w.ctx) }
+
+// Activate gives hopto the keyboard, which an accessory app does not
+// get on its own when its window shows.
 func (w *wailsWindow) Activate() { activateApp() }
 
+// Emit sends an event to the page.
 func (w *wailsWindow) Emit(name string, data any) {
 	runtime.EventsEmit(w.ctx, name, data)
 }
@@ -72,6 +79,7 @@ func (w *wailsWindow) Center(mode string, display uint32) {
 	centerWindow(mode, display)
 }
 
+// SetClipboard puts text on the general pasteboard.
 func (w *wailsWindow) SetClipboard(text string) error {
 	return runtime.ClipboardSetText(w.ctx, text)
 }

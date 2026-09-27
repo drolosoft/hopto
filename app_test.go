@@ -29,6 +29,8 @@ type fakeWindow struct {
 	centerDisplay uint32
 }
 
+// record appends one call under the lock; the calls come from several
+// goroutines in the race tests.
 func (w *fakeWindow) record(call string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -36,14 +38,21 @@ func (w *fakeWindow) record(call string) {
 	w.calls = append(w.calls, call)
 }
 
-func (w *fakeWindow) Show()     { w.record("show") }
-func (w *fakeWindow) Hide()     { w.record("hide") }
+// Show records "show".
+func (w *fakeWindow) Show() { w.record("show") }
+
+// Hide records "hide".
+func (w *fakeWindow) Hide() { w.record("hide") }
+
+// Activate records "activate".
 func (w *fakeWindow) Activate() { w.record("activate") }
 
+// Emit records "emit:<name>:<data>".
 func (w *fakeWindow) Emit(name string, data any) {
 	w.record(fmt.Sprintf("emit:%s:%v", name, data))
 }
 
+// Center records "center" and remembers where it was asked to go.
 func (w *fakeWindow) Center(mode string, display uint32) {
 	w.mu.Lock()
 	w.centerMode = mode
@@ -53,6 +62,7 @@ func (w *fakeWindow) Center(mode string, display uint32) {
 	w.record("center")
 }
 
+// SetClipboard keeps the text for the test to read.
 func (w *fakeWindow) SetClipboard(text string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -62,10 +72,12 @@ func (w *fakeWindow) SetClipboard(text string) error {
 	return nil
 }
 
+// SetAlwaysOnTop records "ontop:<on>".
 func (w *fakeWindow) SetAlwaysOnTop(on bool) {
 	w.record(fmt.Sprintf("ontop:%v", on))
 }
 
+// PickFile records "pick:<folder>" and answers what the test armed.
 func (w *fakeWindow) PickFile(directory string) (string, error) {
 	w.record("pick:" + directory)
 
@@ -75,6 +87,7 @@ func (w *fakeWindow) PickFile(directory string) (string, error) {
 	return w.pickPath, w.pickErr
 }
 
+// Quit records "quit".
 func (w *fakeWindow) Quit() { w.record("quit") }
 
 // fakeMenu records what App puts in the menu bar item.
@@ -84,6 +97,7 @@ type fakeMenu struct {
 	checked map[int]bool
 }
 
+// Install keeps the entries and their ticks, as the real item draws them.
 func (m *fakeMenu) Install(items []menuItem) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -96,6 +110,7 @@ func (m *fakeMenu) Install(items []menuItem) {
 	}
 }
 
+// SetChecked changes one tick.
 func (m *fakeMenu) SetChecked(tag int, on bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -125,6 +140,7 @@ type fakeOpen struct {
 	err   error
 }
 
+// run records the arguments and fails when the test armed an error.
 func (o *fakeOpen) run(args ...string) error {
 	o.calls = append(o.calls, args)
 
@@ -389,6 +405,9 @@ func TestItemsFlagsMissingApps(t *testing.T) {
 	}
 }
 
+// TestLaunch refuses an unknown id and a missing bundle without calling
+// open, keeps the panel up when open fails, opens by bundle id, counts
+// and hides on success, and finds a found app with no Items call first.
 func TestLaunch(t *testing.T) {
 	t.Run("unknown id opens nothing", func(t *testing.T) {
 		app, _, open := newTestApp(t)
@@ -524,6 +543,9 @@ func TestOpenLinkWith(t *testing.T) {
 	}
 }
 
+// TestCopyAndReveal copies a link's URL, an app's path or its bundle id,
+// reveals apps but not links in the Finder, and reveals and edits
+// library.toml.
 func TestCopyAndReveal(t *testing.T) {
 	app, win, open := newTestApp(t)
 	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")

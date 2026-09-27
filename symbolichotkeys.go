@@ -35,8 +35,11 @@ const finderSearchKeyCode = 49
 // leave 65 switched on but rebind it away from Space, cmd or option, and
 // the entry would then no longer collide with hopto's own shortcut.
 const (
-	finderSearchModifierCmd    = 1 << 20 // 1048576
-	finderSearchModifierOption = 1 << 19 // 524288
+	// 1048576, the ⌘ bit.
+	finderSearchModifierCmd = 1 << 20
+
+	// 524288, the ⌥ bit.
+	finderSearchModifierOption = 1 << 19
 )
 
 // symbolicHotkeyEnabled reads one entry of the file. macOS only writes

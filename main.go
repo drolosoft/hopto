@@ -12,6 +12,8 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// main opens the log, builds the App and hands both to Wails, which
+// owns the main thread from here on.
 func main() {
 	openLog()
 	app := NewApp()

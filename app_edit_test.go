@@ -128,6 +128,8 @@ func waitForCall(t *testing.T, win *fakeWindow, wanted string) {
 	t.Fatalf("no %q among %q", wanted, win.joined())
 }
 
+// TestAddLink reports field problems, refuses an exact duplicate and
+// stores a new link under an id taken from its name.
 func TestAddLink(t *testing.T) {
 	app, _, _ := newTestApp(t)
 
@@ -183,6 +185,8 @@ func TestAddLink(t *testing.T) {
 	}
 }
 
+// TestUpdateAndDeleteLink refuses an edit onto another link's URL,
+// stores the new fields under the same id, and refuses an unknown id.
 func TestUpdateAndDeleteLink(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	if err := app.usage.RecordOpen("links:mdn"); err != nil {
@@ -246,6 +250,8 @@ func TestUpdateAndDeleteLink(t *testing.T) {
 	}
 }
 
+// TestAppCRUDAndHiding adds, edits and deletes an app by hand, and hides
+// and brings back a found one.
 func TestAppCRUDAndHiding(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
@@ -439,6 +445,8 @@ func TestAddAppRefusesAHandAddedTwin(t *testing.T) {
 	}
 }
 
+// TestCategories adds a chip from a typed name, refuses a reserved one,
+// and deletes a chip only once it is empty.
 func TestCategories(t *testing.T) {
 	app, _, _ := newTestApp(t)
 
@@ -482,6 +490,9 @@ func TestCategories(t *testing.T) {
 	}
 }
 
+// TestInspectURL gives a bare host https, reads the page's name,
+// description and icon, and names the exact duplicate and the links on
+// the same host.
 func TestInspectURL(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	allowPrivate(t, app)
@@ -628,6 +639,8 @@ func TestNoIconFetchWhileReadOnly(t *testing.T) {
 	}
 }
 
+// TestRefetchIcon fetches a link's icon again, reports an unreachable
+// host, and refuses a found app, whose icon comes from its bundle.
 func TestRefetchIcon(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	allowPrivate(t, app)
