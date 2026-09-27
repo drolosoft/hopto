@@ -130,45 +130,55 @@ func (a *App) AddLink(in LinkInput) (SaveResult, error) {
 	return result, nil
 }
 
-// UpdateLink replaces the fields of a link; the id never changes.
+// UpdateLink replaces the fields of a link; the id never changes. Like
+// AddLink, the duplicate and field checks run against the draft inside
+// Apply, under the store's own lock: a link added to the same URL while
+// this update runs must be seen, not a snapshot taken before it. The
+// editor has no icon field, so an empty hint keeps the one the link had.
 func (a *App) UpdateLink(id string, in LinkInput) (SaveResult, error) {
 	a.reload()
-	lib := a.library.Snapshot()
 	in = tidyLinkInput(in)
 
-	index := slices.IndexFunc(lib.Links, func(link library.Link) bool {
-		return link.ID == id
-	})
-	if index < 0 {
-		return SaveResult{Problems: map[string]string{}},
-			fmt.Errorf("%w: %s", errUnknownItem, id)
-	}
-
-	others := slices.Delete(slices.Clone(lib.Links), index, index+1)
-	if duplicate, ok := library.FindDuplicateLink(others, in.URL); ok {
-		return SaveResult{
-			Problems:  map[string]string{},
-			Duplicate: linkRef(duplicate),
-		}, nil
-	}
-
-	previous := lib.Links[index]
-	link := linkFromInput(id, in)
-	if problems := linkProblems(lib, link); len(problems) > 0 {
-		return SaveResult{Problems: problems}, nil
-	}
+	var result SaveResult
+	var previous, link library.Link
 
 	err := a.library.Apply(func(draft *library.Library) error {
-		position := slices.IndexFunc(draft.Links, func(link library.Link) bool {
-			return link.ID == id
+		index := slices.IndexFunc(draft.Links, func(entry library.Link) bool {
+			return entry.ID == id
 		})
-		if position < 0 {
+		if index < 0 {
 			return fmt.Errorf("%w: %s", errUnknownItem, id)
 		}
 
-		draft.Links[position] = link
+		previous = draft.Links[index]
+		if in.Icon == "" {
+			in.Icon = previous.Icon
+		}
+
+		others := slices.Delete(slices.Clone(draft.Links), index, index+1)
+		if duplicate, ok := library.FindDuplicateLink(others, in.URL); ok {
+			result = SaveResult{
+				Problems:  map[string]string{},
+				Duplicate: linkRef(duplicate),
+			}
+
+			return errAnswered
+		}
+
+		link = linkFromInput(id, in)
+		if problems := linkProblems(*draft, link); len(problems) > 0 {
+			result = SaveResult{Problems: problems}
+			return errAnswered
+		}
+
+		draft.Links[index] = link
+		result = SaveResult{ID: id, Problems: map[string]string{}}
+
 		return nil
 	})
+	if errors.Is(err, errAnswered) {
+		return result, nil
+	}
 	if err != nil {
 		return SaveResult{Problems: map[string]string{}}, err
 	}
@@ -178,7 +188,7 @@ func (a *App) UpdateLink(id string, in LinkInput) (SaveResult, error) {
 		a.fetchIconLater(id, link.Icon, link.URL)
 	}
 
-	return SaveResult{ID: id, Problems: map[string]string{}}, nil
+	return result, nil
 }
 
 // DeleteLink removes a link, its usage and its icon file.
@@ -235,21 +245,13 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	return result, nil
 }
 
-// UpdateApp replaces the fields of a hand-added app.
+// UpdateApp replaces the fields of a hand-added app, checking them inside
+// Apply for the same reason as UpdateLink.
 func (a *App) UpdateApp(id string, in AppInput) (SaveResult, error) {
 	a.reload()
-	lib := a.library.Snapshot()
 	in = tidyAppInput(in)
 
-	if !hasAppID(lib, id) {
-		return SaveResult{Problems: map[string]string{}},
-			fmt.Errorf("%w: %s", errUnknownItem, id)
-	}
-
-	app := appFromInput(id, in)
-	if problems := a.appProblems(lib, app); len(problems) > 0 {
-		return SaveResult{Problems: problems}, nil
-	}
+	var result SaveResult
 
 	err := a.library.Apply(func(draft *library.Library) error {
 		position := slices.IndexFunc(
@@ -260,14 +262,25 @@ func (a *App) UpdateApp(id string, in AppInput) (SaveResult, error) {
 			return fmt.Errorf("%w: %s", errUnknownItem, id)
 		}
 
+		app := appFromInput(id, in)
+		if problems := a.appProblems(*draft, app); len(problems) > 0 {
+			result = SaveResult{Problems: problems}
+			return errAnswered
+		}
+
 		draft.Apps[position] = app
+		result = SaveResult{ID: id, Problems: map[string]string{}}
+
 		return nil
 	})
+	if errors.Is(err, errAnswered) {
+		return result, nil
+	}
 	if err != nil {
 		return SaveResult{Problems: map[string]string{}}, err
 	}
 
-	return SaveResult{ID: id, Problems: map[string]string{}}, nil
+	return result, nil
 }
 
 // DeleteApp removes a hand-added app, its usage and its icon file.

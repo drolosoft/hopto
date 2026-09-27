@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -681,5 +682,137 @@ func TestConcurrentAddLinkGetsDistinctIDs(t *testing.T) {
 	added := len(app.library.Snapshot().Links) - before
 	if added != concurrency {
 		t.Errorf("stored %d new links, want %d", added, concurrency)
+	}
+}
+
+// An update and an add racing to the same URL must never leave two links
+// that open the same page: both checks have to run against the file as it
+// is under the store's lock, not against a snapshot taken before it.
+func TestUpdateLinkRacesAnAddOnTheSameURL(t *testing.T) {
+	app, _, _ := newTestApp(t)
+
+	for round := range 20 {
+		target := fmt.Sprintf("https://race-%d.example.org", round)
+		start := make(chan struct{})
+
+		var racers sync.WaitGroup
+		racers.Add(2)
+
+		go func() {
+			defer racers.Done()
+			<-start
+
+			_, _ = app.AddLink(LinkInput{
+				URL:      target,
+				Name:     fmt.Sprintf("Race %d", round),
+				Category: "docs",
+			})
+		}()
+
+		go func() {
+			defer racers.Done()
+			<-start
+
+			_, _ = app.UpdateLink(
+				"mdn",
+				LinkInput{URL: target, Name: "MDN", Category: "docs"},
+			)
+		}()
+
+		close(start)
+		racers.Wait()
+
+		same := 0
+		for _, link := range app.library.Snapshot().Links {
+			if library.NormalizeURL(link.URL) == library.NormalizeURL(target) {
+				same++
+			}
+		}
+
+		if same != 1 {
+			t.Fatalf("round %d: %d links point at %s", round, same, target)
+		}
+
+		// mdn moves to a URL of its own before the next round, so the next
+		// race starts from the same shape.
+		_, err := app.UpdateLink("mdn", LinkInput{
+			URL:      fmt.Sprintf("https://mdn-%d.example.org", round),
+			Name:     "MDN",
+			Category: "docs",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// The editor has no icon field, so an update without a hint keeps the
+// one the link had; an explicit hint still replaces it.
+func TestUpdateLinkKeepsTheIconHint(t *testing.T) {
+	app, _, _ := newTestApp(t)
+
+	result, err := app.UpdateLink("github", LinkInput{
+		URL:      "https://github.com",
+		Name:     "GitHub",
+		Category: "dev",
+		Keywords: []string{"git"},
+	})
+	if err != nil || result.ID != "github" {
+		t.Fatalf("update: %+v %v", result, err)
+	}
+
+	link, _ := app.findLink("github")
+	if link.Icon != "sh:github-light" || len(link.Keywords) != 1 {
+		t.Errorf("stored = %+v", link)
+	}
+
+	_, err = app.UpdateLink("github", LinkInput{
+		URL:      "https://github.com",
+		Name:     "GitHub",
+		Category: "dev",
+		Icon:     "sh:github",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if link, _ := app.findLink("github"); link.Icon != "sh:github" {
+		t.Errorf("explicit hint not stored: %q", link.Icon)
+	}
+}
+
+// UpdateApp answers problems and unknown ids the same way after the move
+// into Apply.
+func TestUpdateAppChecksInsideApply(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	bundle := fakeBundle(t, app, "Gamma", "com.example.gamma")
+
+	added, err := app.AddApp(
+		AppInput{Path: bundle, Name: "Gamma", Category: "tools"},
+	)
+	if err != nil || added.ID == "" {
+		t.Fatalf("add: %+v %v", added, err)
+	}
+
+	result, err := app.UpdateApp(
+		added.ID, AppInput{Path: bundle, Name: "", Category: "nope"},
+	)
+	wrong := err != nil || result.ID != "" ||
+		result.Problems["name"] != "name.required" ||
+		result.Problems["category"] != "category.unknown"
+	if wrong {
+		t.Errorf("problems: %+v %v", result, err)
+	}
+
+	result, err = app.UpdateApp(
+		added.ID, AppInput{Path: bundle, Name: "Gamma 2", Category: "tools"},
+	)
+	if err != nil || result.ID != added.ID {
+		t.Errorf("update: %+v %v", result, err)
+	}
+
+	_, err = app.UpdateApp("nope", AppInput{Name: "X", Category: "tools"})
+	if !errors.Is(err, errUnknownItem) {
+		t.Errorf("unknown: %v", err)
 	}
 }
