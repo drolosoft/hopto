@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CONTRIBUTING, SECURITY and ARCHITECTURE guides; doc/ pages on how hopto works on macOS, on every key of library.toml and on testing; issue and pull request templates.
 - config.example.toml: the first-run library with a comment on every setting, kept equal to it by a test.
 - scripts/verify-hopto.sh drives the built app from the shell on a library of its own and checks the shortcuts, opening, hiding, the Dock and Quit, then puts your data back.
+- A README with a demo, the shortcuts, the configuration and troubleshooting; scripts/record-demo.sh records the demo from the real app on a library with nothing personal in it.
 
 ### Changed
 - The category id `hidden` is reserved for the chip of hidden apps; a library using it for its own category is refused.
