@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [v0.1.0] - 2026-09-27
+
+### Added
 - The launcher from the original private monorepo, rebuilt as hopto: two global shortcuts, global search, categories, favourites and usage order, Edge web apps, light and dark themes.
 - The library lives in `library.toml` under Application Support; the file is re-read every time the panel opens and never overwritten when it cannot be parsed.
 - The apps tab lists /Applications and ~/Applications, with icons read from each bundle, next to the apps added by hand.
