@@ -6,19 +6,43 @@ import (
 	"github.com/drolosoft/hopto/internal/library"
 )
 
-// The embedded seed must always be a valid library: it is the first file a
-// new user gets.
-func TestSeedIsValid(t *testing.T) {
-	lib, err := library.Decode(Library)
+// Both seeds must be valid libraries with the same ids: they are the first
+// file a new user gets, and the ids are what usage keys and icon files
+// hang from, so switching language must not change them.
+func TestSeedsAreValidAndAligned(t *testing.T) {
+	english, err := library.Decode(For("en"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := library.Validate(lib, "/Users/someone"); err != nil {
+	spanish, err := library.Decode(For("es"))
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(lib.Links) < 5 || len(lib.Categories) != 3 {
-		t.Fatalf("seed has %d links and %d categories", len(lib.Links), len(lib.Categories))
+	for name, lib := range map[string]library.Library{"en": english, "es": spanish} {
+		if err := library.Validate(lib, "/Users/someone"); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+
+		if len(lib.Links) < 5 || len(lib.Categories) != 3 {
+			t.Fatalf("%s: seed has %d links and %d categories", name, len(lib.Links), len(lib.Categories))
+		}
+	}
+
+	for index, link := range english.Links {
+		if spanish.Links[index].ID != link.ID || spanish.Links[index].URL != link.URL {
+			t.Errorf("link %d differs between languages: %s vs %s", index, link.ID, spanish.Links[index].ID)
+		}
+	}
+
+	for index, category := range english.Categories {
+		if spanish.Categories[index].ID != category.ID {
+			t.Errorf("category %d differs between languages", index)
+		}
+	}
+
+	if string(For("fr")) != string(For("en")) {
+		t.Error("an unknown language must fall back to English")
 	}
 }

@@ -10,23 +10,23 @@ icon_services = ["site"]
 
 [[categories]]
 id = "dev"
-name = "Development"
+name = "Desarrollo"
 tab = "links"
 
 [[categories]]
 id = "docs"
-name = "Documentation"
+name = "Documentación"
 tab = "links"
 
 [[categories]]
 id = "tools"
-name = "Tools"
+name = "Herramientas"
 tab = "apps"
 
 [[links]]
 id = "github"
 name = "GitHub"
-description = "Repositories and pull requests"
+description = "Repositorios y pull requests"
 url = "https://github.com"
 category = "dev"
 icon = "sh:github-light"
@@ -34,20 +34,20 @@ icon = "sh:github-light"
 [[links]]
 id = "wails"
 name = "Wails"
-description = "Desktop apps in Go"
+description = "Apps de escritorio en Go"
 url = "https://wails.io"
 category = "dev"
 
 [[links]]
 id = "drolosoft"
 name = "Drolosoft"
-description = "Tools we wish existed"
+description = "Herramientas que queríamos que existieran"
 url = "https://drolosoft.com"
 category = "dev"
 
 [[links]]
 id = "go-std"
-name = "Go standard library"
+name = "Biblioteca estándar de Go"
 description = "pkg.go.dev/std"
 url = "https://pkg.go.dev/std"
 category = "docs"
@@ -56,14 +56,14 @@ icon = "sh:golang"
 [[links]]
 id = "mdn"
 name = "MDN"
-description = "Web platform reference"
+description = "Referencia de la plataforma web"
 url = "https://developer.mozilla.org"
 category = "docs"
 icon = "sh:mozilla"
 
 [[links]]
 id = "wails-docs"
-name = "Wails documentation"
-description = "Guides and API reference"
+name = "Documentación de Wails"
+description = "Guías y referencia de la API"
 url = "https://wails.io/docs/introduction"
 category = "docs"
