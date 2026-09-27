@@ -168,3 +168,20 @@ test('shown closes the editor and a late inspection changes nothing', async ({pa
     await expect(page.locator('#editor')).toBeHidden();
     await expect(page.locator('#grid [role="option"]').first()).toBeVisible();
 });
+
+test('plan 3 minor (b): the menu bar Help closes the editor before it shows', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.type('example.org');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#editor')).toBeVisible();
+
+    await page.evaluate(() => window.listeners.help(true));
+    await expect(page.locator('#editor')).toBeHidden();
+    await expect(page.locator('#help')).toBeVisible();
+    await expect(page.locator('#search')).toHaveValue('example.org');
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#help')).toBeHidden();
+    expect(await payloads(page, 'AddLink')).toEqual([]);
+    expect(await calls(page)).not.toContain('Hide');
+});

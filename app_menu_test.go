@@ -122,3 +122,22 @@ func TestShowPanelWaitsForTheDialog(t *testing.T) {
 		t.Errorf("shown under a dialog: %q", win.joined())
 	}
 }
+
+// Plan 3 minor (b): with the open panel up, Help from the menu must not
+// reach the page either: the help would paint over a window the user
+// cannot reach while the sheet is on it.
+func TestMenuHelpWaitsForTheDialog(t *testing.T) {
+	app, win, _ := newTestApp(t)
+	withMenu(t, app)
+	app.visible = true
+
+	if err := app.beginDialog(); err != nil {
+		t.Fatalf("dialog refused: %v", err)
+	}
+	defer app.endDialog()
+
+	app.menuAction(menuHelp)
+	if strings.Contains(win.joined(), "emit:help") {
+		t.Errorf("help under a dialog: %q", win.joined())
+	}
+}

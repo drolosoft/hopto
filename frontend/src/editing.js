@@ -317,6 +317,19 @@ export function closeEditor() {
 }
 
 /**
+ * Closes the editor whatever field has the caret, for the menu bar's
+ * Help: closeEditor's first Esc may only drop a half-typed category
+ * name, and the help must never paint over an open editor (the two
+ * would share one Esc). The draft goes, as Esc would take it.
+ */
+export function leaveEditor() {
+    const draft = currentDraft();
+
+    finish();
+    host.closed(draft?.returnQuery ?? '');
+}
+
+/**
  * ⌘E with an exact duplicate on screen: this draft goes and the editor
  * opens on the link that already has the address.
  */

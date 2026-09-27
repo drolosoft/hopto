@@ -13,7 +13,7 @@ import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox,
 import {installKeyboard} from './keyboard.js';
 import {addOffer, newDraft, editDraft, adoptDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
-import {installEditing, editableCategories, openEditor, closeEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate, pickApp} from './editing.js';
+import {installEditing, editableCategories, openEditor, closeEditor, leaveEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate, pickApp} from './editing.js';
 import {installWelcome, checkWelcome, hideWelcome, presentWelcome} from './welcome.js';
 
 // How many "Recent" items the empty-query layout shows.
@@ -820,8 +820,14 @@ EventsOn('icons', () => {
 });
 
 // The menu bar item's Help: Go shows the panel first (which resets the
-// state), then asks for the help on top of it.
+// state), then asks for the help on top of it. With the panel already up
+// and the editor open, the editor goes first: the help and the editor
+// would otherwise share the panel and one Esc.
 EventsOn('help', () => {
+    if (state.editing) {
+        leaveEditor();
+    }
+
     state.helpOpen = true;
     renderHelp(state, t);
 });

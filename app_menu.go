@@ -88,8 +88,11 @@ func (a *App) menuAction(tag int) {
 	case menuOpen:
 		a.showPanel(tabApps)
 	case menuHelp:
-		a.showPanel(tabApps)
-		a.emit("help", true)
+		// Only once the panel is really up: under a dialog the help
+		// would land on a page nobody can reach.
+		if a.showPanel(tabApps) {
+			a.emit("help", true)
+		}
 	case menuEdit:
 		if err := a.EditLibrary(); err != nil {
 			log.Printf("menu: edit library: %v", err)
@@ -106,21 +109,25 @@ func (a *App) menuAction(tag int) {
 
 // showPanel brings the panel up on a tab. Unlike the shortcuts it never
 // hides it: a menu entry called Open that closed the panel would read
-// as broken. With the open panel up it does nothing, as toggle.
-func (a *App) showPanel(tab string) {
+// as broken. With the panel already up it only brings it forward. With
+// a dialog on top it does nothing and says so, for Help to stay out of
+// the way too.
+func (a *App) showPanel(tab string) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.dialogOpen {
-		return
+		return false
 	}
 
 	if a.visible {
 		a.window.Activate()
-		return
+		return true
 	}
 
 	a.showLocked(tab)
+
+	return true
 }
 
 // toggleLoginItem flips the LaunchAgent and ticks the entry from what is
