@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
+
+	"github.com/drolosoft/hopto/internal/library"
 )
 
 // Hotkey is a global shortcut in the terms Carbon's RegisterEventHotKey
@@ -119,4 +122,51 @@ func tabForHotkey(id uint32) string {
 	}
 
 	return tabApps
+}
+
+// mustHotkey parses a built-in spec; a typo there is a programming error,
+// so it panics rather than starting without a shortcut.
+func mustHotkey(spec string) Hotkey {
+	hotkey, err := ParseHotkey(spec)
+	if err != nil {
+		panic(err)
+	}
+
+	return hotkey
+}
+
+// hotkeysFromSettings parses the two shortcuts of the library. A spec that
+// does not parse falls back to its default with a log line, so a typo in
+// the file never leaves hopto unreachable; two equal specs cannot both be
+// registered, so the links one goes back to its default.
+func hotkeysFromSettings(settings library.Settings) (apps, links Hotkey) {
+	apps = parseOrDefault("hotkey_apps", settings.HotkeyApps, defaultAppsHotkey)
+	links = parseOrDefault(
+		"hotkey_links", settings.HotkeyLinks, defaultLinksHotkey,
+	)
+
+	if apps == links {
+		log.Printf(
+			"hotkeys: hotkey_apps and hotkey_links are both %q, using the defaults",
+			settings.HotkeyLinks,
+		)
+		links = mustHotkey(defaultLinksHotkey)
+
+		if apps == links {
+			apps = mustHotkey(defaultAppsHotkey)
+		}
+	}
+
+	return apps, links
+}
+
+// parseOrDefault is one shortcut with its fallback.
+func parseOrDefault(field, spec, fallback string) Hotkey {
+	hotkey, err := ParseHotkey(spec)
+	if err != nil {
+		log.Printf("hotkeys: %s: %v, using %s", field, err, fallback)
+		return mustHotkey(fallback)
+	}
+
+	return hotkey
 }

@@ -22,7 +22,9 @@ linters:
     # the literal macOS folder suffix (Edge Apps.localized) — neither is a
     # typo to fix, so both spellings are allowed alongside the UK locale.
     # Normalize is the exported name the icons package uses, and the standard
-    # library package image/color cannot be renamed.
+    # library package image/color cannot be renamed. Center is the window
+    # interface method the page and task 9 bind against; it mirrors Wails'
+    # own naming and is not a typo either.
     misspell:
       locale: UK
       ignore-rules:
@@ -32,6 +34,7 @@ linters:
         - motivacional
         - normalize
         - color
+        - center
   exclusions:
     paths:
       - testdata

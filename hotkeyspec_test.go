@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/drolosoft/hopto/internal/library"
+)
 
 // The spec strings the library accepts, and the Carbon values they mean.
 func TestParseHotkey(t *testing.T) {
@@ -49,5 +53,35 @@ func TestTabForHotkey(t *testing.T) {
 		if got := tabForHotkey(id); got != want {
 			t.Errorf("tabForHotkey(%d) = %q, want %q", id, got, want)
 		}
+	}
+}
+
+// Shortcuts come from the library; a bad one falls back to the default
+// with a log line, and two equal ones cannot both be registered.
+func TestHotkeysFromSettings(t *testing.T) {
+	custom := library.Default().Settings
+	custom.HotkeyApps = "ctrl+option+a"
+	custom.HotkeyLinks = "ctrl+option+l"
+
+	apps, links := hotkeysFromSettings(custom)
+	if apps.KeyCode != 0 || links.KeyCode != 37 {
+		t.Errorf("custom: apps %+v links %+v", apps, links)
+	}
+
+	broken := library.Default().Settings
+	broken.HotkeyApps = "cmd+space"
+
+	apps, links = hotkeysFromSettings(broken)
+	if apps != mustHotkey(defaultAppsHotkey) || links != mustHotkey(defaultLinksHotkey) {
+		t.Errorf("broken: apps %+v links %+v", apps, links)
+	}
+
+	same := library.Default().Settings
+	same.HotkeyApps = "cmd+option+space"
+	same.HotkeyLinks = "cmd+option+space"
+
+	apps, links = hotkeysFromSettings(same)
+	if apps == links {
+		t.Errorf("same: both shortcuts are %+v", apps)
 	}
 }

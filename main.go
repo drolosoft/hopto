@@ -24,6 +24,8 @@ func main() {
 	// are round. WindowIsTranslucent is off on purpose, its vibrancy view is
 	// rectangular and showed as square corners. No fixed appearance either:
 	// the page follows the system's light or dark mode.
+	assetOptions := &assetserver.Options{Assets: assets, Handler: app.assets()}
+
 	err := wails.Run(&options.App{
 		Title:             "hopto",
 		Width:             760,
@@ -33,7 +35,7 @@ func main() {
 		AlwaysOnTop:       true,
 		StartHidden:       true,
 		HideWindowOnClose: true,
-		AssetServer:       &assetserver.Options{Assets: assets},
+		AssetServer:       assetOptions,
 		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		OnStartup:         app.startup,
 		Bind:              []interface{}{app},
