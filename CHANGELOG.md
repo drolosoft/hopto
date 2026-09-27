@@ -37,3 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The selection no longer disappears when moving up on a short apps grid.
 - An Edge web app no longer swallows a link to another page of the same host.
 - Editing a link keeps its icon hint, and an edit racing an add can no longer leave two links to the same page.
+- An app can no longer be added twice by hand, even when two editors or a hand edit race the save.
+- Help from the menu bar waits while the file dialog is open, and closes the editor instead of painting over it.
+- While the editor is open, the footer says what Enter does there ("↩ Save") instead of naming the row underneath.
+- The library path in the help breaks at the edge of the panel instead of splitting every word.
+- The Finder shortcut warning also reads shortcut settings that macOS stored as decimal numbers.
