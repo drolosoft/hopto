@@ -22,6 +22,12 @@ cat > "$fixture" << 'CHANGELOG'
 ### Fixed
 - A fix.
 
+## [v0.1.5] - 2026-10-01
+
+### Added
+
+### Fixed
+
 ## [v0.1.0] - 2026-09-28
 
 ### Added
@@ -71,6 +77,9 @@ must_fail v0.1
 echo "▶ a missing version and an empty section are refused:"
 must_fail v9.9.9
 must_fail v0.0.1
+
+echo "▶ a section with nothing but its own subheadings is refused too:"
+must_fail v0.1.5
 
 echo "── $pass passed, $fail failed"
 [ $fail -eq 0 ]

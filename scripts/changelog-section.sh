@@ -27,7 +27,12 @@ body="$(awk -v heading="## [$version]" '
     }
 ' "$changelog")"
 
-if [ -z "$body" ]; then
+# A section that is nothing but its own "### Added"-style subheadings
+# has no notes under any of them, so it counts as empty too: grep here
+# looks for a line that is neither one of those headings nor blank.
+content="$(printf '%s\n' "$body" | grep -vE '^###|^$' || true)"
+
+if [ -z "$content" ]; then
     echo "no section, or an empty one, for $version in $changelog" >&2
     exit 1
 fi
