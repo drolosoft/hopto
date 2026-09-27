@@ -1,0 +1,139 @@
+# hopto library: an example with a comment on every setting.
+#
+# hopto keeps your library in
+#   ~/Library/Application Support/hopto/library.toml
+# and writes one like this on its first run. To start from this file
+# instead, copy it there while hopto is not running:
+#   cp config.example.toml ~/Library/Application\ Support/hopto/library.toml
+# hopto reads the file again every time the panel opens. It rewrites the
+# whole file when you add, edit or delete from the panel, so comments
+# like these are lost at the first change. The full reference is
+# doc/configuration.md.
+
+# The schema of the file. hopto never rewrites a file with a higher
+# number, which only a newer hopto writes.
+version = 1
+
+[settings]
+# The language of the panel and the menu bar item: "auto" follows macOS
+# (Spanish when it is your first language, English otherwise), "en" and
+# "es" pick one.
+language = "auto"
+
+# The two global shortcuts: modifiers joined by "+", then a key.
+# Modifiers: cmd (or command), shift, option (or opt, alt), ctrl (or
+# control); at least one of cmd, option or ctrl. Keys: a to z, 0 to 9,
+# space, return, tab, escape, f1 to f12. Read when hopto starts: after a
+# change, quit hopto from the menu bar item and open it again. macOS
+# keeps cmd+option+space for the Finder search window until "Show Finder
+# search window" is turned off in Keyboard Shortcuts, Spotlight.
+hotkey_apps = "cmd+shift+space"
+hotkey_links = "cmd+option+space"
+
+# Where the panel appears: "last" (the display it was last shown on, else
+# the main one), "mouse" (the display under the pointer) or "main".
+screen = "last"
+
+# List the apps in /Applications and ~/Applications next to the ones
+# added by hand, and find those in /System/Applications while typing.
+scan_applications = true
+
+# List the web apps installed from Microsoft Edge, found in
+# ~/Applications/Edge Apps.localized.
+discover_edge_apps = true
+
+# Where link icons come from, after the link's own icon hint, in this
+# order: "site" (the icons the page itself declares), "duckduckgo" and
+# "google". The two services are left out unless listed, because they
+# receive the host of every link you add.
+icon_services = ["site"]
+
+# The bundle id of the browser ⌘↩ opens links in. Without it, ⌘↩ on a
+# link says there is no secondary browser.
+# secondary_browser = "com.apple.Safari"
+
+# Let icon downloads and page reading reach loopback, private and tailnet
+# addresses (a router page, a home server). Off, so a link can never make
+# hopto probe your own network.
+allow_private_icon_hosts = false
+
+# Categories are the chips above the list, in this order. The id is made
+# of lowercase letters, digits and dashes; tab is "links" or "apps".
+[[categories]]
+id = "dev"
+name = "Development"
+tab = "links"
+
+[[categories]]
+id = "docs"
+name = "Documentation"
+tab = "links"
+
+[[categories]]
+id = "tools"
+name = "Tools"
+tab = "apps"
+
+# A link needs an id, a name, an http or https url and a category of the
+# links tab; description, keywords (a list of extra words to search by)
+# and icon are optional. The icon hint is "sh:<name>", an icon of
+# selfh.st/icons, or an https URL; without one hopto asks the page.
+[[links]]
+id = "github"
+name = "GitHub"
+description = "Repositories and pull requests"
+url = "https://github.com"
+category = "dev"
+icon = "sh:github-light"
+
+[[links]]
+id = "wails"
+name = "Wails"
+description = "Desktop apps in Go"
+url = "https://wails.io"
+category = "dev"
+
+[[links]]
+id = "drolosoft"
+name = "Drolosoft"
+description = "Tools we wish existed"
+url = "https://drolosoft.com"
+category = "dev"
+
+[[links]]
+id = "go-std"
+name = "Go standard library"
+description = "pkg.go.dev/std"
+url = "https://pkg.go.dev/std"
+category = "docs"
+icon = "sh:golang"
+
+[[links]]
+id = "mdn"
+name = "MDN"
+description = "Web platform reference"
+url = "https://developer.mozilla.org"
+category = "docs"
+icon = "sh:mozilla"
+
+[[links]]
+id = "wails-docs"
+name = "Wails documentation"
+description = "Guides and API reference"
+url = "https://wails.io/docs/introduction"
+category = "docs"
+
+# An app added by hand has an id, a name, a category of the apps tab, and
+# a path under /Applications, /System/Applications or ~/Applications, a
+# bundle_id, or both (the bundle id finds the app after it moves). ⌘N on
+# the apps tab writes one for you:
+# [[apps]]
+# id = "calculator"
+# name = "Calculator"
+# path = "/System/Applications/Calculator.app"
+# category = "tools"
+
+# A found app you do not want in the list. Its id starts with "app-" (from
+# the scan) or "edge-" (an Edge web app); ⌘⌫ on the app writes this:
+# [[hidden]]
+# id = "app-chess"
