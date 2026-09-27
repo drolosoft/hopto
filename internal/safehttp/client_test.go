@@ -44,9 +44,11 @@ func TestIsPrivateAddr(t *testing.T) {
 // must refuse: the request never reaches the handler.
 func TestGetRefusesPrivateAddresses(t *testing.T) {
 	served := false
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		served = true
-	}))
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			served = true
+		},
+	))
 	defer server.Close()
 
 	client := NewClient(Options{AllowHTTP: true, Timeout: time.Second})
@@ -63,15 +65,21 @@ func TestGetRefusesPrivateAddresses(t *testing.T) {
 
 // With the opt-in the same server answers.
 func TestGetAllowsPrivateWhenAsked(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		_, _ = w.Write([]byte("hello"))
-	}))
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = w.Write([]byte("hello"))
+		},
+	))
 	defer server.Close()
 
-	client := NewClient(Options{AllowPrivate: true, AllowHTTP: true, Timeout: time.Second})
+	client := NewClient(Options{
+		AllowPrivate: true, AllowHTTP: true, Timeout: time.Second,
+	})
 
-	body, contentType, err := Get(context.Background(), client, server.URL, "*/*", 1024)
+	body, contentType, err := Get(
+		context.Background(), client, server.URL, "*/*", 1024,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +93,10 @@ func TestGetAllowsPrivateWhenAsked(t *testing.T) {
 func TestGetRefusesHTTPByDefault(t *testing.T) {
 	client := NewClient(Options{AllowPrivate: true, Timeout: time.Second})
 
-	_, _, err := Get(context.Background(), client, "http://example.com/icon.png", "*/*", 1024)
+	_, _, err := Get(
+		context.Background(), client, "http://example.com/icon.png",
+		"*/*", 1024,
+	)
 	if !errors.Is(err, ErrScheme) {
 		t.Fatalf("err = %v, want ErrScheme", err)
 	}
@@ -93,12 +104,16 @@ func TestGetRefusesHTTPByDefault(t *testing.T) {
 
 // A body past the cap is an error, not a truncated file on disk.
 func TestGetRefusesOversizedBodies(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(make([]byte, 2048))
-	}))
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write(make([]byte, 2048))
+		},
+	))
 	defer server.Close()
 
-	client := NewClient(Options{AllowPrivate: true, AllowHTTP: true, Timeout: time.Second})
+	client := NewClient(Options{
+		AllowPrivate: true, AllowHTTP: true, Timeout: time.Second,
+	})
 
 	_, _, err := Get(context.Background(), client, server.URL, "*/*", 1024)
 	if !errors.Is(err, ErrTooLarge) {
@@ -109,13 +124,18 @@ func TestGetRefusesOversizedBodies(t *testing.T) {
 // A redirect loop stops after MaxRedirects hops.
 func TestGetStopsRedirectLoops(t *testing.T) {
 	hops := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hops++
-		http.Redirect(w, r, "/again", http.StatusFound)
-	}))
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			hops++
+			http.Redirect(w, r, "/again", http.StatusFound)
+		},
+	))
 	defer server.Close()
 
-	client := NewClient(Options{AllowPrivate: true, AllowHTTP: true, Timeout: time.Second, MaxRedirects: 3})
+	client := NewClient(Options{
+		AllowPrivate: true, AllowHTTP: true,
+		Timeout: time.Second, MaxRedirects: 3,
+	})
 
 	_, _, err := Get(context.Background(), client, server.URL, "*/*", 1024)
 	if err == nil || !strings.Contains(err.Error(), "redirect") {
@@ -132,25 +152,34 @@ func TestGetRefusesNon200(t *testing.T) {
 	server := httptest.NewServer(http.NotFoundHandler())
 	defer server.Close()
 
-	client := NewClient(Options{AllowPrivate: true, AllowHTTP: true, Timeout: time.Second})
+	client := NewClient(Options{
+		AllowPrivate: true, AllowHTTP: true, Timeout: time.Second,
+	})
 
-	if _, _, err := Get(context.Background(), client, server.URL, "*/*", 1024); err == nil {
+	_, _, err := Get(context.Background(), client, server.URL, "*/*", 1024)
+	if err == nil {
 		t.Fatal("a 404 was accepted")
 	}
 }
 
 // The caller's context cuts a slow server.
 func TestGetHonoursTheContext(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-r.Context().Done():
-		case <-time.After(2 * time.Second):
-		}
-	}))
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			select {
+			case <-r.Context().Done():
+			case <-time.After(2 * time.Second):
+			}
+		},
+	))
 	defer server.Close()
 
-	client := NewClient(Options{AllowPrivate: true, AllowHTTP: true, Timeout: 5 * time.Second})
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	client := NewClient(Options{
+		AllowPrivate: true, AllowHTTP: true, Timeout: 5 * time.Second,
+	})
+	ctx, cancel := context.WithTimeout(
+		context.Background(), 100*time.Millisecond,
+	)
 	defer cancel()
 
 	started := time.Now()
@@ -160,5 +189,30 @@ func TestGetHonoursTheContext(t *testing.T) {
 
 	if time.Since(started) > time.Second {
 		t.Error("the context deadline was not honoured")
+	}
+}
+
+// A server that answers https but redirects to plain http must not be
+// followed when AllowHTTP is false: CheckRedirect has to see the downgrade,
+// not just the scheme of the first request.
+func TestGetRefusesRedirectDowngradeToHTTP(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "http://127.0.0.1:1/", http.StatusFound)
+		},
+	))
+	defer server.Close()
+
+	client := NewClient(Options{AllowPrivate: true, Timeout: time.Second})
+
+	// The test server's certificate is self-signed; trust it the same way
+	// server.Client() does, instead of disabling verification altogether.
+	transport := client.Transport.(*http.Transport)
+	transport.TLSClientConfig = server.Client().
+		Transport.(*http.Transport).TLSClientConfig
+
+	_, _, err := Get(context.Background(), client, server.URL, "*/*", 1024)
+	if !errors.Is(err, ErrScheme) {
+		t.Fatalf("err = %v, want ErrScheme", err)
 	}
 }

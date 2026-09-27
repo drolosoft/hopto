@@ -70,7 +70,8 @@ func IsPrivateAddr(addr netip.Addr) bool {
 		return true
 	}
 
-	if addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() || addr.IsInterfaceLocalMulticast() || addr.IsMulticast() {
+	if addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() ||
+		addr.IsInterfaceLocalMulticast() || addr.IsMulticast() {
 		return true
 	}
 
@@ -117,7 +118,9 @@ func NewClient(opts Options) *http.Client {
 // Open sends a GET for rawURL and returns the response when the status is
 // 200; the caller reads the body with its own cap and closes it. The
 // scheme is checked before dialing; CheckRedirect covers the hops.
-func Open(ctx context.Context, client *http.Client, rawURL string, accept string) (*http.Response, error) {
+func Open(
+	ctx context.Context, client *http.Client, rawURL string, accept string,
+) (*http.Response, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, err
@@ -138,7 +141,9 @@ func Open(ctx context.Context, client *http.Client, rawURL string, accept string
 	if response.StatusCode != http.StatusOK {
 		// Best effort: the body of an error page is of no use.
 		_ = response.Body.Close()
-		return nil, fmt.Errorf("safehttp: %s answered %d", request.URL.Host, response.StatusCode)
+		return nil, fmt.Errorf(
+			"safehttp: %s answered %d", request.URL.Host, response.StatusCode,
+		)
 	}
 
 	return response, nil
@@ -146,7 +151,10 @@ func Open(ctx context.Context, client *http.Client, rawURL string, accept string
 
 // Get fetches rawURL whole and returns the body and its Content-Type. The
 // body is read up to maxBytes and refused past it.
-func Get(ctx context.Context, client *http.Client, rawURL string, accept string, maxBytes int64) ([]byte, string, error) {
+func Get(
+	ctx context.Context, client *http.Client, rawURL string, accept string,
+	maxBytes int64,
+) ([]byte, string, error) {
 	response, err := Open(ctx, client, rawURL, accept)
 	if err != nil {
 		return nil, "", err
