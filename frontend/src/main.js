@@ -136,7 +136,7 @@ function render() {
         state.selected = Math.max(0, layout.entries.length - 1);
     }
 
-    renderAll(state, layout, t, {onChip: selectCategory, onOpen: openAt, onToggleFavorite: toggleFavorite});
+    renderAll(state, layout, t, {onChip: selectCategory, onOpen: openAt, onToggleFavorite: toggleFavorite, onEdit: editEntry});
 }
 
 /**

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A pencil on every link and app, shown when the pointer or the selection is on it, opens the editor with the mouse; before, ⌘E was the only way in and it was written only in the help.
 
 ### Changed
 - `actions/checkout`, `actions/setup-go` and `actions/setup-node` in the CI and release workflows now use their newest major versions.

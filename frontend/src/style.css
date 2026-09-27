@@ -430,6 +430,38 @@ header {
     right: 4px;
 }
 
+/* The pencil shares the star's shape and sits to its left. It stays out
+   of sight until the pointer or the selection is on the item, so a list
+   of sixty rows is not sixty pencils. */
+.edit {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    opacity: 0;
+    --wails-draggable: no-drag;
+}
+
+.edit:hover {
+    color: var(--text);
+    background: var(--fill);
+}
+
+li:hover .edit, li[aria-selected="true"] .edit {
+    opacity: 1;
+}
+
+.card .edit {
+    position: absolute;
+    top: 4px;
+    right: 32px;
+}
+
 .card .opens {
     position: absolute;
     top: 8px;

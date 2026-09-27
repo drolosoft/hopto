@@ -241,3 +241,33 @@ test('the duplicate note offers ⌘E, which opens the existing link', async ({pa
     await expect(page.locator('#editor-name')).toHaveValue('GitHub');
     await expect(page.locator('#editor-description')).toHaveValue('Pull requests');
 });
+
+test('the pencil on a row opens the editor on that link without opening the link', async ({page}) => {
+    await shown(page, 'links');
+
+    // GitHub is the second row; its pencil must edit GitHub, not the
+    // selected Gitea, and the click must not reach the row's own opener.
+    const github = page.locator('#item-links-github');
+    await github.hover();
+    await expect(github.locator('.edit')).toBeVisible();
+    await github.locator('.edit').click();
+
+    await expect(page.locator('#editor h2')).toHaveText('Edit link');
+    await expect(page.locator('#editor-url')).toHaveValue('https://github.com');
+    await expect(page.locator('#editor-categories [aria-checked="true"]')).toHaveText('Ecosystem');
+    expect(await payloads(page, 'OpenLink')).toEqual([]);
+});
+
+test('the pencil on a card edits a hand-added app and offers to add a found one', async ({page}) => {
+    await shown(page, 'apps');
+
+    await page.locator('#item-apps-mine .edit').click();
+    await expect(page.locator('#editor h2')).toHaveText('Edit app');
+    await expect(page.locator('#editor-path')).toHaveValue('/Applications/Mine.app');
+    expect(await payloads(page, 'Launch')).toEqual([]);
+
+    await page.keyboard.press('Escape');
+    await page.locator('#item-apps-app-mail .edit').click();
+    await expect(page.locator('#editor h2')).toHaveText('New app');
+    await expect(page.locator('#editor-path')).toHaveValue('/Applications/Mail.app');
+});

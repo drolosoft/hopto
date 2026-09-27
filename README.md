@@ -157,7 +157,7 @@ icon = "sh:mozilla"
 | ⌘1 … ⌘9 | Pick a chip while the search box is empty (⌘1 is All) |
 | ⇥ | Other tab |
 | ⌘N | New link, or new app on the apps tab |
-| ⌘E | Edit the selected item |
+| ⌘E | Edit the selected item (or click the pencil that appears on an item under the pointer) |
 | ⌘⌫ | Delete a link or an app added by hand, hide a found app, or show a hidden one again (asks first: ↩ yes, Esc no) |
 | ⌘⇧E | Rename the selected chip |
 | ⌘⇧⌫ | Delete the selected chip once it is empty |

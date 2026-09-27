@@ -188,7 +188,7 @@ function renderStatus(state, t) {
  * @param {object} state
  * @param {{entries: object[], groups: {title: string, start: number, count: number}[], unified: boolean}} layout
  * @param {Function} t
- * @param {{onOpen: (index: number) => void, onToggleFavorite: (entry: object) => void}} handlers
+ * @param {{onOpen: (index: number) => void, onToggleFavorite: (entry: object) => void, onEdit: (entry: object) => void}} handlers
  */
 function renderList(state, layout, t, handlers) {
     const {entries, groups, unified} = layout;
@@ -206,6 +206,7 @@ function renderList(state, layout, t, handlers) {
         question: state.confirming?.key === entry.key ? confirmQuestion(state.confirming, t) : '',
         onOpen: () => handlers.onOpen(index),
         onToggleFavorite: () => handlers.onToggleFavorite(entry),
+        onEdit: () => handlers.onEdit(entry),
     });
 
     if (groups.length === 0) {
@@ -367,7 +368,7 @@ export function animateAppearance() {
  * @param {object} state
  * @param {object} layout
  * @param {Function} t
- * @param {{onChip: Function, onOpen: Function, onToggleFavorite: Function}} handlers
+ * @param {{onChip: Function, onOpen: Function, onToggleFavorite: Function, onEdit: Function}} handlers
  */
 export function renderAll(state, layout, t, handlers) {
     renderChrome(t);

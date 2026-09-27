@@ -83,6 +83,33 @@ function starButton(entry, t, onToggle) {
 }
 
 /**
+ * The pencil: the mouse's way into the editor, since ⌘E is only written
+ * in the help. Like the star it is a real button whose click stops at
+ * the button, so it never opens the item. The stylesheet keeps it out
+ * of sight until the pointer or the selection is on the item.
+ * @param {{name: string}} entry
+ * @param {Function} t
+ * @param {() => void} onEdit
+ * @returns {HTMLButtonElement}
+ */
+function editButton(entry, t, onEdit) {
+    const pencil = document.createElement('button');
+    pencil.type = 'button';
+    pencil.className = 'edit';
+    pencil.tabIndex = -1;
+    pencil.setAttribute('aria-label', t('edit.label', {name: entry.name}));
+    pencil.title = t('edit.title');
+    pencil.textContent = '✎';
+
+    pencil.addEventListener('click', (event) => {
+        event.stopPropagation();
+        onEdit();
+    });
+
+    return pencil;
+}
+
+/**
  * How many times an item was opened, as a small label; nothing at all for
  * an item never opened, so the list stays quiet until it earns a number.
  * @param {number} opens
@@ -125,12 +152,14 @@ function secondLine(entry, t) {
  * @param {object} entry
  * @param {Function} t
  * @param {() => void} onToggleFavorite
+ * @param {() => void} onEdit
  * @returns {HTMLLIElement}
  */
-function card(entry, t, onToggleFavorite) {
+function card(entry, t, onToggleFavorite, onEdit) {
     const item = document.createElement('li');
     item.className = 'card';
 
+    item.appendChild(editButton(entry, t, onEdit));
     item.appendChild(starButton(entry, t, onToggleFavorite));
 
     const count = opensLabel(entry.opens, t);
@@ -153,9 +182,10 @@ function card(entry, t, onToggleFavorite) {
  * @param {Function} t
  * @param {boolean} unified
  * @param {() => void} onToggleFavorite
+ * @param {() => void} onEdit
  * @returns {HTMLLIElement}
  */
-function row(entry, t, unified, onToggleFavorite) {
+function row(entry, t, unified, onToggleFavorite, onEdit) {
     const item = document.createElement('li');
     item.className = 'row';
 
@@ -183,6 +213,7 @@ function row(entry, t, unified, onToggleFavorite) {
         addText(aside, 'host', entry.host);
     }
 
+    aside.appendChild(editButton(entry, t, onEdit));
     aside.appendChild(starButton(entry, t, onToggleFavorite));
     item.appendChild(aside);
 
@@ -219,19 +250,19 @@ function actionRow(entry) {
  * the keyboard rely on: the index in the flat list, a DOM id for
  * aria-activedescendant, the selected state.
  * @param {object} entry
- * @param {{index: number, selected: boolean, layout: string, unified: boolean, t: Function, question: string, onOpen: () => void, onToggleFavorite: () => void}} options
+ * @param {{index: number, selected: boolean, layout: string, unified: boolean, t: Function, question: string, onOpen: () => void, onToggleFavorite: () => void, onEdit: () => void}} options
  * @returns {HTMLLIElement}
  */
 export function itemElement(entry, options) {
-    const {index, selected, layout, unified, t, question, onOpen, onToggleFavorite} = options;
+    const {index, selected, layout, unified, t, question, onOpen, onToggleFavorite, onEdit} = options;
 
     let item;
     if (entry.kind === 'add' || entry.kind === 'pick') {
         item = actionRow(entry);
     } else if (layout === 'cards' && !unified) {
-        item = card(entry, t, onToggleFavorite);
+        item = card(entry, t, onToggleFavorite, onEdit);
     } else {
-        item = row(entry, t, unified, onToggleFavorite);
+        item = row(entry, t, unified, onToggleFavorite, onEdit);
     }
 
     item.role = 'option';
