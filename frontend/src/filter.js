@@ -64,7 +64,7 @@ function scoreText(text, word) {
 /**
  * Points of an item for a query: the best field of each word, summed;
  * 0 as soon as one word matches nowhere, so every word has to appear.
- * @param {{name: string, description?: string, host?: string, keywords?: string[]}} item
+ * @param {{id?: string, name: string, description?: string, host?: string, keywords?: string[]}} item
  * @param {string} query
  * @returns {number}
  */
@@ -75,7 +75,10 @@ export function score(item, query) {
     }
 
     const name = normalize(item.name);
-    const texts = [item.host, ...(item.keywords ?? []), item.description].map(normalize);
+    // The id is searched too, at the same half weight as host, keywords
+    // and description: the old launcher found an item by "go-doc" even
+    // when neither its name nor its description mentioned "doc".
+    const texts = [item.id, item.host, ...(item.keywords ?? []), item.description].map(normalize);
 
     let total = 0;
     for (const word of pieces) {
@@ -161,9 +164,22 @@ export function filterByCategory(items, category) {
 }
 
 /**
+ * Sorts a category group with the most opened items first. `sort` is
+ * stable, so a comparator on `opens` alone keeps the library order for
+ * items opened the same number of times (0 for two never-opened items,
+ * for instance). The array is copied: the caller's filter result is not
+ * touched.
+ * @param {object[]} items one category, library order
+ * @returns {object[]}
+ */
+function byOpens(items) {
+    return [...items].sort((left, right) => right.opens - left.opens);
+}
+
+/**
  * The empty-query layout of a tab: favourites, the most recent, and the
- * rest grouped by category in chip order. An item shows once; hidden ones
- * never show; empty sections are dropped.
+ * rest grouped by category, most opened first inside each group. An item
+ * shows once; hidden ones never show; empty sections are dropped.
  * @param {object[]} items decorated
  * @param {{id: string, name: string}[]} categories chip order
  * @param {number} recentLimit
@@ -192,7 +208,7 @@ export function sections(items, categories, recentLimit) {
     for (const category of categories) {
         const rest = visible.filter((item) => item.category === category.id && !placed.has(item.key));
         if (rest.length > 0) {
-            result.push({id: category.id, items: rest});
+            result.push({id: category.id, items: byOpens(rest)});
         }
     }
 

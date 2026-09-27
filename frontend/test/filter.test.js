@@ -36,6 +36,16 @@ test('every word of the query has to match somewhere, scores add up', () => {
     assert.equal(score(links[0], 'gitea vps'), 0);
 });
 
+test('score also searches the id, like the old launcher did', () => {
+    // Neither the name nor the description mentions "doc": only the id
+    // does, so this proves the id itself is searched, not some other
+    // field that happens to contain the query.
+    const golang = {id: 'go-doc', key: 'links:go-doc', name: 'Golang', description: 'Programming language site', host: 'golang.org', keywords: []};
+
+    assert.ok(score(golang, 'go-doc') > 0, 'the full id matches');
+    assert.ok(score(golang, 'doc') > 0, 'a word inside the id matches');
+});
+
 test('decorate adds favourite, opens and lastOpened from the usage file', () => {
     const usage = {opens: {'links:gitea': 4}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: ['links:go-doc']};
     const decorated = decorate(links, usage);
@@ -84,6 +94,20 @@ test('sections split favourites, the five most recent and the rest by category',
 test('sections without favourites or recents is just the categories, hidden items left out', () => {
     const result = sections(decorate([...links, {...apps[0], hidden: true}], {opens: {}, lastOpened: {}, favorites: []}), [{id: 'eco', name: 'Eco'}, {id: 'docs', name: 'Docs'}, {id: 'applications', name: 'Apps'}], 5);
     assert.deepEqual(result.map((section) => section.id), ['eco', 'docs']);
+});
+
+test('sections lists the most opened item first inside each category, ties keep the library order', () => {
+    // The "eco" category holds gitea (library order 0) then github
+    // (library order 1); opens 0 and 3 should flip that to github first.
+    const usage = {opens: {'links:github': 3}, lastOpened: {}, favorites: []};
+    const categories = [{id: 'eco', name: 'Eco'}, {id: 'docs', name: 'Docs'}];
+    const opened = sections(decorate(links, usage), categories, 5);
+    assert.deepEqual(opened.find((section) => section.id === 'eco').items.map((item) => item.id), ['github', 'gitea']);
+
+    // Equal opens (both never opened) must not reorder the category: the
+    // tie-break is the library order, which the stable sort preserves.
+    const untouched = sections(decorate(links, {opens: {}, lastOpened: {}, favorites: []}), categories, 5);
+    assert.deepEqual(untouched.find((section) => section.id === 'eco').items.map((item) => item.id), ['gitea', 'github']);
 });
 
 test('unifiedSearch mixes both tabs by score and pairs an Edge app with its link', () => {
