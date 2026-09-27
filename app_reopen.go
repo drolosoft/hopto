@@ -30,14 +30,7 @@ func (a *App) showFromOutside() {
 		return
 	}
 
-	a.placeWindow()
-	a.window.Show()
-	a.window.Activate()
-	a.visible = true
-	a.tab = tabApps
-
-	// The same reset the shortcuts trigger.
-	a.window.Emit("shown", tabApps)
+	a.showLocked(tabApps)
 }
 
 // secondInstance is Wails' OnSecondInstanceLaunch: `open -n`, or a

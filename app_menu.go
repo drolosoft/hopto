@@ -120,14 +120,7 @@ func (a *App) showPanel(tab string) {
 		return
 	}
 
-	a.placeWindow()
-	a.window.Show()
-	a.window.Activate()
-	a.visible = true
-	a.tab = tab
-
-	// The same reset the shortcuts trigger.
-	a.window.Emit("shown", tab)
+	a.showLocked(tab)
 }
 
 // toggleLoginItem flips the LaunchAgent and ticks the entry from what is

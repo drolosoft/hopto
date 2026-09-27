@@ -313,15 +313,30 @@ func (a *App) toggle(tab string) {
 	}
 
 	if !a.visible {
-		a.placeWindow()
-		a.window.Show()
-		a.window.Activate()
-		a.visible = true
+		a.showLocked(tab)
+		return
 	}
 
+	// The other shortcut with the panel up switches tab without hiding
+	// it; the page starts clean on the new tab.
+	a.tab = tab
+	a.window.Emit("shown", tab)
+}
+
+// showLocked brings the hidden panel up on tab: placed on its screen,
+// shown, given the keyboard, and the page told to start clean. Every way
+// in (the shortcuts, the menu, a launch from outside) ends here, so the
+// order the spec fixes lives in one place. The caller holds a.mu and
+// has checked that the panel is hidden and that no dialog is open.
+func (a *App) showLocked(tab string) {
+	a.placeWindow()
+	a.window.Show()
+	a.window.Activate()
+	a.visible = true
 	a.tab = tab
 
-	// The page resets its selection, search and filter on every appearance.
+	// The page resets its selection, search and filter on every
+	// appearance.
 	a.window.Emit("shown", tab)
 }
 
