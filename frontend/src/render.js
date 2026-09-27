@@ -3,7 +3,7 @@
  * and a layout and writes the DOM; nothing here decides anything.
  */
 import {itemElement, sectionHeader} from './cards.js';
-import {counts, emptyMessage, totalsText, footerAction} from './state.js';
+import {counts, chipCounts, emptyMessage, totalsText, footerAction} from './state.js';
 import {TABS, otherTab} from './tabs.js';
 import {FAVORITES} from './filter.js';
 
@@ -86,6 +86,10 @@ function renderCategories(state, t, handlers) {
         ...categories.map((category) => ({id: category.id, name: categoryName(category, t)})),
     ];
 
+    // How many items each chip holds, so every chip carries its own count
+    // the way the tab labels already do.
+    const totals = chipCounts(state);
+
     elements.categories.replaceChildren();
     elements.categories.hidden = Boolean(state.query);
 
@@ -95,7 +99,16 @@ function renderCategories(state, t, handlers) {
         chip.className = 'chip';
         chip.tabIndex = -1;
         chip.setAttribute('aria-pressed', String(category.id === state.category));
-        chip.textContent = category.name;
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = category.name;
+        chip.appendChild(label);
+
+        const count = document.createElement('span');
+        count.className = 'count';
+        count.textContent = String(totals[category.id] ?? 0);
+        chip.appendChild(count);
 
         // ⌘1 is "All", ⌘2 the favourites, ⌘3 the first category, and so on.
         if (index < 9) {

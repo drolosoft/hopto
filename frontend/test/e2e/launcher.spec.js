@@ -63,7 +63,19 @@ test('Tab switches to apps and tells Go; cards show the virtual chips', async ({
 
     expect(await calls(page)).toContain('TabChanged:apps');
     await expect(page.locator('#grid .card')).toHaveCount(3);
-    await expect(page.locator('#categories .chip')).toHaveText(['All', '★ Favourites', 'Tools', 'Applications', 'Edge apps']);
+    await expect(page.locator('#categories .chip .label')).toHaveText(['All', '★ Favourites', 'Tools', 'Applications', 'Edge apps']);
+});
+
+test('category chips carry their own count, like the tabs do', async ({page}) => {
+    await shown(page, 'links');
+
+    // The fixture's links tab: 3 links, none favourited yet, 2 in
+    // Ecosystem (Gitea, GitHub) and 1 in Docs (mdn).
+    await expect(page.locator('#categories .chip .label')).toHaveText(['All', '★ Favourites', 'Ecosystem', 'Docs']);
+    await expect(page.locator('#categories .chip .count')).toHaveText(['3', '0', '2', '1']);
+
+    await page.keyboard.press('Meta+f');
+    await expect(page.locator('#categories .chip').nth(1).locator('.count')).toHaveText('1');
 });
 
 test('⌘F toggles the favourite and the favourites section appears', async ({page}) => {
@@ -110,7 +122,7 @@ test('chips filter, ⌘3 picks the first category, ⌘C copies with a toast', as
     await shown(page, 'links');
     await page.keyboard.press('Meta+3');
 
-    await expect(page.locator('#categories .chip[aria-pressed="true"]')).toHaveText('Ecosystem');
+    await expect(page.locator('#categories .chip[aria-pressed="true"] .label')).toHaveText('Ecosystem');
     await expect(page.locator('#grid [role="option"]')).toHaveCount(2);
 
     await page.keyboard.press('Meta+c');
@@ -158,7 +170,7 @@ test('the page speaks Spanish when the settings say so', async ({page}) => {
 
     await expect(page.locator('#tab-apps .label')).toHaveText('Mis apps');
     await expect(page.locator('#tab-apps .icon')).toBeVisible();
-    await expect(page.locator('#categories .chip').last()).toHaveText('Apps de Edge');
+    await expect(page.locator('#categories .chip .label').last()).toHaveText('Apps de Edge');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 });
 
@@ -219,7 +231,7 @@ test('a second shown resets query, chip and selection', async ({page}) => {
 
     await shown(page, 'apps');
     await expect(page.locator('#search')).toHaveValue('');
-    await expect(page.locator('#categories .chip[aria-pressed="true"]')).toHaveText('All');
+    await expect(page.locator('#categories .chip[aria-pressed="true"] .label')).toHaveText('All');
     await expect(page.locator('#tab-apps')).toHaveAttribute('aria-selected', 'true');
 });
 

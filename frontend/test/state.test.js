@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState, counts, emptyMessage, totalsText, footerAction} from '../src/state.js';
+import {initialState, counts, chipCounts, emptyMessage, totalsText, footerAction} from '../src/state.js';
 import {translator} from '../src/i18n.js';
-import {decorate} from '../src/filter.js';
+import {decorate, FAVORITES} from '../src/filter.js';
 
 const t = translator('en');
 const usage = {opens: {}, lastOpened: {}, favorites: []};
@@ -52,6 +52,20 @@ test('emptyMessage points at the other tab, or says there is nothing', () => {
 
 test('totalsText counts both tabs with plurals', () => {
     assert.equal(totalsText(stateWith({}), t), '1 app · 2 links');
+});
+
+test('chipCounts adds up all, favourites and each category, hidden items left out', () => {
+    const state = stateWith({
+        linkCategories: [{id: 'y', name: 'Y'}, {id: 'z', name: 'Z'}],
+        links: decorate([
+            {id: 'l', key: 'links:l', kind: 'link', name: 'Link', category: 'y', keywords: []},
+            {id: 'm', key: 'links:m', kind: 'link', name: 'More', category: 'y', keywords: []},
+            {id: 'n', key: 'links:n', kind: 'link', name: 'None', category: 'z', keywords: [], hidden: true},
+        ], {opens: {}, lastOpened: {}, favorites: ['links:l']}),
+    });
+
+    // "n" is hidden, so it counts nowhere: not in "All" and not in "Z".
+    assert.deepEqual(chipCounts(state), {'': 2, [FAVORITES]: 1, y: 2, z: 0});
 });
 
 test('footerAction names the selected item or the pair', () => {

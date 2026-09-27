@@ -1,7 +1,7 @@
 /**
  * The page state and the texts derived from it, without the DOM.
  */
-import {rankItems, filterByCategory} from './filter.js';
+import {rankItems, filterByCategory, FAVORITES} from './filter.js';
 import {TABS, otherTab} from './tabs.js';
 
 /**
@@ -101,6 +101,27 @@ export function footerAction(entry, t) {
     }
 
     return entry.web ? t('footer.pair') : t('footer.open', {name: entry.name});
+}
+
+/**
+ * How many items of the current tab each chip holds: every non-hidden
+ * item for "All", the favourites among them for the star chip, and each
+ * category's own non-hidden items. Ignores the search box on purpose:
+ * chips are hidden while searching, so counting matches would count
+ * something nobody is looking at.
+ * @param {object} state
+ * @returns {Object<string, number>}
+ */
+export function chipCounts(state) {
+    const categories = state.tab === 'links' ? state.linkCategories : state.appCategories;
+    const items = (state.tab === 'links' ? state.links : state.apps).filter((item) => !item.hidden);
+
+    const totals = {'': items.length, [FAVORITES]: items.filter((item) => item.favorite).length};
+    for (const category of categories) {
+        totals[category.id] = filterByCategory(items, category.id).length;
+    }
+
+    return totals;
 }
 
 /**
