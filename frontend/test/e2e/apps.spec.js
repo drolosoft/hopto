@@ -124,3 +124,22 @@ test('⌘E on a found app offers to add it by hand, under a category of the user
     const [saved] = await payloads(page, 'AddApp');
     expect(JSON.parse(saved)).toEqual({path: '/Applications/Mail.app', bundleId: 'com.apple.mail', name: 'Mail', description: '', category: 'tools'});
 });
+
+test('plan 3 minor (a): saving an app already added by hand names it and stores nothing', async ({page}) => {
+    await page.evaluate(() => {
+        window.nextPick = {path: '/Applications/Mine.app', bundleId: '', name: 'Mine copy', description: '', iconDataUrl: '', problem: '', duplicate: null};
+    });
+    await shown(page, 'apps');
+    await page.keyboard.press('Meta+n');
+    await expect(page.locator('#editor-path')).toHaveValue('/Applications/Mine.app');
+
+    await page.keyboard.press('Meta+1');
+    await page.keyboard.press('Enter');
+
+    await expect.poll(() => payloads(page, 'AddApp')).toHaveLength(1);
+    await expect(page.locator('#editor .notes')).toContainText('You already have it: Mine');
+    await expect(page.locator('#editor')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#grid [role="option"] .name', {hasText: 'Mine copy'})).toHaveCount(0);
+});

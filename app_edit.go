@@ -227,6 +227,16 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	var result SaveResult
 
 	err := a.library.Apply(func(draft *library.Library) error {
+		// The page checked PickApp's snapshot, which a second editor
+		// or a hand edit may have outrun: the same rule runs again
+		// here, on the file as it is now, under the store's lock. Only
+		// an entry added by hand blocks; a found app is adopted.
+		twin := handAddedDuplicate(*draft, in.Path, in.BundleID)
+		if twin != nil {
+			result = SaveResult{Problems: map[string]string{}, Duplicate: twin}
+			return errAnswered
+		}
+
 		// Same reasoning as AddLink: an id must not be taken on either tab.
 		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
 			return hasLinkID(*draft, candidate) || hasAppID(*draft, candidate)
@@ -266,9 +276,7 @@ func dropTwinHidden(
 	draft *library.Library, discovered []discover.App, app library.AppEntry,
 ) {
 	for _, found := range discovered {
-		sameApp := found.Path == app.Path ||
-			(app.BundleID != "" && found.BundleID == app.BundleID)
-		if !sameApp {
+		if !sameApp(app.Path, app.BundleID, found.Path, found.BundleID) {
 			continue
 		}
 

@@ -90,6 +90,16 @@ const maybeThrowOnSave = () => {
 const isDiscoveredTwin = (app, input) => app.source !== 'library'
     && (app.path === input.path || (input.bundleId !== '' && app.bundleId === input.bundleId));
 
+/**
+ * The entry added by hand that already opens the app of an AddApp
+ * input, if any: the rule Go's AddApp answers with a duplicate instead
+ * of storing the app twice.
+ * @param {{path: string, bundleId: string}} input
+ * @returns {object|undefined}
+ */
+const handAddedTwin = (input) => apps.find((app) => app.source === 'library'
+    && ((input.path !== '' && app.path === input.path) || (input.bundleId !== '' && app.bundleId === input.bundleId)));
+
 const call = (name) => async (...args) => {
     window.calls.push([name, ...args].join(':'));
 };
@@ -211,6 +221,12 @@ window.go = {main: {App: {
         const queued = queuedSave();
         if (queued) {
             return queued;
+        }
+        // Like Go's AddApp, an app an entry added by hand already opens
+        // comes back as that entry and nothing is stored.
+        const twin = handAddedTwin(input);
+        if (twin) {
+            return {id: '', problems: {}, duplicate: {tab: 'apps', id: twin.id, name: twin.name}};
         }
         const id = slug(input.name);
         // Like Go's AddApp, adopting a discovered app by hand drops its

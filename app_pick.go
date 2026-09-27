@@ -150,24 +150,43 @@ func bundleIconDataURL(iconPath string) string {
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
 }
 
-// appDuplicate finds the entry that already opens this app: a hand-added
-// one first (the editor offers to edit it), then a discovered one (it is
-// already on the grid).
+// appDuplicate finds the entry that already opens this app: one added
+// by hand first (the editor offers to edit it), then a discovered one
+// (it is already on the grid, and saving adopts it).
 func (a *App) appDuplicate(path, bundleID string) *Ref {
 	lib := a.library.Snapshot()
-	sameApp := func(otherPath, otherBundle string) bool {
-		return otherPath == path || (bundleID != "" && otherBundle == bundleID)
-	}
-
-	for _, app := range lib.Apps {
-		if sameApp(app.Path, app.BundleID) {
-			return &Ref{Tab: tabApps, ID: app.ID, Name: app.Name}
-		}
+	if ref := handAddedDuplicate(lib, path, bundleID); ref != nil {
+		return ref
 	}
 
 	for _, found := range a.discover(lib.Settings) {
-		if sameApp(found.Path, found.BundleID) {
+		if sameApp(path, bundleID, found.Path, found.BundleID) {
 			return &Ref{Tab: tabApps, ID: found.ID, Name: found.Name}
+		}
+	}
+
+	return nil
+}
+
+// sameApp reports whether two entries open the same app: the same
+// bundle path, or the same bundle id. An empty path or bundle id
+// matches nothing, so two entries that only have the other field never
+// look alike by accident.
+func sameApp(path, bundleID, otherPath, otherBundle string) bool {
+	samePath := path != "" && otherPath == path
+	sameBundle := bundleID != "" && otherBundle == bundleID
+
+	return samePath || sameBundle
+}
+
+// handAddedDuplicate is the entry of lib added by hand that already
+// opens the app at path (or with bundleID), or nil. The picked draft
+// and AddApp share it, so the page and Go can never disagree on what
+// counts as a twin.
+func handAddedDuplicate(lib library.Library, path, bundleID string) *Ref {
+	for _, app := range lib.Apps {
+		if sameApp(path, bundleID, app.Path, app.BundleID) {
+			return &Ref{Tab: tabApps, ID: app.ID, Name: app.Name}
 		}
 	}
 

@@ -388,6 +388,57 @@ func TestAddAppAvoidsALinkID(t *testing.T) {
 	}
 }
 
+// Plan 3 minor (a): AddApp refuses an app that an entry added by hand
+// already opens, by path or by bundle id, even when the page's snapshot
+// said nothing (a second editor or a hand edit got there first). A
+// found app is still adopted: that is how it gets a category, and the
+// other tests of this file pin it.
+func TestAddAppRefusesAHandAddedTwin(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
+	addApp(t, app, library.AppEntry{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Path:     bundle,
+		BundleID: "com.example.alpha",
+		Category: "tools",
+	})
+
+	elsewhere := filepath.Join(app.home, "Applications", "Alpha Copy.app")
+	cases := []struct {
+		name  string
+		input AppInput
+	}{
+		{
+			"same path",
+			AppInput{Path: bundle, Name: "Again", Category: "tools"},
+		},
+		{
+			"same bundle id",
+			AppInput{
+				Path:     elsewhere,
+				BundleID: "com.example.alpha",
+				Name:     "Copy",
+				Category: "tools",
+			},
+		},
+	}
+
+	for _, test := range cases {
+		result, err := app.AddApp(test.input)
+		wrong := err != nil || result.ID != "" ||
+			result.Problems == nil || result.Duplicate == nil ||
+			result.Duplicate.ID != "alpha"
+		if wrong {
+			t.Errorf("%s: %+v %v", test.name, result, err)
+		}
+	}
+
+	if apps := app.library.Snapshot().Apps; len(apps) != 1 {
+		t.Errorf("a twin was stored: %+v", apps)
+	}
+}
+
 func TestCategories(t *testing.T) {
 	app, _, _ := newTestApp(t)
 
