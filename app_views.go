@@ -222,7 +222,8 @@ func (a *App) linkViews(lib library.Library) []ItemView {
 
 // appViews lists the hand-added apps first, then the discovered ones,
 // flagging the hidden ones instead of dropping them so the page can offer
-// to unhide.
+// to unhide. A discovered app that a hand-added one already opens is left
+// out.
 func (a *App) appViews(lib library.Library) []ItemView {
 	hidden := map[string]bool{}
 	for _, entry := range lib.Hidden {
@@ -255,7 +256,26 @@ func (a *App) appViews(lib library.Library) []ItemView {
 		views = append(views, view)
 	}
 
+	// An app the user also added by hand (it is how a discovered app
+	// gets a category) is listed once, as the hand-added entry.
+	adopted := map[string]bool{}
+	for _, app := range lib.Apps {
+		if app.Path != "" {
+			adopted["path:"+app.Path] = true
+		}
+
+		if app.BundleID != "" {
+			adopted["bundle:"+app.BundleID] = true
+		}
+	}
+
 	for _, app := range a.discover(lib.Settings) {
+		twin := adopted["path:"+app.Path] ||
+			(app.BundleID != "" && adopted["bundle:"+app.BundleID])
+		if twin {
+			continue
+		}
+
 		views = append(views, ItemView{
 			ID:          app.ID,
 			Key:         tabApps + ":" + app.ID,

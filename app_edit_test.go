@@ -250,6 +250,12 @@ func TestAppCRUDAndHiding(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")
 
+	// A second, unrelated bundle: hiding must be exercised on an app that
+	// stays discovered, not on "app-alpha", which TestAHandAddedAppHides
+	// ItsDiscoveredTwin covers as the hand-added "alpha"'s twin (Task 10
+	// leaves a twin out of Items entirely, so it cannot be hidden there).
+	fakeBundle(t, app, "Beta", "com.example.beta")
+
 	result, err := app.AddApp(AppInput{Path: bundle, Category: "tools"})
 	if err != nil || result.ID != "alpha" || len(result.Problems) != 0 {
 		t.Fatalf("add: %+v %v", result, err)
@@ -288,26 +294,26 @@ func TestAppCRUDAndHiding(t *testing.T) {
 		t.Errorf("hiding a library app: %v", err)
 	}
 
-	if err := app.HideApp("app-alpha"); err != nil {
+	if err := app.HideApp("app-beta"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := app.HideApp("app-alpha"); err != nil {
+	if err := app.HideApp("app-beta"); err != nil {
 		t.Errorf("hiding twice must be idempotent: %v", err)
 	}
 
 	hidden := false
 	for _, item := range app.Items(tabApps) {
-		if item.ID == "app-alpha" && item.Hidden {
+		if item.ID == "app-beta" && item.Hidden {
 			hidden = true
 		}
 	}
 
 	if !hidden {
-		t.Error("app-alpha is not hidden")
+		t.Error("app-beta is not hidden")
 	}
 
-	if err := app.UnhideApp("app-alpha"); err != nil {
+	if err := app.UnhideApp("app-beta"); err != nil {
 		t.Fatal(err)
 	}
 

@@ -636,3 +636,28 @@ func TestSystemAppsAreSearchOnly(t *testing.T) {
 		}
 	}
 }
+
+// An app found on disk and also added by hand (to give it a category)
+// is listed once, as the hand-added entry, matched by path or bundle id.
+func TestAHandAddedAppHidesItsDiscoveredTwin(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	alpha := fakeBundle(t, app, "Alpha", "com.example.alpha")
+	fakeBundle(t, app, "Beta", "com.example.beta")
+
+	addApp(t, app, library.AppEntry{
+		ID: "alpha", Name: "Alpha", Path: alpha, Category: "tools",
+	})
+	addApp(t, app, library.AppEntry{
+		ID: "beta", Name: "Beta", BundleID: "com.example.beta",
+		Category: "tools",
+	})
+
+	ids := []string{}
+	for _, view := range app.Items(tabApps) {
+		ids = append(ids, view.ID)
+	}
+
+	if strings.Join(ids, " ") != "alpha beta" {
+		t.Errorf("ids = %v", ids)
+	}
+}
