@@ -48,8 +48,14 @@ func TestBundlePath(t *testing.T) {
 		executable string
 		want       string
 	}{
-		{"/Applications/hopto.app/Contents/MacOS/hopto", "/Applications/hopto.app"},
-		{"/Users/someone/Applications/hopto.app/Contents/MacOS/hopto", "/Users/someone/Applications/hopto.app"},
+		{
+			"/Applications/hopto.app/Contents/MacOS/hopto",
+			"/Applications/hopto.app",
+		},
+		{
+			"/Users/someone/Applications/hopto.app/Contents/MacOS/hopto",
+			"/Users/someone/Applications/hopto.app",
+		},
 		{"/private/var/folders/x/b001/hopto.test", ""},
 		{"/Users/someone/go/bin/hopto", ""},
 		{"/tmp/hopto.app/hopto", ""},
