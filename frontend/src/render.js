@@ -390,6 +390,10 @@ export function columns() {
  * Comparing the actual boxes on screen instead finds the nearest row in
  * the given direction, then the option in it closest to the current
  * horizontal centre.
+ * Past the first or the last row there is nothing to land on and the
+ * selection stays: ↑↓ stop at the edges, as the Finder's icon view and
+ * Launchpad do, while ←→ wrap (supuesto 3 of plan 3; jumping from the
+ * last Edge app to the first favourite lost people).
  * @param {1|-1} direction
  * @returns {number|null} the target's data-index, or null past either end
  */

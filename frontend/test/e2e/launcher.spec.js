@@ -255,3 +255,19 @@ test('the menu bar Help opens the help panel over a fresh list', async ({page}) 
     await expect(page.locator('#help')).toBeHidden();
     expect(await calls(page)).not.toContain('Hide');
 });
+
+test('supuesto 3: ↑ and ↓ stop at the edges of the cards grid, ← and → wrap', async ({page}) => {
+    await shown(page, 'apps');
+    const options = page.locator('#grid [role="option"]');
+
+    await page.keyboard.press('ArrowUp');
+    await expect(options.nth(0)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(options.nth(2)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('ArrowRight');
+    await expect(options.nth(0)).toHaveAttribute('aria-selected', 'true');
+});
