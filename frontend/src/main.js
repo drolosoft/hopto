@@ -526,7 +526,7 @@ async function toggleFavorite(entry) {
 }
 
 /**
- * Re-attaches the usage to both catalogs after it changed.
+ * Re-attaches the usage to both catalogues after it changed.
  */
 function decorateAll() {
     state.apps = decorate(state.apps, state.usage);

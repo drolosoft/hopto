@@ -84,7 +84,7 @@ export function emptyMessage(state, t) {
 }
 
 /**
- * The footer's left side: the size of both catalogs, whatever the filter.
+ * The footer's left side: the size of both catalogues, whatever the filter.
  * @param {object} state
  * @param {Function} t
  * @returns {string}
