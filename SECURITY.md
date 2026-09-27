@@ -18,7 +18,7 @@ Please include:
 - Steps to reproduce
 - Potential impact
 
-We will acknowledge receipt within 48 hours and provide a timeline for a fix.
+Receipt will be acknowledged within 48 hours, with a timeline for a fix.
 
 **Do not** open a public GitHub issue for security vulnerabilities.
 
