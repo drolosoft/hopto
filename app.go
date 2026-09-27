@@ -98,6 +98,12 @@ type App struct {
 	tab        string
 	discovered map[string]discover.App
 	fetched    map[string]bool
+
+	// fetchGeneration counts the fetches started for an id, so a goroutine
+	// started by an edit that is itself later overtaken (a second edit, a
+	// delete) can tell its answer is stale and drop it instead of racing
+	// the newer one to disk.
+	fetchGeneration map[string]int
 }
 
 // NewApp builds the launcher for the real Mac: the user's home, the system
@@ -119,17 +125,20 @@ func newApp(
 	language string,
 ) *App {
 	app := &App{
-		window:     win,
-		open:       open,
-		home:       home,
-		dataDir:    dataDir,
-		language:   language,
-		scanner:    &discover.Scanner{},
-		appRoots:   []string{"/Applications", filepath.Join(home, "Applications")},
-		edgeDir:    discover.EdgeAppsDir(home),
-		tab:        tabApps,
-		discovered: map[string]discover.App{},
-		fetched:    map[string]bool{},
+		window:   win,
+		open:     open,
+		home:     home,
+		dataDir:  dataDir,
+		language: language,
+		scanner:  &discover.Scanner{},
+		appRoots: []string{
+			"/Applications", filepath.Join(home, "Applications"),
+		},
+		edgeDir:         discover.EdgeAppsDir(home),
+		tab:             tabApps,
+		discovered:      map[string]discover.App{},
+		fetched:         map[string]bool{},
+		fetchGeneration: map[string]int{},
 	}
 
 	usageStore, err := usage.Open(filepath.Join(dataDir, usageFile))

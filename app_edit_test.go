@@ -10,7 +10,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -54,6 +56,36 @@ func iconAndPage(t *testing.T) *httptest.Server {
 		_, _ = w.Write([]byte(`<html><head><title>Example Page</title>
 <meta property="og:site_name" content="Example">
 <meta name="description" content="An example site">
+<link rel="apple-touch-icon" href="/icon.png"></head></html>`))
+	})
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	return server
+}
+
+// slowIconPage is iconAndPage with the icon's size and reply delay under
+// the test's control, so a fetch against it can be kept in flight for as
+// long as the test needs, and told apart from another server's icon by
+// its pixel size.
+func slowIconPage(
+	t *testing.T, side int, delay time.Duration,
+) *httptest.Server {
+	t.Helper()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"GET /icon.png",
+		func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(delay)
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(solidPNG(t, side))
+		},
+	)
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><head><title>Race</title>
 <link rel="apple-touch-icon" href="/icon.png"></head></html>`))
 	})
 
@@ -491,5 +523,116 @@ func TestRefetchIcon(t *testing.T) {
 	_, err = app.RefetchIcon(tabApps, "app-alpha")
 	if !errors.Is(err, errLiveIcon) {
 		t.Errorf("discovered: %v", err)
+	}
+}
+
+// Review finding 1: a fetch started by an edit that is itself overtaken
+// by a second edit must not win the race to disk. AddLink starts a fetch
+// against a slow server; UpdateLink immediately points the same link at
+// a fast one. Whichever answers last, the fast server's icon (a different
+// size, so the test can tell) must be the one that survives on disk, and
+// the page must hear about it exactly once.
+func TestUpdateLinkDropsAStaleInFlightFetch(t *testing.T) {
+	app, win, _ := newTestApp(t)
+	allowPrivate(t, app)
+
+	const slowSide = 64
+	const fastSide = 32
+
+	slow := slowIconPage(t, slowSide, 300*time.Millisecond)
+	fast := slowIconPage(t, fastSide, 0)
+
+	added := LinkInput{URL: slow.URL + "/page", Name: "Racer", Category: "dev"}
+	result, err := app.AddLink(added)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	edited := LinkInput{URL: fast.URL + "/page", Name: "Racer", Category: "dev"}
+	if _, err := app.UpdateLink(result.ID, edited); err != nil {
+		t.Fatal(err)
+	}
+
+	app.background.Wait()
+
+	iconPath := filepath.Join(app.iconsDir(), result.ID+".png")
+	data, err := os.ReadFile(iconPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := png.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if config.Width != fastSide {
+		t.Errorf(
+			"icon on disk is %d px, want the fast server's %d",
+			config.Width, fastSide,
+		)
+	}
+
+	wanted := "emit:icons:" + result.ID
+	if emits := strings.Count(win.joined(), wanted); emits != 1 {
+		t.Errorf("%q seen %d times among %q", wanted, emits, win.joined())
+	}
+}
+
+// Review finding 2: two adds racing on the same name must not compute the
+// same id. Ten concurrent AddLink calls with the same name must all
+// succeed with ten distinct ids and ten links on disk.
+func TestConcurrentAddLinkGetsDistinctIDs(t *testing.T) {
+	app, _, _ := newTestApp(t)
+
+	const concurrency = 10
+
+	// The seed already has links of its own; count only what this test adds.
+	before := len(app.library.Snapshot().Links)
+
+	var wg sync.WaitGroup
+	ids := make([]string, concurrency)
+	errs := make([]error, concurrency)
+
+	for i := range concurrency {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			url := "https://race-" + strconv.Itoa(i) + ".test"
+			result, err := app.AddLink(
+				LinkInput{URL: url, Name: "Race", Category: "dev"},
+			)
+			ids[i] = result.ID
+			errs[i] = err
+		}()
+	}
+
+	wg.Wait()
+
+	seen := map[string]bool{}
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("add %d: %v", i, err)
+		}
+
+		if ids[i] == "" {
+			t.Errorf("add %d: empty id", i)
+		}
+
+		if seen[ids[i]] {
+			t.Errorf("id %q used twice", ids[i])
+		}
+		seen[ids[i]] = true
+	}
+
+	if len(seen) != concurrency {
+		t.Errorf("got %d distinct ids, want %d", len(seen), concurrency)
+	}
+
+	added := len(app.library.Snapshot().Links) - before
+	if added != concurrency {
+		t.Errorf("stored %d new links, want %d", added, concurrency)
 	}
 }

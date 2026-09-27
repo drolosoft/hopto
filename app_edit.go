@@ -28,6 +28,11 @@ var (
 		"discovered apps serve their icon from the bundle",
 	)
 	errNoIconFound = icons.ErrNoIcon
+
+	// errAnswered marks an Apply aborted on purpose because the closure
+	// already worked out a Problems or Duplicate answer; the store must
+	// not write anything, but the caller must not see it as a real error.
+	errAnswered = errors.New("answered without writing")
 )
 
 // iconFilePerm keeps the icons private like the rest of the data folder.
@@ -74,39 +79,52 @@ type LinkDraft struct {
 }
 
 // AddLink validates and stores a new link, then fetches its icon in the
-// background. Field problems and duplicates are answers, not errors.
+// background. Field problems and duplicates are answers, not errors. The
+// id, the duplicate check and the field checks all run against the draft
+// inside Apply, under the store's own lock: two adds racing on the same
+// name must not compute the same id.
 func (a *App) AddLink(in LinkInput) (SaveResult, error) {
 	a.reload()
-	lib := a.library.Snapshot()
 	in = tidyLinkInput(in)
 
-	if duplicate, ok := library.FindDuplicateLink(lib.Links, in.URL); ok {
-		return SaveResult{
-			Problems:  map[string]string{},
-			Duplicate: linkRef(duplicate),
-		}, nil
-	}
-
-	id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-		return hasLinkID(lib, candidate)
-	})
-
-	link := linkFromInput(id, in)
-	if problems := linkProblems(lib, link); len(problems) > 0 {
-		return SaveResult{Problems: problems}, nil
-	}
+	var result SaveResult
+	var link library.Link
 
 	err := a.library.Apply(func(draft *library.Library) error {
+		if duplicate, ok := library.FindDuplicateLink(draft.Links, in.URL); ok {
+			result = SaveResult{
+				Problems:  map[string]string{},
+				Duplicate: linkRef(duplicate),
+			}
+
+			return errAnswered
+		}
+
+		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
+			return hasLinkID(*draft, candidate)
+		})
+
+		link = linkFromInput(id, in)
+		if problems := linkProblems(*draft, link); len(problems) > 0 {
+			result = SaveResult{Problems: problems}
+			return errAnswered
+		}
+
 		draft.Links = append(draft.Links, link)
+		result = SaveResult{ID: id, Problems: map[string]string{}}
+
 		return nil
 	})
+	if errors.Is(err, errAnswered) {
+		return result, nil
+	}
 	if err != nil {
 		return SaveResult{Problems: map[string]string{}}, err
 	}
 
-	a.fetchIconLater(id, link.Icon, link.URL)
+	a.fetchIconLater(result.ID, link.Icon, link.URL)
 
-	return SaveResult{ID: id, Problems: map[string]string{}}, nil
+	return result, nil
 }
 
 // UpdateLink replaces the fields of a link; the id never changes.
@@ -172,10 +190,12 @@ func (a *App) DeleteLink(id string) error {
 }
 
 // AddApp stores a hand-added app. A path without a name takes the bundle's
-// folder name, as the Finder shows it.
+// folder name, as the Finder shows it. The id and the field checks run
+// against the draft inside Apply, under the store's own lock, for the
+// same reason as AddLink: two adds racing on the same name must not
+// compute the same id.
 func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	a.reload()
-	lib := a.library.Snapshot()
 	in = tidyAppInput(in)
 
 	if in.Name == "" && in.Path != "" {
@@ -183,24 +203,32 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 		in.Name = bundle.Name
 	}
 
-	id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-		return hasAppID(lib, candidate)
-	})
-
-	app := appFromInput(id, in)
-	if problems := a.appProblems(lib, app); len(problems) > 0 {
-		return SaveResult{Problems: problems}, nil
-	}
+	var result SaveResult
 
 	err := a.library.Apply(func(draft *library.Library) error {
+		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
+			return hasAppID(*draft, candidate)
+		})
+
+		app := appFromInput(id, in)
+		if problems := a.appProblems(*draft, app); len(problems) > 0 {
+			result = SaveResult{Problems: problems}
+			return errAnswered
+		}
+
 		draft.Apps = append(draft.Apps, app)
+		result = SaveResult{ID: id, Problems: map[string]string{}}
+
 		return nil
 	})
+	if errors.Is(err, errAnswered) {
+		return result, nil
+	}
 	if err != nil {
 		return SaveResult{Problems: map[string]string{}}, err
 	}
 
-	return SaveResult{ID: id, Problems: map[string]string{}}, nil
+	return result, nil
 }
 
 // UpdateApp replaces the fields of a hand-added app.
@@ -282,35 +310,38 @@ func (a *App) UnhideApp(id string) error {
 
 // AddCategory creates a chip on a tab. The id comes from the name and
 // steps aside from existing and reserved ids ("Favoritos" → favoritos-2).
+// It is worked out against the draft inside Apply, under the store's own
+// lock, so two adds racing on the same name cannot compute the same id.
 func (a *App) AddCategory(tab, name string) (CategoryView, error) {
 	if tab != tabApps && tab != tabLinks {
 		return CategoryView{}, fmt.Errorf("%w: tab %q", errUnknownItem, tab)
 	}
 
 	a.reload()
-	lib := a.library.Snapshot()
 	name = strings.TrimSpace(name)
 
-	taken := func(candidate string) bool {
-		probe := library.Category{ID: candidate, Name: "x", Tab: tab}
-		if library.CheckCategory(probe) != nil {
-			return true
-		}
-
-		return slices.ContainsFunc(
-			lib.Categories,
-			func(category library.Category) bool { return category.ID == candidate },
-		)
-	}
-
-	category := library.Category{
-		ID:   library.UniqueID(library.Slug(name), taken),
-		Name: name,
-		Tab:  tab,
-	}
+	var category library.Category
 
 	err := a.library.Apply(func(draft *library.Library) error {
+		taken := func(candidate string) bool {
+			probe := library.Category{ID: candidate, Name: "x", Tab: tab}
+			if library.CheckCategory(probe) != nil {
+				return true
+			}
+
+			return slices.ContainsFunc(
+				draft.Categories,
+				func(chip library.Category) bool { return chip.ID == candidate },
+			)
+		}
+
+		category = library.Category{
+			ID:   library.UniqueID(library.Slug(name), taken),
+			Name: name,
+			Tab:  tab,
+		}
 		draft.Categories = append(draft.Categories, category)
+
 		return nil
 	})
 	if err != nil {
@@ -427,6 +458,8 @@ func (a *App) InspectURL(raw string) (LinkDraft, error) {
 // app's bundle icon, writes it and returns the new page URL. Discovered
 // apps are served live from their bundle and have nothing to refetch.
 func (a *App) RefetchIcon(tab, id string) (string, error) {
+	a.reload()
+
 	if tab == tabLinks {
 		link, ok := a.findLink(id)
 		if !ok {
@@ -489,7 +522,9 @@ func (a *App) fetchMissingIcons(links []library.Link) {
 
 // fetchIconLater downloads one icon in a goroutine and tells the page when
 // it is on disk. The goroutine touches the icons folder and the window,
-// never the library store.
+// never the library store; before writing, it checks under the lock that
+// no later edit has moved the id on to a new generation (forgetFetch bumps
+// it), and drops its answer rather than race a fresher fetch to disk.
 func (a *App) fetchIconLater(id, hint, pageURL string) {
 	if a.offline {
 		return
@@ -498,6 +533,7 @@ func (a *App) fetchIconLater(id, hint, pageURL string) {
 	a.mu.Lock()
 	already := a.fetched[id]
 	a.fetched[id] = true
+	generation := a.fetchGeneration[id]
 	a.mu.Unlock()
 
 	if already {
@@ -521,8 +557,16 @@ func (a *App) fetchIconLater(id, hint, pageURL string) {
 			return
 		}
 
+		if !a.stillCurrent(id, generation) {
+			return
+		}
+
 		if _, err := a.writeIcon(id, png); err != nil {
 			log.Printf("icon %s: %v", id, err)
+			return
+		}
+
+		if !a.stillCurrent(id, generation) {
 			return
 		}
 
@@ -530,12 +574,25 @@ func (a *App) fetchIconLater(id, hint, pageURL string) {
 	}()
 }
 
-// forgetFetch lets an id be fetched again (its URL or hint changed).
+// stillCurrent reports whether generation is still the one an edit last
+// started for id: a fetch that started before a later edit answers for the
+// URL that edit replaced, and must not overwrite the newer fetch's result.
+func (a *App) stillCurrent(id string, generation int) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	return a.fetchGeneration[id] == generation
+}
+
+// forgetFetch lets an id be fetched again (its URL or hint changed) and
+// bumps its generation, so a fetch already in flight for the previous
+// value drops its answer instead of writing over the new one.
 func (a *App) forgetFetch(id string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	delete(a.fetched, id)
+	a.fetchGeneration[id]++
 }
 
 // newFetcher builds a fetcher from the current settings; cheap enough to
@@ -721,13 +778,14 @@ func hasCategory(lib library.Library, tab, id string) bool {
 	)
 }
 
-// hasLinkID and hasAppID report whether an id is taken on a tab.
+// hasLinkID reports whether an id is already taken on the links tab.
 func hasLinkID(lib library.Library, id string) bool {
 	return slices.ContainsFunc(lib.Links, func(link library.Link) bool {
 		return link.ID == id
 	})
 }
 
+// hasAppID reports whether an id is already taken on the apps tab.
 func hasAppID(lib library.Library, id string) bool {
 	return slices.ContainsFunc(lib.Apps, func(app library.AppEntry) bool {
 		return app.ID == id
