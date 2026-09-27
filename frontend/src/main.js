@@ -11,9 +11,9 @@ import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
 import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout, renameBox} from './render.js';
 import {installKeyboard} from './keyboard.js';
-import {addOffer, newDraft, editDraft} from './draft.js';
+import {addOffer, newDraft, editDraft, adoptDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
-import {installEditing, editableCategories, openEditor, closeEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate} from './editing.js';
+import {installEditing, editableCategories, openEditor, closeEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate, pickApp} from './editing.js';
 import {installWelcome, checkWelcome, hideWelcome, presentWelcome} from './welcome.js';
 
 // How many "Recent" items the empty-query layout shows.
@@ -54,6 +54,22 @@ function addEntry(offer) {
 }
 
 /**
+ * The "Search Applications…" row of the apps tab: Enter opens the app
+ * editor with the native dialog.
+ * @returns {object}
+ */
+function pickEntry() {
+    return {
+        key: 'pick:app',
+        kind: 'pick',
+        id: '',
+        name: t('pick.row'),
+        description: t('pick.hint'),
+        glyph: '⌕',
+    };
+}
+
+/**
  * What the list shows for the state: the unified search while typing, a
  * flat list under a chip, or the sections of the tab.
  * @param {object} current
@@ -65,6 +81,12 @@ export function layoutOf(current) {
         const offer = addOffer(current.query, entries.length);
         if (offer) {
             entries.push(addEntry(offer));
+
+            // On the apps tab the search also offers the native dialog
+            // (supuesto 4): the add row itself always adds a link.
+            if (current.tab === 'apps') {
+                entries.push(pickEntry());
+            }
         }
 
         return {entries, groups: [], unified: true};
@@ -189,6 +211,20 @@ function linkDraftFrom(text) {
 }
 
 /**
+ * An empty app draft, with the active chip preselected when the apps tab
+ * shows one; the editor opens the dialog on it.
+ * @returns {object}
+ */
+function appDraft() {
+    return newDraft({
+        tab: 'apps',
+        category: state.tab === 'apps' ? state.category : '',
+        categories: editableCategories('apps'),
+        returnQuery: state.query,
+    });
+}
+
+/**
  * After a save: back to the list, on the saved item's tab, with the item
  * selected and a short confirmation.
  * @param {string} key "links:<id>" or "apps:<id>"
@@ -229,17 +265,23 @@ function returnToSearch(query) {
 }
 
 /**
- * ⌘E: the editor filled with the selected link. Apps get theirs with
- * the native dialog (task 10); until then the key only logs.
+ * ⌘E: the editor filled with the selected link or hand-added app; on a
+ * discovered app, the editor that adds it by hand, which is how it gets
+ * a category.
  * @param {object|undefined} entry
  */
 function editEntry(entry) {
-    if (!entry || entry.kind !== 'link') {
-        Debug(`edit ${entry?.key ?? 'nothing'}: only links are editable here`);
+    if (!entry || (entry.kind !== 'link' && entry.kind !== 'app')) {
         return;
     }
 
-    openEditor(editDraft(entry, editableCategories('links'), state.query));
+    if (entry.kind === 'app' && entry.source !== 'library') {
+        openEditor(adoptDraft(entry, editableCategories('apps'), state.query));
+        return;
+    }
+
+    const tab = entry.kind === 'link' ? 'links' : 'apps';
+    openEditor(editDraft(entry, editableCategories(tab), state.query));
 }
 
 /**
@@ -421,6 +463,11 @@ async function openEntry(entry, how = 'default') {
 
     if (entry.kind === 'add') {
         openEditor(linkDraftFrom(entry.text));
+        return;
+    }
+
+    if (entry.kind === 'pick') {
+        openEditor(appDraft());
         return;
     }
 
@@ -657,10 +704,13 @@ function dispatch(action) {
             renderHelp(state, t);
             break;
         case 'new':
-            openEditor(linkDraftFrom(''));
+            openEditor(state.tab === 'apps' ? appDraft() : linkDraftFrom(''));
             break;
         case 'save':
             saveEditor();
+            break;
+        case 'pickApp':
+            pickApp();
             break;
         case 'closeEditor':
             closeEditor();

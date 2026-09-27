@@ -4,8 +4,8 @@
  * lives in the page state, so `shown` wipes it along with everything
  * else; this module only keeps a timer and a counter of inspections.
  */
-import {InspectURL, AddLink, UpdateLink, AddCategory, Debug} from '../wailsjs/go/main/App';
-import {looksLikeURL, withScheme, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withSaveResult} from './draft.js';
+import {InspectURL, AddLink, UpdateLink, AddCategory, PickApp, AddApp, UpdateApp, Debug} from '../wailsjs/go/main/App';
+import {looksLikeURL, withScheme, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withPick, appInput, withSaveResult} from './draft.js';
 import {mountEditor, refreshEditor, hideEditor, focusField, focusedField} from './editor.js';
 
 // How long the URL field has to rest before the page is read: long
@@ -27,6 +27,7 @@ let inspection = 0;
 const handlers = {
     onInput: (field, value) => typed(field, value),
     onChip: (index) => chooseCategory(index),
+    onPick: () => pickApp(),
 };
 
 /**
@@ -78,7 +79,19 @@ export function openEditor(draft) {
     setDraft(draft);
 
     mountEditor(draft, editableCategories(draft.tab), host.t(), handlers);
-    focusField('url');
+
+    // A new app starts from the dialog: there is nothing to type before
+    // a .app is picked, and focusing "name" here would make it the DOM's
+    // activeElement while the pick is pending, so refreshEditor's own
+    // "never overwrite what is under the caret" guard would then refuse
+    // to write the picked name into it. pickApp focuses the field itself
+    // once the answer (or a cancel that keeps the editor open) is in.
+    const opensOnDialog = draft.tab === 'apps' && draft.mode === 'add' && !draft.path;
+    if (opensOnDialog) {
+        pickApp({closeOnCancel: true});
+    } else {
+        focusField(draft.tab === 'apps' ? 'name' : 'url');
+    }
 
     if (draft.tab === 'links' && draft.mode === 'add' && looksLikeURL(draft.url)) {
         inspectNow();
@@ -207,11 +220,16 @@ async function withCategory(draft) {
 }
 
 /**
- * Sends the draft to Go: a new link, or the edit of an existing one.
+ * Sends the draft to Go: a new link or app, or the edit of one.
  * @param {object} draft
  * @returns {Promise<{id: string, problems: Object<string, string>, duplicate: object|null}>}
  */
 function persist(draft) {
+    if (draft.tab === 'apps') {
+        const input = appInput(draft);
+        return draft.mode === 'edit' ? UpdateApp(draft.id, input) : AddApp(input);
+    }
+
     const input = linkInput(draft);
 
     return draft.mode === 'edit' ? UpdateLink(draft.id, input) : AddLink(input);
@@ -302,6 +320,50 @@ export function editDuplicate() {
 
     finish();
     host.edit(ref);
+}
+
+/**
+ * Runs the native dialog for an app draft (⌘O, the button, or a new app
+ * editor). While it is up, `state.dialogOpen` keeps a blur from hiding
+ * the page (Go keeps the window up on its side). The answer is dropped
+ * if the editor closed meanwhile.
+ * @param {{closeOnCancel?: boolean}} [options] close the editor when the
+ *     dialog is cancelled and no .app was picked before
+ */
+export async function pickApp({closeOnCancel = false} = {}) {
+    const state = host.state();
+    const draft = currentDraft();
+    if (!draft || draft.tab !== 'apps' || state.dialogOpen) {
+        return;
+    }
+
+    state.dialogOpen = true;
+
+    let pick = null;
+    try {
+        pick = await PickApp();
+    } catch (error) {
+        Debug(`pick app: ${error}`);
+        host.toast(host.t()('toast.pickFailed', {error: String(error)}));
+    } finally {
+        state.dialogOpen = false;
+    }
+
+    const latest = currentDraft();
+    if (!host.state().editing || !latest) {
+        return;
+    }
+
+    if (!pick?.path) {
+        if (closeOnCancel && !latest.path) {
+            closeEditor();
+        }
+        return;
+    }
+
+    setDraft(withPick(latest, pick));
+    host.render();
+    focusField('name');
 }
 
 /**

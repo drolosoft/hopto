@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, editDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, canSave, linkInput, withSaveResult, problemText} from '../src/draft.js';
+import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, editDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, canSave, linkInput, withSaveResult, problemText, withPick, adoptDraft, appInput, isDiscoveredID} from '../src/draft.js';
 import {translator} from '../src/i18n.js';
 
 const categories = [{id: 'eco', name: 'Ecosystem'}, {id: 'docs', name: 'Docs'}];
@@ -185,4 +185,69 @@ test('problemText translates a key and falls back for an unknown one', () => {
     assert.equal(problemText(t, 'name.required'), 'The name is required');
     assert.equal(problemText(t, 'something.new'), 'Check this field');
     assert.equal(problemText(t, ''), '');
+});
+
+const appCategories = [{id: 'tools', name: 'Tools'}];
+const picked = {path: '/Applications/Example.app', bundleId: 'org.example.app', name: 'Example', description: '', iconDataUrl: 'data:image/png;base64,AA', problem: '', duplicate: null};
+
+test('withPick fills an app draft; a cancel changes nothing', () => {
+    const draft = newDraft({tab: 'apps', categories: appCategories});
+    assert.equal(draft.twin, null);
+    assert.equal(withPick(draft, {...picked, path: ''}), draft);
+
+    const next = withPick(draft, picked);
+    assert.equal(next.path, '/Applications/Example.app');
+    assert.equal(next.bundleId, 'org.example.app');
+    assert.equal(next.name, 'Example');
+    assert.equal(next.iconDataUrl, 'data:image/png;base64,AA');
+    assert.deepEqual(localProblems(next), {});
+});
+
+test('withPick keeps a typed name, and a refused path stays refused', () => {
+    const typed = withInput(newDraft({tab: 'apps', categories: appCategories}), 'name', 'Mine');
+    const next = withPick(typed, {...picked, path: '/Users/someone/Downloads/Loose.app', problem: 'app.path'});
+
+    assert.equal(next.name, 'Mine');
+    assert.deepEqual(next.problems, {path: 'app.path'});
+    assert.deepEqual(localProblems(next), {path: 'app.path'});
+    assert.equal(canSave(next), false);
+    assert.deepEqual(withPick(next, picked).problems, {}, 'a good pick clears it');
+});
+
+test('a hand-added duplicate blocks, a discovered one is a twin that only warns', () => {
+    const draft = newDraft({tab: 'apps', categories: appCategories});
+
+    const blocked = withPick(draft, {...picked, duplicate: {tab: 'apps', id: 'example', name: 'Example'}});
+    assert.equal(blocked.duplicate.id, 'example');
+    assert.equal(canSave(blocked), false);
+
+    const twin = withPick(draft, {...picked, duplicate: {tab: 'apps', id: 'app-example', name: 'Example'}});
+    assert.equal(twin.duplicate, null);
+    assert.equal(twin.twin.id, 'app-example');
+    assert.equal(canSave(twin), true);
+
+    assert.equal(isDiscoveredID('edge-x'), true);
+    assert.equal(isDiscoveredID('mine'), false);
+    assert.equal(isDiscoveredID(undefined), false);
+});
+
+test('an app draft needs a .app; appInput names it after the bundle when unnamed', () => {
+    const empty = newDraft({tab: 'apps', categories: appCategories});
+    assert.deepEqual(localProblems(empty), {path: 'app.target'});
+
+    const unnamed = {...withPick(empty, picked), name: '  ', description: ' Tools '};
+    assert.deepEqual(appInput(unnamed), {path: '/Applications/Example.app', bundleId: 'org.example.app', name: 'Example', description: 'Tools', category: 'tools'});
+});
+
+test('adoptDraft adds a discovered app by hand, pointing at itself as the twin', () => {
+    const mail = {id: 'app-mail', key: 'apps:app-mail', kind: 'app', source: 'applications', name: 'Mail', description: '', path: '/Applications/Mail.app', bundleId: 'com.apple.mail', category: 'applications', keywords: [], iconUrl: '/user-icons/app-mail.png?v=1'};
+    const draft = adoptDraft(mail, appCategories, 'ma');
+
+    assert.equal(draft.mode, 'add');
+    assert.equal(draft.tab, 'apps');
+    assert.equal(draft.path, '/Applications/Mail.app');
+    assert.equal(draft.bundleId, 'com.apple.mail');
+    assert.equal(draft.category, 'tools', 'a virtual category is not a place to add to');
+    assert.deepEqual(draft.twin, {tab: 'apps', id: 'app-mail', name: 'Mail'});
+    assert.equal(draft.returnQuery, 'ma');
 });

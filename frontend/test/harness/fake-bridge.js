@@ -172,6 +172,34 @@ window.go = {main: {App: {
         const list = tab === 'links' ? linkCategories : appCategories;
         list.splice(list.findIndex((category) => category.id === id), 1);
     },
+
+    // The apps editor. PickApp answers window.nextPick after
+    // window.pickDelay ms (a cancel is {path: ''}), else a plausible
+    // bundle; the saves store the app as Go would.
+    PickApp: async () => {
+        window.calls.push('PickApp');
+        await new Promise((done) => setTimeout(done, window.pickDelay ?? 0));
+        return window.nextPick ?? {path: '/Applications/Example.app', bundleId: 'org.example.app', name: 'Example', description: '', iconDataUrl: '', problem: '', duplicate: null};
+    },
+    AddApp: async (input) => {
+        window.calls.push(`AddApp:${JSON.stringify(input)}`);
+        const queued = queuedSave();
+        if (queued) {
+            return queued;
+        }
+        const id = slug(input.name);
+        apps.push({id, key: `apps:${id}`, kind: 'app', source: 'library', name: input.name, description: input.description, url: '', host: '', path: input.path, bundleId: input.bundleId, category: input.category, keywords: [], iconUrl: '', hidden: false, missing: false});
+        return {id, problems: {}, duplicate: null};
+    },
+    UpdateApp: async (id, input) => {
+        window.calls.push(`UpdateApp:${id}:${JSON.stringify(input)}`);
+        const queued = queuedSave();
+        if (queued) {
+            return queued;
+        }
+        Object.assign(apps.find((app) => app.id === id), {name: input.name, description: input.description, path: input.path, bundleId: input.bundleId, category: input.category});
+        return {id, problems: {}, duplicate: null};
+    },
     Hide: call('Hide'),
     TabChanged: call('TabChanged'),
     Debug: call('Debug'),

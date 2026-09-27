@@ -15,6 +15,10 @@ const elements = {
 // The text fields of a link, top to bottom, in the order the spec fixes.
 const LINK_FIELDS = ['url', 'name', 'description'];
 
+// The fields of an app: the .app (read only, filled by the dialog), then
+// the same name and description as a link.
+const APP_FIELDS = ['path', 'name', 'description'];
+
 // What mountEditor built, so refreshEditor can update it in place instead
 // of rebuilding the inputs under the user's cursor. Null while closed.
 let parts = null;
@@ -25,7 +29,7 @@ let parts = null;
  * @returns {string[]}
  */
 function fieldsOf(draft) {
-    return LINK_FIELDS;
+    return draft.tab === 'apps' ? APP_FIELDS : LINK_FIELDS;
 }
 
 /**
@@ -184,6 +188,10 @@ function renderNotes(draft, t) {
         lines.push({text: t('editor.sameHost', {names: draft.sameHost.map((ref) => ref.name).join(', ')}), kind: 'quiet'});
     }
 
+    if (draft.twin) {
+        lines.push({text: t('editor.twin', {name: draft.twin.name}), kind: 'quiet'});
+    }
+
     if (draft.insecure) {
         lines.push({text: t('editor.insecure'), kind: 'warning'});
     }
@@ -220,18 +228,48 @@ function renderPreview(draft) {
 }
 
 /**
+ * The editor's title for the kind of item and the mode.
+ * @param {{tab: string, mode: string}} draft
+ * @returns {string}
+ */
+function titleKey(draft) {
+    if (draft.tab === 'apps') {
+        return draft.mode === 'edit' ? 'editor.title.editApp' : 'editor.title.addApp';
+    }
+
+    return draft.mode === 'edit' ? 'editor.title.edit' : 'editor.title.add';
+}
+
+/**
+ * "Choose .app… ⌘O", next to the read-only path.
+ * @param {Function} t
+ * @param {{onPick: () => void}} handlers
+ * @returns {HTMLButtonElement}
+ */
+function pickButton(t, handlers) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'editor-pick';
+    button.className = 'pick';
+    button.textContent = t('editor.pick');
+    button.addEventListener('click', () => handlers.onPick());
+
+    return button;
+}
+
+/**
  * Builds the editor in the place of the list and paints the draft.
  * @param {object} draft
  * @param {{id: string, name: string}[]} categories the real chips of the draft's tab
  * @param {Function} t
- * @param {{onInput: (field: string, value: string) => void, onChip: (index: number) => void}} handlers
+ * @param {{onInput: (field: string, value: string) => void, onChip: (index: number) => void, onPick: () => void}} handlers
  */
 export function mountEditor(draft, categories, t, handlers) {
     elements.content.hidden = true;
     elements.categories.hidden = true;
     elements.editor.replaceChildren();
     elements.editor.hidden = false;
-    elements.editor.setAttribute('aria-label', t('editor.label'));
+    elements.editor.setAttribute('aria-label', t(draft.tab === 'apps' ? 'editor.labelApp' : 'editor.label'));
 
     const heading = document.createElement('div');
     heading.className = 'heading';
@@ -240,7 +278,7 @@ export function mountEditor(draft, categories, t, handlers) {
     preview.className = 'tile preview';
 
     const title = document.createElement('h2');
-    title.textContent = t(draft.mode === 'edit' ? 'editor.title.edit' : 'editor.title.add');
+    title.textContent = t(titleKey(draft));
 
     heading.append(preview, title);
     elements.editor.appendChild(heading);
@@ -251,6 +289,13 @@ export function mountEditor(draft, categories, t, handlers) {
         field.input.value = draft[name] ?? '';
         fields[name] = field;
         elements.editor.appendChild(field.wrapper);
+
+        // The .app comes from the dialog only: typing a path would skip
+        // the checks PickApp does on the bundle.
+        if (name === 'path') {
+            field.input.readOnly = true;
+            field.input.after(pickButton(t, handlers));
+        }
     }
 
     const categoryField = document.createElement('div');
@@ -281,7 +326,7 @@ export function mountEditor(draft, categories, t, handlers) {
 
     const hints = document.createElement('p');
     hints.className = 'hints';
-    hints.textContent = t('editor.hints');
+    hints.textContent = t(draft.tab === 'apps' ? 'editor.hintsApp' : 'editor.hints');
     elements.editor.appendChild(hints);
 
     parts = {fields, chips, categoryProblem, notes, preview, chipsKey: ''};

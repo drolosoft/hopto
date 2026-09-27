@@ -109,6 +109,7 @@ export function newDraft({tab = 'links', text = '', category = '', categories = 
         insecure: false,
         duplicate: null,
         sameHost: [],
+        twin: null,
         problems: {},
         touched: isURL || typed === '' ? [] : ['name'],
         inspecting: false,
@@ -252,6 +253,14 @@ export function localProblems(draft) {
         problems.url = 'url.invalid';
     }
 
+    // An app needs its .app; a path the dialog already refused (outside
+    // the app folders) stays refused until another one is picked.
+    if (draft.tab === 'apps' && !draft.path) {
+        problems.path = 'app.target';
+    } else if (draft.tab === 'apps' && draft.problems.path) {
+        problems.path = draft.problems.path;
+    }
+
     if (draft.newCategory !== null && draft.newCategory.trim() === '') {
         problems.category = 'category.name';
     }
@@ -326,4 +335,96 @@ export function problemText(t, key) {
     const text = t(`problem.${key}`);
 
     return text === `problem.${key}` ? t('problem.other') : text;
+}
+
+// The id prefixes Go gives the apps it discovers; the library refuses
+// them for anything the user adds.
+const DISCOVERED_ID = /^(app|edge)-/;
+
+/**
+ * Whether an id belongs to an app found on disk rather than to the
+ * user's library.
+ * @param {string|undefined} id
+ * @returns {boolean}
+ */
+export function isDiscoveredID(id) {
+    return DISCOVERED_ID.test(id ?? '');
+}
+
+/**
+ * The draft after the native dialog answered. A cancel (no path) leaves
+ * it as it was. A typed name or description is kept. A duplicate that is
+ * a hand-added app blocks, like a link's; one only found on disk is the
+ * twin: adding it by hand is how it gets a category, so it only warns.
+ * @param {object} draft
+ * @param {{path: string, bundleId: string, name: string, description: string, iconDataUrl: string, problem: string, duplicate: object|null}} pick
+ * @returns {object}
+ */
+export function withPick(draft, pick) {
+    if (!pick?.path) {
+        return draft;
+    }
+
+    const problems = {...draft.problems};
+    delete problems.path;
+    if (pick.problem) {
+        problems.path = pick.problem;
+    }
+
+    const found = pick.duplicate && isDiscoveredID(pick.duplicate.id) ? pick.duplicate : null;
+    const isSelf = draft.mode === 'edit' && pick.duplicate?.id === draft.id;
+    const blocking = pick.duplicate && !found && !isSelf ? pick.duplicate : null;
+
+    return {
+        ...draft,
+        path: pick.path,
+        bundleId: pick.bundleId ?? '',
+        name: draft.touched.includes('name') ? draft.name : (pick.name || draft.name),
+        description: draft.touched.includes('description') ? draft.description : (pick.description || draft.description),
+        iconDataUrl: pick.iconDataUrl || draft.iconDataUrl,
+        duplicate: blocking,
+        twin: found,
+        problems,
+    };
+}
+
+/**
+ * A draft that adds a discovered app by hand, for ⌘E on it: the same
+ * bundle, the name it shows, and itself as the twin the note explains.
+ * @param {object} entry an ItemView of a discovered app
+ * @param {{id: string}[]} categories the real chips of the apps tab
+ * @param {string} [returnQuery]
+ * @returns {object}
+ */
+export function adoptDraft(entry, categories, returnQuery = '') {
+    const base = newDraft({tab: 'apps', category: entry.category, categories, returnQuery});
+
+    return {
+        ...base,
+        path: entry.path ?? '',
+        bundleId: entry.bundleId ?? '',
+        name: entry.name ?? '',
+        description: entry.description ?? '',
+        iconDataUrl: entry.iconUrl ?? '',
+        twin: {tab: 'apps', id: entry.id, name: entry.name},
+        touched: ['name'],
+    };
+}
+
+/**
+ * What AddApp and UpdateApp receive. An app saved without a name takes
+ * the bundle's folder name, as the Finder shows it.
+ * @param {object} draft
+ * @returns {{path: string, bundleId: string, name: string, description: string, category: string}}
+ */
+export function appInput(draft) {
+    const folder = draft.path.split('/').pop() ?? '';
+
+    return {
+        path: draft.path,
+        bundleId: draft.bundleId,
+        name: draft.name.trim() || folder.replace(/\.app$/, ''),
+        description: draft.description.trim(),
+        category: draft.category,
+    };
 }

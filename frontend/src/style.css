@@ -755,3 +755,21 @@ footer p {
 #welcome button:focus-visible, #status .fix:focus-visible {
     outline: 2px solid var(--selected-ring);
 }
+
+/* The .app of the apps editor: read only, with the dialog's button. */
+#editor-path {
+    color: var(--text-muted);
+}
+
+#editor .pick {
+    align-self: flex-start;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px 10px;
+    background: var(--fill);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    --wails-draggable: no-drag;
+}

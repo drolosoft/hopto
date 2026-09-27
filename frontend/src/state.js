@@ -110,6 +110,10 @@ export function footerAction(entry, t) {
         return t('footer.add');
     }
 
+    if (entry.kind === 'pick') {
+        return t('footer.pick');
+    }
+
     return entry.web ? t('footer.pair') : t('footer.open', {name: entry.name});
 }
 

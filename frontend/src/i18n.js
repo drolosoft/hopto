@@ -120,6 +120,22 @@ export const MESSAGES = {
         'problem.category.unknown': 'Pick a category',
         'problem.category.name': 'Type the name of the new category',
         'problem.other': 'Check this field',
+
+        // The apps editor and the native dialog.
+        'pick.row': 'Search Applications…',
+        'pick.hint': 'Pick a .app to add it by hand',
+        'footer.pick': '↩ Choose',
+        'editor.labelApp': 'App editor',
+        'editor.title.addApp': 'New app',
+        'editor.title.editApp': 'Edit app',
+        'editor.path': 'App',
+        'editor.pick': 'Choose .app… ⌘O',
+        'editor.hintsApp': '↩ Save · Esc Cancel · ⌘O Choose .app · ⌘1-9 Category',
+        'editor.twin': 'Found on disk as {name}: once added it shows once, under the category you pick',
+        'toast.pickFailed': 'Could not open the dialog: {error}',
+        'problem.app.target': 'Choose the .app',
+        'problem.app.path': 'Only apps in /Applications, /System/Applications or ~/Applications',
+        'problem.app.bundle': 'The bundle id is not valid',
     },
     es: {
         'dialog.label': 'Apps y links',
@@ -235,6 +251,22 @@ export const MESSAGES = {
         'problem.category.unknown': 'Elige una categoría',
         'problem.category.name': 'Escribe el nombre de la categoría nueva',
         'problem.other': 'Revisa este campo',
+
+        // The apps editor and the native dialog.
+        'pick.row': 'Buscar en Aplicaciones…',
+        'pick.hint': 'Elige una .app para añadirla a mano',
+        'footer.pick': '↩ Elegir',
+        'editor.labelApp': 'Editor de apps',
+        'editor.title.addApp': 'App nueva',
+        'editor.title.editApp': 'Editar app',
+        'editor.path': 'App',
+        'editor.pick': 'Elegir .app… ⌘O',
+        'editor.hintsApp': '↩ Guardar · Esc Cancelar · ⌘O Elegir .app · ⌘1-9 Categoría',
+        'editor.twin': 'Encontrada en el disco como {name}: al añadirla sale una vez, en la categoría que elijas',
+        'toast.pickFailed': 'No se pudo abrir el diálogo: {error}',
+        'problem.app.target': 'Elige la .app',
+        'problem.app.path': 'Solo apps de /Applications, /System/Applications o ~/Applications',
+        'problem.app.bundle': 'El bundle id no es válido',
     },
 };
 

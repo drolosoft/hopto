@@ -115,3 +115,7 @@ test('⌘⇧E and ⌘⇧⌫ act on the chip; while renaming only Enter and Esc a
 test('in the editor ⌘E asks to edit the duplicate', () => {
     assert.deepEqual(actionFor(press('e', {metaKey: true}), {...idle, editing: true, field: 'url'}), {type: 'editDuplicate'});
 });
+
+test('in the editor ⌘O asks for the native dialog', () => {
+    assert.deepEqual(actionFor(press('o', {metaKey: true}), {...idle, editing: true, field: 'name'}), {type: 'pickApp'});
+});

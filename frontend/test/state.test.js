@@ -73,6 +73,7 @@ test('footerAction names the selected item or the pair', () => {
     assert.equal(footerAction({name: 'Alpha', kind: 'app'}, t), '↩ Open Alpha');
     assert.equal(footerAction({name: 'GitHub', kind: 'app', web: {id: 'x'}}, t), '↩ app · ⌘↩ web');
     assert.equal(footerAction({name: '＋ Add “x”', kind: 'add'}, t), '↩ Add');
+    assert.equal(footerAction({name: 'Search Applications…', kind: 'pick'}, t), '↩ Choose');
     assert.equal(footerAction(undefined, t), '');
 });
 

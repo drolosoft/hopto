@@ -111,6 +111,10 @@ function editorAction(event, key, field) {
         return {type: 'save'};
     }
 
+    if (event.metaKey && key === 'o') {
+        return {type: 'pickApp'};
+    }
+
     if (event.metaKey && key === 'e') {
         return {type: 'editDuplicate'};
     }
