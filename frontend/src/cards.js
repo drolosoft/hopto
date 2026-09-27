@@ -1,61 +1,67 @@
 /**
- * Builds the list items of the page: a card for an app, a row for a link.
- * Both are `<li role="option">`; what differs is the layout, which the
- * stylesheet picks from the class.
+ * Builds the list items of the page: a card for an app on its own tab, a
+ * row for a link or for any result of the unified search. Both are
+ * `<li role="option">`; what differs is the layout, which the stylesheet
+ * picks from the class. Everything is built with createElement: no HTML
+ * strings, so a name is only ever text.
  */
 
 /**
- * Builds the icon of an item: the bundled image when there is one, or a
- * tile with the first letter of the name so a link without icon still has
- * a visual anchor.
- * @param {string|undefined} src
+ * The icon of an item: the image served by Go, or a tile with the first
+ * letter of the name so an item without icon still has a visual anchor.
+ * @param {string} iconUrl
  * @param {string} name
  * @returns {HTMLElement}
  */
-function iconElement(src, name) {
-    if (src) {
-        const image = document.createElement('img');
-        image.src = src;
-        image.alt = '';
-        return image;
-    }
-
+function iconElement(iconUrl, name) {
     const tile = document.createElement('span');
     tile.className = 'tile';
+
+    if (iconUrl) {
+        const image = document.createElement('img');
+        image.src = iconUrl;
+        image.alt = '';
+        image.loading = 'lazy';
+        tile.appendChild(image);
+        return tile;
+    }
+
     tile.textContent = name.trim().charAt(0).toUpperCase();
     return tile;
 }
 
 /**
- * Adds a text span with a class to an item.
- * @param {HTMLElement} item
+ * Adds a text span with a class to a parent.
+ * @param {HTMLElement} parent
  * @param {string} className
  * @param {string} text
  * @returns {HTMLElement}
  */
-function addText(item, className, text) {
+function addText(parent, className, text) {
     const span = document.createElement('span');
     span.className = className;
     span.textContent = text;
-    item.appendChild(span);
+    parent.appendChild(span);
     return span;
 }
 
 /**
- * The favourite star of an item: a real button, so the mouse can mark and
- * unmark without opening the item. The click is stopped there; the item's
- * own click handler is what opens.
+ * The favourite star: a real button, so the mouse can mark and unmark
+ * without opening the item. The click is stopped there; the item's own
+ * click handler is what opens.
  * @param {{favorite: boolean, name: string}} entry
+ * @param {Function} t
  * @param {() => void} onToggle
  * @returns {HTMLButtonElement}
  */
-function starButton(entry, onToggle) {
+function starButton(entry, t, onToggle) {
     const star = document.createElement('button');
     star.type = 'button';
     star.className = 'star';
+    star.tabIndex = -1;
     star.setAttribute('aria-pressed', String(Boolean(entry.favorite)));
-    star.setAttribute('aria-label', entry.favorite ? `Quitar ${entry.name} de favoritos` : `Añadir ${entry.name} a favoritos`);
-    star.title = entry.favorite ? 'Quitar de favoritos (⌘F)' : 'Añadir a favoritos (⌘F)';
+    star.setAttribute('aria-label', t(entry.favorite ? 'star.remove' : 'star.add', {name: entry.name}));
+    star.title = t('star.title');
     star.textContent = entry.favorite ? '★' : '☆';
 
     star.addEventListener('click', (event) => {
@@ -70,9 +76,10 @@ function starButton(entry, onToggle) {
  * How many times an item was opened, as a small label; nothing at all for
  * an item never opened, so the list stays quiet until it earns a number.
  * @param {number} opens
+ * @param {Function} t
  * @returns {HTMLElement|null}
  */
-function opensLabel(opens) {
+function opensLabel(opens, t) {
     if (!opens) {
         return null;
     }
@@ -80,70 +87,134 @@ function opensLabel(opens) {
     const label = document.createElement('span');
     label.className = 'opens';
     label.textContent = `×${opens}`;
-    label.title = opens === 1 ? 'Abierto 1 vez' : `Abierto ${opens} veces`;
+    label.title = t.plural('opens', opens);
     return label;
 }
 
 /**
- * A card for an app. Apps that are not built or installed stay visible but
- * greyed out, so the list also tells what is missing.
- * @param {{id: string, name: string, description: string, path: string, favorite: boolean, opens: number}} app
- * @param {string|undefined} icon
+ * The second line of an item: what is wrong with it when something is,
+ * else its description.
+ * @param {object} entry
+ * @param {Function} t
+ * @returns {string}
+ */
+function secondLine(entry, t) {
+    if (entry.missing) {
+        return t('app.missing');
+    }
+
+    if (entry.hidden) {
+        return t('app.hidden');
+    }
+
+    return entry.description || entry.host || '';
+}
+
+/**
+ * A card: the apps tab when nothing is typed.
+ * @param {object} entry
+ * @param {Function} t
  * @param {() => void} onToggleFavorite
  * @returns {HTMLLIElement}
  */
-export function appCard(app, icon, onToggleFavorite) {
+function card(entry, t, onToggleFavorite) {
     const item = document.createElement('li');
-    item.role = 'option';
-    item.className = app.path ? 'app' : 'app missing';
+    item.className = 'card';
 
-    item.appendChild(starButton(app, onToggleFavorite));
+    item.appendChild(starButton(entry, t, onToggleFavorite));
 
-    const count = opensLabel(app.opens);
+    const count = opensLabel(entry.opens, t);
     if (count) {
         item.appendChild(count);
     }
 
-    item.appendChild(iconElement(icon, app.name));
-    addText(item, 'name', app.name);
-    addText(item, 'description', app.path ? app.description : 'No compilada');
+    item.appendChild(iconElement(entry.iconUrl, entry.name));
+    addText(item, 'name', entry.name);
+    addText(item, 'description', secondLine(entry, t));
 
     return item;
 }
 
 /**
- * A row for a link: icon, name and description, the host on the right so
- * the eye can tell two links with similar names apart, the opening count
- * and the star.
- * @param {{id: string, name: string, description: string, host: string, favorite: boolean, opens: number}} link
- * @param {string|undefined} icon
+ * A row: the links tab, and every result while searching. While
+ * searching a discreet badge says whether the row is an app or a link;
+ * an Edge app paired with its link shows both.
+ * @param {object} entry
+ * @param {Function} t
+ * @param {boolean} unified
  * @param {() => void} onToggleFavorite
  * @returns {HTMLLIElement}
  */
-export function linkRow(link, icon, onToggleFavorite) {
+function row(entry, t, unified, onToggleFavorite) {
     const item = document.createElement('li');
-    item.role = 'option';
-    item.className = 'link';
+    item.className = 'row';
 
-    item.appendChild(iconElement(icon, link.name));
+    item.appendChild(iconElement(entry.iconUrl, entry.name));
 
     const text = document.createElement('span');
     text.className = 'text';
-    addText(text, 'name', link.name);
-    addText(text, 'description', link.description);
+    addText(text, 'name', entry.name);
+    addText(text, 'description', secondLine(entry, t));
     item.appendChild(text);
 
     const aside = document.createElement('span');
     aside.className = 'aside';
 
-    const count = opensLabel(link.opens);
+    if (unified) {
+        addText(aside, 'kind', entry.web ? `${t('kind.app')} · ${t('kind.link')}` : t(`kind.${entry.kind}`));
+    }
+
+    const count = opensLabel(entry.opens, t);
     if (count) {
         aside.appendChild(count);
     }
 
-    addText(aside, 'host', link.host);
-    aside.appendChild(starButton(link, onToggleFavorite));
+    if (entry.host && entry.kind === 'link') {
+        addText(aside, 'host', entry.host);
+    }
+
+    aside.appendChild(starButton(entry, t, onToggleFavorite));
     item.appendChild(aside);
 
     return item;
+}
+
+/**
+ * Builds the element of one entry and stamps the attributes the list and
+ * the keyboard rely on: the index in the flat list, a DOM id for
+ * aria-activedescendant, the selected state.
+ * @param {object} entry
+ * @param {{index: number, selected: boolean, layout: string, unified: boolean, t: Function, onOpen: () => void, onToggleFavorite: () => void}} options
+ * @returns {HTMLLIElement}
+ */
+export function itemElement(entry, options) {
+    const {index, selected, layout, unified, t, onOpen, onToggleFavorite} = options;
+    const item = layout === 'cards' && !unified ? card(entry, t, onToggleFavorite) : row(entry, t, unified, onToggleFavorite);
+
+    item.role = 'option';
+    item.id = `item-${entry.key.replace(':', '-')}`;
+    item.dataset.index = String(index);
+    item.setAttribute('aria-selected', String(selected));
+
+    if (entry.missing || entry.hidden) {
+        item.classList.add('dim');
+    }
+
+    item.addEventListener('click', onOpen);
+
+    return item;
+}
+
+/**
+ * The heading of a section (Favourites, Recent, a category) inside the
+ * list; not an option, so the keyboard skips it.
+ * @param {string} title
+ * @returns {HTMLLIElement}
+ */
+export function sectionHeader(title) {
+    const header = document.createElement('li');
+    header.className = 'section';
+    header.role = 'presentation';
+    header.textContent = title;
+    return header;
 }

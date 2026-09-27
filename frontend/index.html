@@ -1,28 +1,36 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>hopto</title>
 </head>
 <body>
-<main id="launcher" role="dialog" aria-label="Mis apps y mis links">
+<main id="launcher" role="dialog" aria-modal="true">
     <header>
-        <nav id="tabs" role="tablist" aria-label="Pestañas">
-            <button type="button" role="tab" id="tab-apps" data-tab="apps" aria-selected="true">Mis apps <span class="count"></span></button>
-            <button type="button" role="tab" id="tab-links" data-tab="links" aria-selected="false">Mis links <span class="count"></span></button>
+        <nav id="tabs" role="tablist">
+            <button type="button" role="tab" id="tab-apps" data-tab="apps" aria-selected="true" aria-controls="grid"><span class="label"></span><span class="count"></span></button>
+            <button type="button" role="tab" id="tab-links" data-tab="links" aria-selected="false" aria-controls="grid"><span class="label"></span><span class="count"></span></button>
         </nav>
-        <input id="search" type="search" placeholder="Buscar…" aria-label="Buscar" autocomplete="off" spellcheck="false"/>
+        <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-controls="grid" aria-expanded="true" autocomplete="off" spellcheck="false"/>
     </header>
-    <nav id="categories" aria-label="Categorías"></nav>
+    <nav id="categories"></nav>
+    <p id="status" hidden></p>
     <section id="content">
-        <ul id="grid" role="listbox" aria-label="Resultados"></ul>
+        <ul id="grid" role="listbox"></ul>
         <p id="empty" hidden></p>
     </section>
     <footer>
         <p id="totals"></p>
-        <p class="hint">↑↓←→ elegir · Enter abre · ⌘F favorito · ⇥ pestaña · ⌘1-9 categoría · Esc cierra · ⌘⇧Espacio apps · ⌘⌥Espacio links</p>
+        <p id="action"></p>
+        <p id="hints"></p>
     </footer>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <section id="help" role="dialog" aria-modal="true" hidden>
+        <h2></h2>
+        <ul></ul>
+        <p class="close"></p>
+    </section>
 </main>
 <script src="./src/main.js" type="module"></script>
 </body>
