@@ -157,6 +157,13 @@ header {
     gap: 8px;
 }
 
+/* The flex rule above outranks the user agent's [hidden] rule (an id
+   selector beats an attribute selector), so the chip bar needs its own
+   display: none to actually disappear when the JS hides it. */
+#categories[hidden] {
+    display: none;
+}
+
 .chip {
     border: 1px solid var(--line);
     background: transparent;

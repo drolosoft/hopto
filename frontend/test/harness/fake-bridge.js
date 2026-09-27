@@ -47,7 +47,10 @@ window.go = {main: {App: {
         : [{id: 'tools', name: 'Tools', tab: 'apps', virtual: false}, {id: 'applications', name: '', tab: 'apps', virtual: true}, {id: 'edge', name: '', tab: 'apps', virtual: true}]),
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
     Settings: async () => ({language: window.language ?? 'en', hotkeyApps: 'cmd+shift+space', hotkeyLinks: 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
-    LibraryStatus: async () => (window.status ?? {path: '/Users/someone/Library/Application Support/hopto/library.toml', error: '', line: 0, readOnly: false}),
+    // Named libraryStatus, not status: window.status is a native Window
+    // property (the old status-bar text) that stringifies anything
+    // assigned to it, so a test object set there would never arrive.
+    LibraryStatus: async () => (window.libraryStatus ?? {path: '/Users/someone/Library/Application Support/hopto/library.toml', error: '', line: 0, readOnly: false}),
     Launch: call('Launch'),
     OpenLink: call('OpenLink'),
     OpenLinkWith: call('OpenLinkWith'),

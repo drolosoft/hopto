@@ -121,13 +121,8 @@ test('nothing matching points at the other tab', async ({page}) => {
 });
 
 test('? opens the help and Esc closes it; a broken library shows its line', async ({page}) => {
-    // The fixture reads the broken-library fixture off `window.status`, but
-    // that name is a native Window property (the old status-bar text) that
-    // stringifies anything assigned to it, so the object never arrives.
-    // Overriding the bound method directly sidesteps the collision without
-    // touching the fixture.
     await page.evaluate(() => {
-        window.go.main.App.LibraryStatus = async () => ({path: '/x/library.toml', error: 'expected key', line: 12, readOnly: true});
+        window.libraryStatus = {path: '/x/library.toml', error: 'expected key', line: 12, readOnly: true};
     });
     await shown(page, 'links');
 
