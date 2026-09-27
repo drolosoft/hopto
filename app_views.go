@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
@@ -23,7 +25,8 @@ const hiddenChip = "hidden"
 
 // ItemView is one row or card of the page: a link, a hand-added app or a
 // discovered one, flattened so the page never branches on where it came
-// from. Every slice is non-nil.
+// from. Every slice is non-nil. SearchOnly marks an app of
+// /System/Applications: the page lists it only while typing.
 type ItemView struct {
 	ID          string   `json:"id"`
 	Key         string   `json:"key"`
@@ -40,6 +43,7 @@ type ItemView struct {
 	IconURL     string   `json:"iconUrl"`
 	Hidden      bool     `json:"hidden"`
 	Missing     bool     `json:"missing"`
+	SearchOnly  bool     `json:"searchOnly"`
 }
 
 // CategoryView is one chip. A virtual one groups discovered apps and has
@@ -119,7 +123,12 @@ func (a *App) Categories(tab string) []CategoryView {
 	present := map[string]bool{}
 	anyHidden := false
 	for _, app := range a.discover(lib.Settings) {
-		present[app.Source] = true
+		// A search-only app is never on the grid, so it cannot be the
+		// reason its chip exists.
+		if !a.searchOnly(app.Path) {
+			present[app.Source] = true
+		}
+
 		anyHidden = anyHidden || hidden[app.ID]
 	}
 
@@ -262,6 +271,7 @@ func (a *App) appViews(lib library.Library) []ItemView {
 			Keywords:    []string{},
 			IconURL:     a.iconURL(app.ID),
 			Hidden:      hidden[app.ID],
+			SearchOnly:  a.searchOnly(app.Path),
 		})
 	}
 
@@ -335,4 +345,11 @@ func (a *App) iconSource(id string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// searchOnly reports whether a discovered app lives under the system's
+// own apps folder.
+func (a *App) searchOnly(path string) bool {
+	return a.systemApps != "" &&
+		strings.HasPrefix(path, a.systemApps+string(filepath.Separator))
 }

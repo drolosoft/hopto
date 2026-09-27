@@ -32,6 +32,10 @@ const (
 // but a runaway loop there must not fill the disk.
 const maxDebugRunes = 500
 
+// systemAppsRoot holds the apps macOS ships (Mail, Notes, Terminal):
+// searchable, but not part of the grid the user curates.
+const systemAppsRoot = "/System/Applications"
+
 // window is what App needs from the Wails window, behind an interface so
 // the tests can run toggle, Launch and OpenLink without a display.
 type window interface {
@@ -115,8 +119,11 @@ type App struct {
 	iconHandler *icons.Handler
 
 	// Where discovery looks; the tests point them inside a temp home.
-	appRoots []string
-	edgeDir  string
+	// systemApps is the last of the roots, the one whose apps are only
+	// found by typing (supuesto 1).
+	appRoots   []string
+	edgeDir    string
+	systemApps string
 
 	// menu is the menu bar item and login the LaunchAgent behind its
 	// "Open at login" entry; the tests put fakes in both.
@@ -190,9 +197,12 @@ func newApp(
 		language: language,
 		scanner:  &discover.Scanner{},
 		appRoots: []string{
-			"/Applications", filepath.Join(home, "Applications"),
+			"/Applications",
+			filepath.Join(home, "Applications"),
+			systemAppsRoot,
 		},
-		edgeDir: discover.EdgeAppsDir(home),
+		edgeDir:    discover.EdgeAppsDir(home),
+		systemApps: systemAppsRoot,
 		login: loginAgent{
 			path:       launchAgentPath(home),
 			executable: os.Executable,

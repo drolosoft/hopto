@@ -549,3 +549,60 @@ func TestDebugIsSanitised(t *testing.T) {
 		t.Errorf("debugLine = %q (%d runes)", got, len([]rune(got)))
 	}
 }
+
+// systemBundle drops a minimal .app under the fake /System/Applications
+// of the test's home.
+func systemBundle(t *testing.T, app *App, name, bundleID string) {
+	t.Helper()
+
+	bundle := filepath.Join(app.systemApps, name+".app")
+	contents := filepath.Join(bundle, "Contents")
+	if err := os.MkdirAll(contents, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	plist := `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0">` +
+		`<dict><key>CFBundleIdentifier</key><string>` + bundleID +
+		`</string></dict></plist>`
+	infoPath := filepath.Join(contents, "Info.plist")
+	if err := os.WriteFile(infoPath, []byte(plist), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Supuesto 1: the system's apps come out of the same scan, marked search
+// only, once even when a copy also sits in ~/Applications, and they do
+// not make the "applications" chip appear on their own.
+func TestSystemAppsAreSearchOnly(t *testing.T) {
+	app, _, _ := newTestApp(t)
+	app.systemApps = filepath.Join(app.home, "System", "Applications")
+	app.appRoots = append(app.appRoots, app.systemApps)
+
+	systemBundle(t, app, "Calculator", "com.example.calculator")
+
+	for _, category := range app.Categories(tabApps) {
+		if category.ID == "applications" {
+			t.Errorf("a search-only app made its chip appear")
+		}
+	}
+
+	fakeBundle(t, app, "Alpha", "com.example.alpha")
+	systemBundle(t, app, "Alpha", "com.example.alpha")
+
+	byID := map[string]ItemView{}
+	for _, view := range app.Items(tabApps) {
+		byID[view.ID] = view
+	}
+
+	if len(byID) != 2 {
+		t.Fatalf("items = %+v", byID)
+	}
+
+	if !byID["app-calculator"].SearchOnly || byID["app-alpha"].SearchOnly {
+		t.Errorf("calculator = %+v, alpha = %+v", byID["app-calculator"], byID["app-alpha"])
+	}
+
+	if !strings.HasPrefix(byID["app-alpha"].Path, filepath.Join(app.home, "Applications")) {
+		t.Errorf("the ~/Applications copy should win: %s", byID["app-alpha"].Path)
+	}
+}
