@@ -68,11 +68,23 @@ test('⌘1-9 is left to the search box once it holds a query', () => {
     assert.equal(actionFor(press('3', {metaKey: true}), {...idle, query: 'wh'}), null);
 });
 
-test('while the editor is open only Escape is taken', () => {
-    const editing = {...idle, editing: true};
-    assert.equal(actionFor(press('ArrowDown'), editing), null);
-    assert.equal(actionFor(press('Enter'), editing), null);
+test('while the editor is open: Esc closes, Enter saves, ⌘1-9 picks a category', () => {
+    const editing = {...idle, editing: true, field: 'name'};
+    assert.equal(actionFor(press('ArrowDown'), editing), null, 'arrows move the caret in a text field');
+    assert.equal(actionFor(press('a'), editing), null);
+    assert.equal(actionFor(press('Tab'), editing), null, 'Tab walks the fields');
+    assert.deepEqual(actionFor(press('Enter'), editing), {type: 'save'});
     assert.deepEqual(actionFor(press('Escape'), editing), {type: 'closeEditor'});
+    assert.deepEqual(actionFor(press('2', {metaKey: true}), editing), {type: 'pickCategory', index: 1});
+    assert.equal(actionFor(press('Enter', {isComposing: true}), editing), null, 'Enter while composing is the IME\'s');
+});
+
+test('on the chip row the arrows move the category', () => {
+    const onChips = {...idle, editing: true, field: 'category'};
+    assert.deepEqual(actionFor(press('ArrowRight'), onChips), {type: 'moveCategory', delta: 1});
+    assert.deepEqual(actionFor(press('ArrowDown'), onChips), {type: 'moveCategory', delta: 1});
+    assert.deepEqual(actionFor(press('ArrowLeft'), onChips), {type: 'moveCategory', delta: -1});
+    assert.deepEqual(actionFor(press('ArrowUp'), onChips), {type: 'moveCategory', delta: -1});
 });
 
 test('plain typing is left to the search box', () => {

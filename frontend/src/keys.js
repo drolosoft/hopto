@@ -26,7 +26,7 @@ export function nextIndex(selected, delta, count) {
  * the search box should keep the key. Letters are compared lowercased so
  * Caps Lock changes nothing; a press during IME composition is ignored.
  * @param {{key: string, metaKey: boolean, altKey: boolean, shiftKey: boolean, ctrlKey: boolean, isComposing: boolean}} event
- * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number}} context
+ * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number, field?: string}} context
  * @returns {{type: string, delta?: number, index?: number}|null}
  */
 export function actionFor(event, context) {
@@ -37,7 +37,7 @@ export function actionFor(event, context) {
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
 
     if (context.editing) {
-        return key === 'Escape' ? {type: 'closeEditor'} : null;
+        return editorAction(event, key, context.field);
     }
 
     if (context.helpOpen) {
@@ -73,5 +73,44 @@ export function actionFor(event, context) {
         case 'Escape': return context.query ? {type: 'clear'} : {type: 'hide'};
         case '?': return context.query ? null : {type: 'help'};
         default: return null;
+    }
+}
+
+/**
+ * The keys of the open editor. Typing and Tab stay with the fields; Enter
+ * saves from any of them, ⌘1-9 picks a category, and the arrows move
+ * between chips only while the chip row has the focus (in a text field
+ * they belong to the caret).
+ * @param {{key: string, metaKey: boolean, shiftKey: boolean}} event
+ * @param {string} key the key, lowercased when it is a letter
+ * @param {string|undefined} field the focused field of the editor
+ * @returns {{type: string, delta?: number, index?: number}|null}
+ */
+function editorAction(event, key, field) {
+    if (key === 'Escape') {
+        return {type: 'closeEditor'};
+    }
+
+    if (key === 'Enter' && !event.shiftKey) {
+        return {type: 'save'};
+    }
+
+    if (event.metaKey && /^[1-9]$/.test(key)) {
+        return {type: 'pickCategory', index: Number(key) - 1};
+    }
+
+    if (field !== 'category') {
+        return null;
+    }
+
+    switch (key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            return {type: 'moveCategory', delta: 1};
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            return {type: 'moveCategory', delta: -1};
+        default:
+            return null;
     }
 }

@@ -36,15 +36,42 @@ const links = [
     {id: 'github', key: 'links:github', kind: 'link', source: 'library', name: 'GitHub', description: 'Pull requests', url: 'https://github.com', host: 'github.com', path: '', bundleId: '', category: 'eco', keywords: [], iconUrl: '', hidden: false, missing: false},
 ];
 
+// The chips of each tab, as arrays the fake AddCategory can grow.
+const linkCategories = [
+    {id: 'eco', name: 'Ecosystem', tab: 'links', virtual: false},
+    {id: 'docs', name: 'Docs', tab: 'links', virtual: false},
+];
+
+const appCategories = [
+    {id: 'tools', name: 'Tools', tab: 'apps', virtual: false},
+    {id: 'applications', name: '', tab: 'apps', virtual: true},
+    {id: 'edge', name: '', tab: 'apps', virtual: true},
+];
+
+/**
+ * The id Go would give a name, near enough for the fixture.
+ * @param {string} name
+ * @returns {string}
+ */
+const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+
+/**
+ * Hands out the answer a test queued in window.nextSave, once.
+ * @returns {object|null}
+ */
+const queuedSave = () => {
+    const answer = window.nextSave ?? null;
+    window.nextSave = null;
+    return answer;
+};
+
 const call = (name) => async (...args) => {
     window.calls.push([name, ...args].join(':'));
 };
 
 window.go = {main: {App: {
     Items: async (tab) => (tab === 'links' ? links : apps),
-    Categories: async (tab) => (tab === 'links'
-        ? [{id: 'eco', name: 'Ecosystem', tab: 'links', virtual: false}, {id: 'docs', name: 'Docs', tab: 'links', virtual: false}]
-        : [{id: 'tools', name: 'Tools', tab: 'apps', virtual: false}, {id: 'applications', name: '', tab: 'apps', virtual: true}, {id: 'edge', name: '', tab: 'apps', virtual: true}]),
+    Categories: async (tab) => (tab === 'links' ? linkCategories : appCategories),
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
     About: async () => ({version: 'v0.3.0-test', commit: 'abc1234', builtAt: '2026-09-27', goVersion: 'go1.27.1', libraryPath: '/Users/someone/Library/Application Support/hopto/library.toml'}),
     Settings: async () => ({language: window.language ?? 'en', hotkeyApps: 'cmd+shift+space', hotkeyLinks: 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
@@ -59,6 +86,42 @@ window.go = {main: {App: {
     RevealInFinder: call('RevealInFinder'),
     RevealLibrary: call('RevealLibrary'),
     EditLibrary: call('EditLibrary'),
+
+    // The editor. InspectURL answers after window.inspectDelay ms with
+    // window.inspectDraft, or with a plausible page; the saves record the
+    // input as JSON and, unless window.nextSave says otherwise, store the
+    // link so the refresh after the save lists it.
+    InspectURL: async (url) => {
+        window.calls.push(`InspectURL:${url}`);
+        await new Promise((done) => setTimeout(done, window.inspectDelay ?? 0));
+        return window.inspectDraft ?? {url, host: new URL(url).hostname, name: 'Example Domain', description: 'Illustrative', iconDataUrl: '', insecure: url.startsWith('http:'), duplicate: null, sameHost: []};
+    },
+    AddLink: async (input) => {
+        window.calls.push(`AddLink:${JSON.stringify(input)}`);
+        const queued = queuedSave();
+        if (queued) {
+            return queued;
+        }
+        const id = slug(input.name);
+        links.push({id, key: `links:${id}`, kind: 'link', source: 'library', name: input.name, description: input.description, url: input.url, host: new URL(input.url).hostname, path: '', bundleId: '', category: input.category, keywords: input.keywords, iconUrl: '', hidden: false, missing: false});
+        return {id, problems: {}, duplicate: null};
+    },
+    UpdateLink: async (id, input) => {
+        window.calls.push(`UpdateLink:${id}:${JSON.stringify(input)}`);
+        const queued = queuedSave();
+        if (queued) {
+            return queued;
+        }
+        const link = links.find((entry) => entry.id === id);
+        Object.assign(link, {name: input.name, description: input.description, url: input.url, host: new URL(input.url).hostname, category: input.category, keywords: input.keywords});
+        return {id, problems: {}, duplicate: null};
+    },
+    AddCategory: async (tab, name) => {
+        window.calls.push(`AddCategory:${tab}:${name}`);
+        const view = {id: slug(name), name, tab, virtual: false};
+        (tab === 'links' ? linkCategories : appCategories).push(view);
+        return view;
+    },
     Hide: call('Hide'),
     TabChanged: call('TabChanged'),
     Debug: call('Debug'),

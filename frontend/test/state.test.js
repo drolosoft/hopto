@@ -24,6 +24,9 @@ test('initialState starts clean on the given tab', () => {
     assert.equal(state.selected, 0);
     assert.equal(state.category, '');
     assert.equal(state.editing, false);
+    assert.equal(state.draft, null);
+    assert.equal(state.dialogOpen, false);
+    assert.equal(state.confirming, null);
 });
 
 test('counts says how many of each tab match the query', () => {
@@ -54,5 +57,6 @@ test('totalsText counts both tabs with plurals', () => {
 test('footerAction names the selected item or the pair', () => {
     assert.equal(footerAction({name: 'Alpha', kind: 'app'}, t), '↩ Open Alpha');
     assert.equal(footerAction({name: 'GitHub', kind: 'app', web: {id: 'x'}}, t), '↩ app · ⌘↩ web');
+    assert.equal(footerAction({name: '＋ Add “x”', kind: 'add'}, t), '↩ Add');
     assert.equal(footerAction(undefined, t), '');
 });

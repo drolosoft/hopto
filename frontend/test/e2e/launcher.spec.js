@@ -118,16 +118,18 @@ test('chips filter, ⌘3 picks the first category, ⌘C copies with a toast', as
     await expect(page.locator('#toast')).toHaveText('Copied');
 });
 
-test('nothing matching points at the other tab', async ({page}) => {
+test('nothing matching offers to add it instead of an empty list', async ({page}) => {
     await shown(page, 'links');
     await page.keyboard.type('zzz');
-    await expect(page.locator('#empty')).toHaveText('Nothing matches');
+    await expect(page.locator('#empty')).toBeHidden();
+    await expect(page.locator('#grid [role="option"]')).toHaveCount(1);
+    await expect(page.locator('#grid .row.action .name')).toHaveText('＋ Add “zzz”');
 
     await page.keyboard.press('Escape');
     await page.keyboard.press('Tab');
     await page.keyboard.type('mdn');
-    await expect(page.locator('#empty')).toBeHidden();
     await expect(page.locator('#grid [role="option"]')).toHaveCount(1);
+    await expect(page.locator('#grid .row.action')).toHaveCount(0);
 });
 
 test('? opens the help and Esc closes it; a broken library shows its line', async ({page}) => {

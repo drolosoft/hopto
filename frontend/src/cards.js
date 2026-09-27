@@ -190,6 +190,31 @@ function row(entry, t, unified, onToggleFavorite) {
 }
 
 /**
+ * A row that does something instead of opening an item: "＋ Add" today,
+ * "Search Applications…" on the apps tab. It carries its glyph in the
+ * tile and no star, since there is nothing to mark as a favourite.
+ * @param {{name: string, description: string, glyph: string}} entry
+ * @returns {HTMLLIElement}
+ */
+function actionRow(entry) {
+    const item = document.createElement('li');
+    item.className = 'row action';
+
+    const tile = document.createElement('span');
+    tile.className = 'tile';
+    tile.textContent = entry.glyph;
+    item.appendChild(tile);
+
+    const text = document.createElement('span');
+    text.className = 'text';
+    addText(text, 'name', entry.name);
+    addText(text, 'description', entry.description);
+    item.appendChild(text);
+
+    return item;
+}
+
+/**
  * Builds the element of one entry and stamps the attributes the list and
  * the keyboard rely on: the index in the flat list, a DOM id for
  * aria-activedescendant, the selected state.
@@ -199,7 +224,15 @@ function row(entry, t, unified, onToggleFavorite) {
  */
 export function itemElement(entry, options) {
     const {index, selected, layout, unified, t, onOpen, onToggleFavorite} = options;
-    const item = layout === 'cards' && !unified ? card(entry, t, onToggleFavorite) : row(entry, t, unified, onToggleFavorite);
+
+    let item;
+    if (entry.kind === 'add' || entry.kind === 'pick') {
+        item = actionRow(entry);
+    } else if (layout === 'cards' && !unified) {
+        item = card(entry, t, onToggleFavorite);
+    } else {
+        item = row(entry, t, unified, onToggleFavorite);
+    }
 
     item.role = 'option';
     item.id = `item-${entry.key.replace(':', '-')}`;

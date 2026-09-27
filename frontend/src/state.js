@@ -18,6 +18,12 @@ export function initialState(tab) {
         query: '',
         selected: 0,
         editing: false,
+
+        // The editor's draft (draft.js), a native dialog on screen, and the
+        // row waiting for "delete? ↩ yes · Esc no"; shown wipes all three.
+        draft: null,
+        dialogOpen: false,
+        confirming: null,
         helpOpen: false,
         apps: [],
         links: [],
@@ -88,6 +94,10 @@ export function totalsText(state, t) {
 export function footerAction(entry, t) {
     if (!entry) {
         return '';
+    }
+
+    if (entry.kind === 'add') {
+        return t('footer.add');
     }
 
     return entry.web ? t('footer.pair') : t('footer.open', {name: entry.name});

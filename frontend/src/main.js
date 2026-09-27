@@ -11,6 +11,9 @@ import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
 import {renderAll, renderHelp, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout} from './render.js';
 import {installKeyboard} from './keyboard.js';
+import {addOffer, newDraft} from './draft.js';
+import {hideEditor, focusedField} from './editor.js';
+import {installEditing, editableCategories, openEditor, closeEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView} from './editing.js';
 
 // How many "Recent" items the empty-query layout shows.
 const RECENT_LIMIT = 5;
@@ -31,6 +34,25 @@ let t = translator('en');
 const search = searchBox();
 
 /**
+ * The "＋ Add" row the search offers when nothing matches, or at the end
+ * when the text is an address. It is an entry like any other, so the
+ * keyboard, the selection and the footer reach it with no special case.
+ * @param {{text: string, url: boolean}} offer
+ * @returns {object}
+ */
+function addEntry(offer) {
+    return {
+        key: 'add:link',
+        kind: 'add',
+        id: '',
+        name: t('add.row', {text: offer.text}),
+        description: offer.url ? t('add.asURL') : t('add.asName'),
+        glyph: '＋',
+        text: offer.text,
+    };
+}
+
+/**
  * What the list shows for the state: the unified search while typing, a
  * flat list under a chip, or the sections of the tab.
  * @param {object} current
@@ -38,7 +60,13 @@ const search = searchBox();
  */
 export function layoutOf(current) {
     if (current.query) {
-        return {entries: unifiedSearch(current.apps, current.links, current.query), groups: [], unified: true};
+        const entries = unifiedSearch(current.apps, current.links, current.query);
+        const offer = addOffer(current.query, entries.length);
+        if (offer) {
+            entries.push(addEntry(offer));
+        }
+
+        return {entries, groups: [], unified: true};
     }
 
     const items = current.tab === 'links' ? current.links : current.apps;
@@ -68,6 +96,15 @@ export function layoutOf(current) {
  * Repaints from the state, keeping the selection inside the list.
  */
 function render() {
+    // While the editor is open the list is not on screen; only the editor
+    // repaints, so the search box and chips keep what they had.
+    if (state.editing && state.draft) {
+        refreshEditorView();
+        return;
+    }
+
+    hideEditor();
+
     const layout = layoutOf(state);
 
     if (state.selected >= layout.entries.length) {
@@ -115,6 +152,62 @@ function selectCategory(category) {
 }
 
 /**
+ * A link draft from typed text, with the active chip preselected when the
+ * links tab is showing one, and the search text kept for Esc.
+ * @param {string} text
+ * @returns {object}
+ */
+function linkDraftFrom(text) {
+    return newDraft({
+        tab: 'links',
+        text,
+        category: state.tab === 'links' ? state.category : '',
+        categories: editableCategories('links'),
+        returnQuery: state.query,
+    });
+}
+
+/**
+ * After a save: back to the list, on the saved item's tab, with the item
+ * selected and a short confirmation.
+ * @param {string} key "links:<id>" or "apps:<id>"
+ * @param {string} toastKey
+ */
+async function showSaved(key, toastKey) {
+    const [tab] = key.split(':');
+
+    search.value = '';
+    state.query = '';
+    state.category = '';
+
+    if (tab !== state.tab) {
+        state.tab = tab;
+        TabChanged(tab);
+    }
+
+    await refresh();
+
+    const index = layoutOf(state).entries.findIndex((entry) => entry.key === key || entry.web?.key === key);
+    state.selected = Math.max(0, index);
+    render();
+    showToast(t(toastKey));
+    search.focus();
+}
+
+/**
+ * After Esc in the editor: the search box gets its text back and the
+ * list its focus, as if the editor had never opened.
+ * @param {string} query
+ */
+function returnToSearch(query) {
+    search.value = query;
+    state.query = query;
+    state.selected = 0;
+    render();
+    search.focus();
+}
+
+/**
  * Opens an entry: an app through Launch, a link through OpenLink. Go hides
  * the launcher on success; a failure is shown as a toast.
  * @param {object|undefined} entry
@@ -122,6 +215,11 @@ function selectCategory(category) {
  */
 async function openEntry(entry, how = 'default') {
     if (!entry) {
+        return;
+    }
+
+    if (entry.kind === 'add') {
+        openEditor(linkDraftFrom(entry.text));
         return;
     }
 
@@ -341,18 +439,40 @@ function dispatch(action) {
             renderHelp(state, t);
             break;
         case 'new':
+            openEditor(linkDraftFrom(''));
+            break;
+        case 'save':
+            saveEditor();
+            break;
+        case 'closeEditor':
+            closeEditor();
+            break;
+        case 'pickCategory':
+            chooseCategory(action.index);
+            break;
+        case 'moveCategory':
+            stepCategory(action.delta);
+            break;
         case 'edit':
         case 'delete':
-        case 'closeEditor':
             Debug(`editor action ${action.type} (not available yet)`);
             break;
     }
 }
 
 installKeyboard(
-    () => ({query: state.query, editing: state.editing, helpOpen: state.helpOpen, columns: columns()}),
+    () => ({query: state.query, editing: state.editing, helpOpen: state.helpOpen, columns: columns(), field: state.editing ? focusedField() : ''}),
     dispatch,
 );
+
+installEditing({
+    state: () => state,
+    t: () => t,
+    render,
+    saved: showSaved,
+    closed: returnToSearch,
+    toast: showToast,
+});
 
 search.addEventListener('input', () => {
     state.query = search.value;
@@ -365,11 +485,12 @@ document.querySelectorAll('#tabs [role="tab"]').forEach((button) => {
 });
 
 // Like Cmd+Tab, the overlay goes away as soon as something else takes
-// focus. `state.editing` keeps it up instead: the flag a native dialog
-// will set, and the same one the future editor will set once it exists.
+// focus, except while the editor is open (a click elsewhere to copy a URL
+// must not lose the draft) or a native dialog is up (the dialog itself
+// takes the focus away from the page).
 window.addEventListener('blur', () => {
     setTimeout(() => {
-        if (document.hasFocus() || state.editing) {
+        if (document.hasFocus() || state.editing || state.dialogOpen) {
             return;
         }
 
