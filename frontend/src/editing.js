@@ -31,7 +31,7 @@ const handlers = {
 
 /**
  * Connects the editor to the page.
- * @param {{state: () => object, t: () => Function, render: () => void, saved: (key: string, toastKey: string) => Promise<void>, closed: (query: string) => void, toast: (text: string) => void}} pageHost
+ * @param {{state: () => object, t: () => Function, render: () => void, saved: (key: string, toastKey: string) => Promise<void>, closed: (query: string) => void, toast: (text: string) => void, edit: (ref: {tab: string, id: string}) => void}} pageHost
  */
 export function installEditing(pageHost) {
     host = pageHost;
@@ -288,6 +288,20 @@ export function closeEditor() {
 
     finish();
     host.closed(draft?.returnQuery ?? '');
+}
+
+/**
+ * ⌘E with an exact duplicate on screen: this draft goes and the editor
+ * opens on the link that already has the address.
+ */
+export function editDuplicate() {
+    const ref = currentDraft()?.duplicate;
+    if (!ref) {
+        return;
+    }
+
+    finish();
+    host.edit(ref);
 }
 
 /**

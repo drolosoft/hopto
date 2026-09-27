@@ -91,3 +91,27 @@ test('plain typing is left to the search box', () => {
     assert.equal(actionFor(press('a'), idle), null);
     assert.equal(actionFor(press('a', {shiftKey: true}), idle), null);
 });
+
+test('a pending confirmation takes Enter and Esc; anything else goes on', () => {
+    const confirming = {...idle, confirming: true};
+    assert.deepEqual(actionFor(press('Enter'), confirming), {type: 'confirm'});
+    assert.deepEqual(actionFor(press('Escape'), confirming), {type: 'cancelConfirm'});
+    assert.deepEqual(actionFor(press('Escape'), {...confirming, query: 'md'}), {type: 'cancelConfirm'}, 'Esc cancels before it clears');
+    assert.deepEqual(actionFor(press('ArrowDown'), confirming), {type: 'move', delta: 4}, 'dispatch cancels, then moves');
+    assert.deepEqual(actionFor(press('Enter', {metaKey: true}), confirming), {type: 'openAlt'});
+});
+
+test('⌘⇧E and ⌘⇧⌫ act on the chip; while renaming only Enter and Esc are taken', () => {
+    assert.deepEqual(actionFor(press('E', {metaKey: true, shiftKey: true}), idle), {type: 'renameCategory'});
+    assert.deepEqual(actionFor(press('Backspace', {metaKey: true, shiftKey: true}), idle), {type: 'deleteCategory'});
+
+    const renaming = {...idle, renaming: true};
+    assert.deepEqual(actionFor(press('Enter'), renaming), {type: 'saveRename'});
+    assert.deepEqual(actionFor(press('Escape'), renaming), {type: 'cancelRename'});
+    assert.equal(actionFor(press('a', {metaKey: true}), renaming), null, '⌘A selects the name');
+    assert.equal(actionFor(press('ArrowLeft'), renaming), null);
+});
+
+test('in the editor ⌘E asks to edit the duplicate', () => {
+    assert.deepEqual(actionFor(press('e', {metaKey: true}), {...idle, editing: true, field: 'url'}), {type: 'editDuplicate'});
+});

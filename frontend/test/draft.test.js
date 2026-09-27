@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, canSave, linkInput, withSaveResult, problemText} from '../src/draft.js';
+import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, editDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, canSave, linkInput, withSaveResult, problemText} from '../src/draft.js';
 import {translator} from '../src/i18n.js';
 
 const categories = [{id: 'eco', name: 'Ecosystem'}, {id: 'docs', name: 'Docs'}];
@@ -157,6 +157,27 @@ test('withSaveResult: an id closes, problems stay on the draft', () => {
 
     const twin = withSaveResult(draft, {id: '', problems: {}, duplicate: {tab: 'links', id: 'ex', name: 'Ex'}});
     assert.equal(twin.draft.duplicate.id, 'ex');
+});
+
+test('editDraft fills the editor from a list entry and keeps its keywords', () => {
+    const entry = {id: 'gitea', key: 'links:gitea', kind: 'link', name: 'Gitea', description: 'Repos', url: 'https://repos.example.com', path: '', bundleId: '', category: 'docs', keywords: ['git'], iconUrl: '/user-icons/gitea.png?v=1'};
+    const draft = editDraft(entry, categories, 'git');
+
+    assert.equal(draft.mode, 'edit');
+    assert.equal(draft.tab, 'links');
+    assert.equal(draft.id, 'gitea');
+    assert.equal(draft.url, 'https://repos.example.com');
+    assert.equal(draft.category, 'docs');
+    assert.deepEqual(draft.keywords, ['git']);
+    assert.notEqual(draft.keywords, entry.keywords, 'a copy, not the list\'s array');
+    assert.equal(draft.iconDataUrl, '/user-icons/gitea.png?v=1');
+    assert.deepEqual(draft.touched, ['url', 'name', 'description'], 'an inspection never overwrites what is saved');
+    assert.equal(draft.returnQuery, 'git');
+
+    const app = editDraft({id: 'mine', kind: 'app', name: 'Mine', description: '', path: '/Applications/Mine.app', bundleId: 'org.example.mine', category: 'tools', keywords: []}, [{id: 'tools', name: 'Tools'}]);
+    assert.equal(app.tab, 'apps');
+    assert.equal(app.path, '/Applications/Mine.app');
+    assert.equal(app.bundleId, 'org.example.mine');
 });
 
 test('problemText translates a key and falls back for an unknown one', () => {

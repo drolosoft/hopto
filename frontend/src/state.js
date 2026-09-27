@@ -1,7 +1,7 @@
 /**
  * The page state and the texts derived from it, without the DOM.
  */
-import {rankItems, filterByCategory, FAVORITES} from './filter.js';
+import {rankItems, filterByCategory, visibleUnder, FAVORITES, HIDDEN} from './filter.js';
 import {TABS, otherTab} from './tabs.js';
 
 /**
@@ -24,6 +24,9 @@ export function initialState(tab) {
         draft: null,
         dialogOpen: false,
         confirming: null,
+
+        // The chip whose name is being typed in place, {tab, id, name}.
+        renaming: null,
         helpOpen: false,
         apps: [],
         links: [],
@@ -114,11 +117,17 @@ export function footerAction(entry, t) {
  */
 export function chipCounts(state) {
     const categories = state.tab === 'links' ? state.linkCategories : state.appCategories;
-    const items = (state.tab === 'links' ? state.links : state.apps).filter((item) => !item.hidden);
+    const everything = state.tab === 'links' ? state.links : state.apps;
+    const items = everything.filter((item) => !item.hidden);
 
     const totals = {'': items.length, [FAVORITES]: items.filter((item) => item.favorite).length};
     for (const category of categories) {
-        totals[category.id] = filterByCategory(items, category.id).length;
+        // The hidden chip counts the hidden apps themselves, not the
+        // visible items filterByCategory would look at (it would always
+        // find zero: a hidden app's category is its source, never "hidden").
+        totals[category.id] = category.id === HIDDEN
+            ? everything.filter((item) => item.hidden).length
+            : filterByCategory(items, category.id).length;
     }
 
     return totals;
@@ -136,5 +145,38 @@ export function chipItems(state) {
     }
 
     const items = state.tab === 'links' ? state.links : state.apps;
-    return filterByCategory(items.filter((item) => !item.hidden), state.category);
+    return visibleUnder(items, state.category);
+}
+
+/**
+ * What ⌘⌫ does to an entry: links and hand-added apps are deleted, a
+ * discovered app is hidden (it is on disk, deleting it would come back
+ * with the next scan), a hidden one comes back. Action rows: nothing.
+ * @param {object|undefined} entry
+ * @returns {'delete'|'hide'|'unhide'|''}
+ */
+export function removalOf(entry) {
+    if (!entry || (entry.kind !== 'link' && entry.kind !== 'app')) {
+        return '';
+    }
+
+    if (entry.kind === 'link' || entry.source === 'library') {
+        return 'delete';
+    }
+
+    return entry.hidden ? 'unhide' : 'hide';
+}
+
+/**
+ * The question of a pending confirmation, for the row and the footer.
+ * @param {{action: string, name: string}|null} confirming
+ * @param {Function} t
+ * @returns {string}
+ */
+export function confirmQuestion(confirming, t) {
+    if (!confirming) {
+        return '';
+    }
+
+    return t(`confirm.${confirming.action}`, {name: confirming.name});
 }

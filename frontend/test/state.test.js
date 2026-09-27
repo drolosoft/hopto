@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState, counts, chipCounts, emptyMessage, totalsText, footerAction} from '../src/state.js';
+import {initialState, counts, chipCounts, emptyMessage, totalsText, footerAction, removalOf, confirmQuestion} from '../src/state.js';
 import {translator} from '../src/i18n.js';
 import {decorate, FAVORITES} from '../src/filter.js';
 
@@ -27,6 +27,7 @@ test('initialState starts clean on the given tab', () => {
     assert.equal(state.draft, null);
     assert.equal(state.dialogOpen, false);
     assert.equal(state.confirming, null);
+    assert.equal(state.renaming, null);
 });
 
 test('counts says how many of each tab match the query', () => {
@@ -73,4 +74,20 @@ test('footerAction names the selected item or the pair', () => {
     assert.equal(footerAction({name: 'GitHub', kind: 'app', web: {id: 'x'}}, t), '↩ app · ⌘↩ web');
     assert.equal(footerAction({name: '＋ Add “x”', kind: 'add'}, t), '↩ Add');
     assert.equal(footerAction(undefined, t), '');
+});
+
+test('removalOf: links and hand-added apps are deleted, found apps hidden, hidden ones unhidden', () => {
+    assert.equal(removalOf({kind: 'link', source: 'library'}), 'delete');
+    assert.equal(removalOf({kind: 'app', source: 'library'}), 'delete');
+    assert.equal(removalOf({kind: 'app', source: 'applications', hidden: false}), 'hide');
+    assert.equal(removalOf({kind: 'app', source: 'edge', hidden: true}), 'unhide');
+    assert.equal(removalOf({kind: 'add'}), '');
+    assert.equal(removalOf(undefined), '');
+});
+
+test('confirmQuestion names what goes and how to answer', () => {
+    assert.equal(confirmQuestion({action: 'delete', name: 'MDN'}, t), 'Delete MDN? ↩ yes · Esc no');
+    assert.equal(confirmQuestion({action: 'hide', name: 'Mail'}, t), 'Hide Mail? ↩ yes · Esc no');
+    assert.equal(confirmQuestion({action: 'deleteCategory', name: 'Docs'}, t), 'Delete the category Docs? ↩ yes · Esc no');
+    assert.equal(confirmQuestion(null, t), '');
 });

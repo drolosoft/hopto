@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalize, score, decorate, rankItems, filterByCategory, sections, unifiedSearch, pairSamePage, pageKey, FAVORITES} from '../src/filter.js';
+import {normalize, score, decorate, rankItems, filterByCategory, visibleUnder, HIDDEN, sections, unifiedSearch, pairSamePage, pageKey, FAVORITES} from '../src/filter.js';
 
 const links = [
     {id: 'gitea', key: 'links:gitea', kind: 'link', name: 'Gitea', description: 'Repos en el servidor', host: 'repos.example.com', url: 'https://repos.example.com', category: 'eco', keywords: ['git']},
@@ -159,4 +159,12 @@ test('a link that matches better than its app keeps its own row', () => {
 
     assert.deepEqual(rows.map((row) => row.key), ['links:github', 'apps:edge-code']);
     assert.ok(rows.every((row) => row.web === undefined));
+});
+
+test('visibleUnder shows only the hidden apps under their chip, and never elsewhere', () => {
+    const items = [{...apps[0], hidden: true}, apps[1]];
+
+    assert.deepEqual(visibleUnder(items, HIDDEN).map((item) => item.id), ['app-mail']);
+    assert.deepEqual(visibleUnder(items, 'applications'), []);
+    assert.deepEqual(visibleUnder(items, 'edge').map((item) => item.id), ['edge-github']);
 });

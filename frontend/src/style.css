@@ -533,6 +533,22 @@ footer p {
     user-select: text;
 }
 
+/* A row waiting for "delete? ↩ yes · Esc no": the question takes the
+   description's place, in the warning colour. */
+[role="option"].confirming .description {
+    color: var(--warning);
+}
+
+/* The chip being renamed in place is a text field shaped like a chip;
+   .chip already makes it no-drag. */
+#rename-category {
+    width: 12em;
+    background: var(--input);
+    outline: none;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
 /* The editor takes the place of the list: fields stacked in the spec's
    order, chips for the category, problems under their field. */
 #editor {

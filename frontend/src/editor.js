@@ -177,7 +177,7 @@ function renderNotes(draft, t) {
     }
 
     if (draft.duplicate) {
-        lines.push({text: t('editor.duplicate', {name: draft.duplicate.name}), kind: 'blocking'});
+        lines.push({text: `${t('editor.duplicate', {name: draft.duplicate.name})} · ${t('editor.editDuplicate')}`, kind: 'blocking'});
     }
 
     if (draft.sameHost.length > 0) {

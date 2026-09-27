@@ -219,11 +219,11 @@ function actionRow(entry) {
  * the keyboard rely on: the index in the flat list, a DOM id for
  * aria-activedescendant, the selected state.
  * @param {object} entry
- * @param {{index: number, selected: boolean, layout: string, unified: boolean, t: Function, onOpen: () => void, onToggleFavorite: () => void}} options
+ * @param {{index: number, selected: boolean, layout: string, unified: boolean, t: Function, question: string, onOpen: () => void, onToggleFavorite: () => void}} options
  * @returns {HTMLLIElement}
  */
 export function itemElement(entry, options) {
-    const {index, selected, layout, unified, t, onOpen, onToggleFavorite} = options;
+    const {index, selected, layout, unified, t, question, onOpen, onToggleFavorite} = options;
 
     let item;
     if (entry.kind === 'add' || entry.kind === 'pick') {
@@ -241,6 +241,16 @@ export function itemElement(entry, options) {
 
     if (entry.missing || entry.hidden) {
         item.classList.add('dim');
+    }
+
+    // A pending "delete? ↩ yes · Esc no" takes the place of the second
+    // line, so the question sits on the very row it is about.
+    if (question) {
+        item.classList.add('confirming');
+        const line = item.querySelector('.description');
+        if (line) {
+            line.textContent = question;
+        }
     }
 
     item.addEventListener('click', onOpen);

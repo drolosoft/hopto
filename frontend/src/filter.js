@@ -8,6 +8,10 @@
 // Spanish spelling) so no user category can take it.
 export const FAVORITES = 'favorites';
 
+// The id of the virtual chip of the hidden apps. It is the only place a
+// hidden app is listed, and Go reserves the id like the favourites one.
+export const HIDDEN = 'hidden';
+
 // The points a query word earns depending on where it matches. Name
 // matches count whole, the other texts half: a word at the start of a
 // name is what the user is most likely typing.
@@ -161,6 +165,21 @@ export function filterByCategory(items, category) {
     }
 
     return items.filter((item) => item.category === category);
+}
+
+/**
+ * The items a chip lists: under the hidden chip only the hidden apps,
+ * under any other one the items of that chip that are not hidden.
+ * @param {object[]} items
+ * @param {string} category
+ * @returns {object[]}
+ */
+export function visibleUnder(items, category) {
+    if (category === HIDDEN) {
+        return items.filter((item) => item.hidden);
+    }
+
+    return filterByCategory(items.filter((item) => !item.hidden), category);
 }
 
 /**

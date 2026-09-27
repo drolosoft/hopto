@@ -26,7 +26,7 @@ export function nextIndex(selected, delta, count) {
  * the search box should keep the key. Letters are compared lowercased so
  * Caps Lock changes nothing; a press during IME composition is ignored.
  * @param {{key: string, metaKey: boolean, altKey: boolean, shiftKey: boolean, ctrlKey: boolean, isComposing: boolean}} event
- * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number, field?: string}} context
+ * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number, field?: string, confirming?: boolean, renaming?: boolean}} context
  * @returns {{type: string, delta?: number, index?: number}|null}
  */
 export function actionFor(event, context) {
@@ -40,8 +40,24 @@ export function actionFor(event, context) {
         return editorAction(event, key, context.field);
     }
 
+    if (context.renaming) {
+        return renameAction(key);
+    }
+
     if (context.helpOpen) {
         return key === 'Escape' || key === '?' || (event.metaKey && key === '/') ? {type: 'help'} : null;
+    }
+
+    // A row (or a chip) waiting for "delete? ↩ yes · Esc no" takes the
+    // answer; any other key falls through and dispatch cancels the
+    // question before doing it, so moving away never deletes.
+    const plain = !event.metaKey && !event.altKey && !event.shiftKey;
+    if (context.confirming && key === 'Enter' && plain) {
+        return {type: 'confirm'};
+    }
+
+    if (context.confirming && key === 'Escape') {
+        return {type: 'cancelConfirm'};
     }
 
     if (event.metaKey && /^[1-9]$/.test(key)) {
@@ -55,9 +71,9 @@ export function actionFor(event, context) {
             case 'f': return {type: 'favorite'};
             case 'c': return {type: 'copy'};
             case 'n': return {type: 'new'};
-            case 'e': return {type: 'edit'};
+            case 'e': return event.shiftKey ? {type: 'renameCategory'} : {type: 'edit'};
             case '/': return {type: 'help'};
-            case 'Backspace': return {type: 'delete'};
+            case 'Backspace': return event.shiftKey ? {type: 'deleteCategory'} : {type: 'delete'};
             case 'Enter': return event.shiftKey ? {type: 'openAll'} : {type: 'openAlt'};
             default: return null;
         }
@@ -95,6 +111,10 @@ function editorAction(event, key, field) {
         return {type: 'save'};
     }
 
+    if (event.metaKey && key === 'e') {
+        return {type: 'editDuplicate'};
+    }
+
     if (event.metaKey && /^[1-9]$/.test(key)) {
         return {type: 'pickCategory', index: Number(key) - 1};
     }
@@ -113,4 +133,22 @@ function editorAction(event, key, field) {
         default:
             return null;
     }
+}
+
+/**
+ * The keys of a chip being renamed in place: Enter keeps the name, Esc
+ * drops it, everything else (⌘A, arrows, letters) belongs to the field.
+ * @param {string} key
+ * @returns {{type: string}|null}
+ */
+function renameAction(key) {
+    if (key === 'Enter') {
+        return {type: 'saveRename'};
+    }
+
+    if (key === 'Escape') {
+        return {type: 'cancelRename'};
+    }
+
+    return null;
 }

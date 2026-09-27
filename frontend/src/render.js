@@ -3,7 +3,7 @@
  * and a layout and writes the DOM; nothing here decides anything.
  */
 import {itemElement, sectionHeader} from './cards.js';
-import {counts, chipCounts, emptyMessage, totalsText, footerAction} from './state.js';
+import {counts, chipCounts, emptyMessage, totalsText, footerAction, confirmQuestion} from './state.js';
 import {TABS, otherTab} from './tabs.js';
 import {FAVORITES} from './filter.js';
 
@@ -90,10 +90,25 @@ function renderCategories(state, t, handlers) {
     // the way the tab labels already do.
     const totals = chipCounts(state);
 
+    // A repaint while a chip is being renamed (an icon landing) must not
+    // lose what was typed, nor the caret.
+    const previous = renameBox();
+    const typed = previous?.value;
+    const typing = previous !== null && document.activeElement === previous;
+
     elements.categories.replaceChildren();
     elements.categories.hidden = Boolean(state.query);
 
     chips.forEach((category, index) => {
+        if (state.renaming && state.renaming.id === category.id) {
+            const input = renameInput(state.renaming, typed, t);
+            elements.categories.appendChild(input);
+            if (typing) {
+                input.focus();
+            }
+            return;
+        }
+
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'chip';
@@ -118,6 +133,27 @@ function renderCategories(state, t, handlers) {
         chip.addEventListener('click', () => handlers.onChip(category.id));
         elements.categories.appendChild(chip);
     });
+}
+
+/**
+ * The chip being renamed: a text field in the chip's place, holding what
+ * was typed so far or else the current name.
+ * @param {{name: string}} renaming
+ * @param {string|undefined} typed
+ * @param {Function} t
+ * @returns {HTMLInputElement}
+ */
+function renameInput(renaming, typed, t) {
+    const input = document.createElement('input');
+    input.id = 'rename-category';
+    input.type = 'text';
+    input.className = 'chip';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.value = typed ?? renaming.name;
+    input.setAttribute('aria-label', t('rename.label'));
+
+    return input;
 }
 
 /**
@@ -167,6 +203,7 @@ function renderList(state, layout, t, handlers) {
         layout: TABS[state.tab].layout,
         unified,
         t,
+        question: state.confirming?.key === entry.key ? confirmQuestion(state.confirming, t) : '',
         onOpen: () => handlers.onOpen(index),
         onToggleFavorite: () => handlers.onToggleFavorite(entry),
     });
@@ -224,7 +261,12 @@ function renderList(state, layout, t, handlers) {
  */
 function renderFooter(state, layout, t) {
     elements.totals.textContent = totalsText(state, t);
-    elements.action.textContent = footerAction(layout.entries[state.selected], t);
+
+    // While a question is pending the footer repeats it whole: a card of
+    // 118 px cuts it, and a chip being deleted has no row at all.
+    elements.action.textContent = state.confirming
+        ? confirmQuestion(state.confirming, t)
+        : footerAction(layout.entries[state.selected], t);
     elements.hints.textContent = t('footer.hints', {tab: t(TABS[otherTab(state.tab)].label)});
 }
 
@@ -397,4 +439,12 @@ export function verticalNeighbour(direction) {
  */
 export function searchBox() {
     return elements.search;
+}
+
+/**
+ * The field of the chip being renamed, or null.
+ * @returns {HTMLInputElement|null}
+ */
+export function renameBox() {
+    return document.getElementById('rename-category');
 }

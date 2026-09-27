@@ -118,6 +118,35 @@ export function newDraft({tab = 'links', text = '', category = '', categories = 
 }
 
 /**
+ * A draft for the item under the selection, for ⌘E. The three text
+ * fields count as typed, so a new inspection (after the URL changes)
+ * fills only the icon and the notes, never over what was saved. The
+ * list's icon URL is the preview until an inspection brings another.
+ * @param {object} entry an ItemView from the list
+ * @param {{id: string}[]} categories the real chips of its tab
+ * @param {string} [returnQuery] the search text to give back on Esc
+ * @returns {object}
+ */
+export function editDraft(entry, categories, returnQuery = '') {
+    const tab = entry.kind === 'link' ? 'links' : 'apps';
+    const base = newDraft({tab, category: entry.category, categories, returnQuery});
+
+    return {
+        ...base,
+        mode: 'edit',
+        id: entry.id,
+        url: entry.url ?? '',
+        name: entry.name ?? '',
+        description: entry.description ?? '',
+        keywords: [...(entry.keywords ?? [])],
+        path: entry.path ?? '',
+        bundleId: entry.bundleId ?? '',
+        iconDataUrl: entry.iconUrl ?? '',
+        touched: ['url', 'name', 'description'],
+    };
+}
+
+/**
  * The draft after the user typed in a field. The field's problem goes
  * (the user is fixing it); a new URL drops what the old one said about
  * duplicates and neighbours, and stops a pending "reading the page".

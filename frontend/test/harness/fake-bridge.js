@@ -71,7 +71,16 @@ const call = (name) => async (...args) => {
 
 window.go = {main: {App: {
     Items: async (tab) => (tab === 'links' ? (window.noLinks ? [] : links) : apps),
-    Categories: async (tab) => (tab === 'links' ? linkCategories : appCategories),
+
+    // Like Go, the hidden chip closes the apps row only while an app is
+    // hidden.
+    Categories: async (tab) => {
+        if (tab === 'links') {
+            return linkCategories;
+        }
+        const hidden = apps.some((app) => app.hidden) ? [{id: 'hidden', name: '', tab: 'apps', virtual: true}] : [];
+        return [...appCategories, ...hidden];
+    },
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
     About: async () => ({version: 'v0.3.0-test', commit: 'abc1234', builtAt: '2026-09-27', goVersion: 'go1.27.1', libraryPath: '/Users/someone/Library/Application Support/hopto/library.toml'}),
     Settings: async () => ({language: window.language ?? 'en', hotkeyApps: 'cmd+shift+space', hotkeyLinks: 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
@@ -131,6 +140,37 @@ window.go = {main: {App: {
         window.welcome = {...window.welcome, show: false};
     },
     OpenKeyboardSettings: call('OpenKeyboardSettings'),
+
+    // Deleting, hiding and the chips. DeleteCategory refuses a chip that
+    // still has items, with Go's own message.
+    DeleteLink: async (id) => {
+        window.calls.push(`DeleteLink:${id}`);
+        links.splice(links.findIndex((link) => link.id === id), 1);
+    },
+    DeleteApp: async (id) => {
+        window.calls.push(`DeleteApp:${id}`);
+        apps.splice(apps.findIndex((app) => app.id === id), 1);
+    },
+    HideApp: async (id) => {
+        window.calls.push(`HideApp:${id}`);
+        apps.find((app) => app.id === id).hidden = true;
+    },
+    UnhideApp: async (id) => {
+        window.calls.push(`UnhideApp:${id}`);
+        apps.find((app) => app.id === id).hidden = false;
+    },
+    RenameCategory: async (tab, id, name) => {
+        window.calls.push(`RenameCategory:${tab}:${id}:${name}`);
+        (tab === 'links' ? linkCategories : appCategories).find((category) => category.id === id).name = name;
+    },
+    DeleteCategory: async (tab, id) => {
+        window.calls.push(`DeleteCategory:${tab}:${id}`);
+        if ([...links, ...apps].some((item) => item.category === id)) {
+            throw new Error(`the category still has items: ${id}`);
+        }
+        const list = tab === 'links' ? linkCategories : appCategories;
+        list.splice(list.findIndex((category) => category.id === id), 1);
+    },
     Hide: call('Hide'),
     TabChanged: call('TabChanged'),
     Debug: call('Debug'),
