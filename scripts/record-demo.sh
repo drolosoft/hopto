@@ -82,7 +82,10 @@ previous="$(running_bundle)"
 # the data comes back, and the hopto that was running before is opened
 # again.
 restore() {
-    osascript -e 'tell application "Preview" to close every window saving no' 2>/dev/null || true
+    # Only the backdrop window, by name: "every window" would also close
+    # whatever Preview windows the user already had open, unsaved work
+    # included, when preview_was_running is 1.
+    osascript -e 'tell application "Preview" to close (every window whose name is "backdrop.png") saving no' 2>/dev/null || true
 
     if [ "$preview_was_running" -eq 0 ]; then
         osascript -e 'tell application "Preview" to quit' 2>/dev/null || true
@@ -151,7 +154,7 @@ wait_for 10 registered 1 || exit 1
 chord "$key_space" "command down, option down"
 wait_for 3 guard || exit 1
 wait_for 20 icons_ready || echo "some link icons did not arrive; recording anyway" >&2
-key "$key_escape"
+step; key "$key_escape"
 wait_for 3 windows_are 0 || exit 1
 
 # The panel's place, in points, for the crop.
