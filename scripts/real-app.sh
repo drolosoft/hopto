@@ -70,9 +70,11 @@ typed() {
 }
 
 # idle_seconds prints how long the keyboard and the mouse have been
-# untouched.
+# untouched. awk keeps reading to the end of ioreg's output instead of
+# exiting on the first match: under pipefail, an early exit here sends
+# ioreg a SIGPIPE, which the callers' set -e would otherwise abort on.
 idle_seconds() {
-    ioreg -c IOHIDSystem | awk '/HIDIdleTime/ {print int($NF / 1000000000); exit}'
+    ioreg -c IOHIDSystem | awk '/HIDIdleTime/ && !seen {print int($NF / 1000000000); seen = 1}'
 }
 
 # wait_for runs a command every quarter of a second until it succeeds or
