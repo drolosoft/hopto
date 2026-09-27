@@ -120,7 +120,7 @@ func (a *App) showPanel(tab string) {
 		return
 	}
 
-	a.window.Center()
+	a.placeWindow()
 	a.window.Show()
 	a.window.Activate()
 	a.visible = true
