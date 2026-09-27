@@ -27,7 +27,7 @@ window.runtime = {
 const apps = [
     {id: 'mine', key: 'apps:mine', kind: 'app', source: 'library', name: 'Mine', description: 'A hand-added app', url: '', host: '', path: '/Applications/Mine.app', bundleId: '', category: 'tools', keywords: [], iconUrl: '', hidden: false, missing: false},
     {id: 'app-mail', key: 'apps:app-mail', kind: 'app', source: 'applications', name: 'Mail', description: '', url: '', host: '', path: '/Applications/Mail.app', bundleId: 'com.apple.mail', category: 'applications', keywords: [], iconUrl: '', hidden: false, missing: false},
-    {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', url: '', host: 'github.com', path: '/Users/someone/Applications/Edge Apps.localized/GitHub.app', bundleId: '', category: 'edge', keywords: [], iconUrl: '', hidden: false, missing: false},
+    {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', url: 'https://github.com/', host: 'github.com', path: '/Users/someone/Applications/Edge Apps.localized/GitHub.app', bundleId: '', category: 'edge', keywords: [], iconUrl: '', hidden: false, missing: false},
 ];
 
 const links = [

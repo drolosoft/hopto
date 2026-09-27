@@ -200,25 +200,57 @@ export function sections(items, categories, recentLimit) {
 }
 
 /**
- * Folds an Edge app and a link on the same host into one row: the app
- * opens on Enter, the link rides along as `web` for ⌘↩.
- * @param {object[]} items
+ * Reduces a URL to what identifies the page, the way Go's
+ * library.NormalizeURL does: lowercase scheme and host (the URL parser
+ * already lowercases them and drops a default port), no "www.", no
+ * fragment, no trailing slash, the query kept. "" when it does not parse.
+ * @param {string} raw
+ * @returns {string}
+ */
+export function pageKey(raw) {
+    let parsed;
+    try {
+        parsed = new URL(String(raw ?? '').trim());
+    } catch {
+        return '';
+    }
+
+    const scheme = parsed.protocol.replace(/:$/, '');
+    const host = parsed.hostname.replace(/^www\./, '');
+    const port = parsed.port ? `:${parsed.port}` : '';
+    const path = parsed.pathname.replace(/\/+$/, '');
+
+    return `${scheme}://${host}${port}${path}${parsed.search}`;
+}
+
+/**
+ * Folds an Edge app and the link to the very same page into one row: the
+ * app opens on Enter, the link rides along as `web` for ⌘↩. Sharing a
+ * host is not enough (a web app on one path of a server is not the
+ * server's front page), and a link that matches the query better than
+ * the app keeps its own row: folding it would bury the best result
+ * under a weaker one.
+ * @param {object[]} items ranked
+ * @param {string} query
  * @returns {object[]}
  */
-export function pairByHost(items) {
-    const linksByHost = new Map();
-    items.filter((item) => item.kind === 'link' && item.host).forEach((link) => {
-        if (!linksByHost.has(link.host)) {
-            linksByHost.set(link.host, link);
+export function pairSamePage(items, query) {
+    const linksByPage = new Map();
+    for (const item of items) {
+        const key = item.kind === 'link' ? pageKey(item.url) : '';
+        if (key && !linksByPage.has(key)) {
+            linksByPage.set(key, item);
         }
-    });
+    }
 
     const paired = new Set();
     const rows = [];
 
     for (const item of items) {
-        if (item.kind === 'app' && item.source === 'edge' && item.host && linksByHost.has(item.host)) {
-            const web = linksByHost.get(item.host);
+        const isWebApp = item.kind === 'app' && item.source === 'edge';
+        const web = isWebApp ? linksByPage.get(pageKey(item.url)) : undefined;
+
+        if (web && !paired.has(web.key) && score(web, query) <= score(item, query)) {
             paired.add(web.key);
             rows.push({...item, web});
             continue;
@@ -232,7 +264,8 @@ export function pairByHost(items) {
 
 /**
  * One list for both tabs while the user types: apps and links ranked
- * together, hidden apps left out, Edge apps paired with their link.
+ * together, hidden apps left out, Edge apps paired with the link to the
+ * same page.
  * @param {object[]} apps decorated
  * @param {object[]} links decorated
  * @param {string} query
@@ -240,5 +273,5 @@ export function pairByHost(items) {
  */
 export function unifiedSearch(apps, links, query) {
     const ranked = rankItems([...apps.filter((app) => !app.hidden), ...links], query);
-    return pairByHost(ranked);
+    return pairSamePage(ranked, query);
 }

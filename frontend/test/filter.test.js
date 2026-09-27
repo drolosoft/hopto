@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalize, score, decorate, rankItems, filterByCategory, sections, unifiedSearch, pairByHost, FAVORITES} from '../src/filter.js';
+import {normalize, score, decorate, rankItems, filterByCategory, sections, unifiedSearch, pairSamePage, pageKey, FAVORITES} from '../src/filter.js';
 
 const links = [
-    {id: 'gitea', key: 'links:gitea', kind: 'link', name: 'Gitea', description: 'Repos en el servidor', host: 'repos.example.com', category: 'eco', keywords: ['git']},
-    {id: 'go-doc', key: 'links:go-doc', kind: 'link', name: 'Go', description: 'Documentación oficial de Go', host: 'go.dev', category: 'docs', keywords: []},
-    {id: 'github', key: 'links:github', kind: 'link', name: 'GitHub', description: 'Pull requests', host: 'github.com', category: 'eco', keywords: []},
+    {id: 'gitea', key: 'links:gitea', kind: 'link', name: 'Gitea', description: 'Repos en el servidor', host: 'repos.example.com', url: 'https://repos.example.com', category: 'eco', keywords: ['git']},
+    {id: 'go-doc', key: 'links:go-doc', kind: 'link', name: 'Go', description: 'Documentación oficial de Go', host: 'go.dev', url: 'https://go.dev', category: 'docs', keywords: []},
+    {id: 'github', key: 'links:github', kind: 'link', name: 'GitHub', description: 'Pull requests', host: 'github.com', url: 'https://github.com', category: 'eco', keywords: []},
 ];
 
 const apps = [
     {id: 'app-mail', key: 'apps:app-mail', kind: 'app', source: 'applications', name: 'Mail', description: '', category: 'applications', keywords: []},
-    {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', host: 'github.com', category: 'edge', keywords: []},
+    {id: 'edge-github', key: 'apps:edge-github', kind: 'app', source: 'edge', name: 'GitHub', description: 'github.com', host: 'github.com', url: 'https://github.com/', category: 'edge', keywords: []},
 ];
 
 test('normalize strips accents and case', () => {
@@ -94,8 +94,45 @@ test('unifiedSearch mixes both tabs by score and pairs an Edge app with its link
     assert.equal(rows[1].web.id, 'github', 'the link rides along on the Edge app');
 });
 
-test('pairByHost leaves unpaired items alone', () => {
-    const rows = pairByHost([apps[0], links[0]]);
+test('pairSamePage leaves unpaired items alone', () => {
+    const rows = pairSamePage([apps[0], links[0]], 'x');
     assert.equal(rows.length, 2);
     assert.equal(rows[0].web, undefined);
+});
+
+test('pageKey normalises like Go: case, www, default port, trailing slash, fragment', () => {
+    assert.equal(pageKey('HTTPS://WWW.Example.org:443/Docs/#top'), 'https://example.org/Docs');
+    assert.equal(pageKey('https://example.org/'), 'https://example.org');
+    assert.equal(pageKey('http://example.org:8080/x?y=1'), 'http://example.org:8080/x?y=1');
+    assert.equal(pageKey('not a url'), '');
+    assert.equal(pageKey(undefined), '');
+});
+
+// The owner's case: a web app on one path of a host must not swallow the
+// link to the host's front page.
+const wayApp = {id: 'edge-way', key: 'apps:edge-way', kind: 'app', source: 'edge', name: 'Go On The Way', description: 'home.example.org', host: 'home.example.org', url: 'https://home.example.org/way/', category: 'edge', keywords: []};
+const homeLink = {id: 'homepage', key: 'links:homepage', kind: 'link', name: 'Homepage', description: 'All the services', host: 'home.example.org', url: 'https://home.example.org', category: 'eco', keywords: []};
+const noUsage = {opens: {}, lastOpened: {}, favorites: []};
+
+test('same host, different page: two rows, nothing folded', () => {
+    const rows = unifiedSearch(decorate([wayApp], noUsage), decorate([homeLink], noUsage), 'home');
+
+    assert.deepEqual(rows.map((row) => row.key).sort(), ['apps:edge-way', 'links:homepage']);
+    assert.ok(rows.every((row) => row.web === undefined));
+});
+
+test('same page: one row, the link rides on the app', () => {
+    const sameApp = {...wayApp, id: 'edge-home', key: 'apps:edge-home', name: 'Homepage', url: 'https://www.home.example.org/'};
+    const rows = unifiedSearch(decorate([sameApp], noUsage), decorate([homeLink], noUsage), 'home');
+
+    assert.deepEqual(rows.map((row) => row.key), ['apps:edge-home']);
+    assert.equal(rows[0].web.id, 'homepage');
+});
+
+test('a link that matches better than its app keeps its own row', () => {
+    const code = {...apps[1], id: 'edge-code', key: 'apps:edge-code', name: 'Code'};
+    const rows = unifiedSearch(decorate([code], noUsage), decorate([links[2]], noUsage), 'git');
+
+    assert.deepEqual(rows.map((row) => row.key), ['links:github', 'apps:edge-code']);
+    assert.ok(rows.every((row) => row.web === undefined));
 });

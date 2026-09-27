@@ -92,7 +92,8 @@ func TestInspectBundleReadsAnEdgeApp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if app.Name != "Outlook (PWA)" ||
+	if app.URL != "https://example.com/" ||
+		app.Name != "Outlook (PWA)" ||
 		app.Source != SourceEdge ||
 		app.Host != "example.com" ||
 		app.Description != "example.com" {

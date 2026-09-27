@@ -236,6 +236,7 @@ func (a *App) appViews(lib library.Library) []ItemView {
 			Name:        app.Name,
 			Description: app.Description,
 			Host:        app.Host,
+			URL:         app.URL,
 			Path:        app.Path,
 			BundleID:    app.BundleID,
 			Category:    app.Source,

@@ -37,7 +37,12 @@ type App struct {
 	BundleID    string
 	IconPath    string
 	Host        string
-	Source      string
+
+	// URL is the start page of an Edge web app, "" for any other app: the
+	// page pairs a web app with a link only when both open this page.
+	URL string
+
+	Source string
 }
 
 // bundleInfo is the part of Info.plist hopto reads. The Cr* keys are what
@@ -82,6 +87,7 @@ func InspectBundle(path string) (App, error) {
 		if host, err := library.HostOf(info.EdgeURL); err == nil {
 			app.Host = host
 			app.Description = host
+			app.URL = info.EdgeURL
 		}
 	}
 
