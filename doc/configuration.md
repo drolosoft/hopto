@@ -108,7 +108,7 @@ Apps added by hand. Found apps are not stored here; they are listed afresh every
 | `bundle_id` | text | Such as `com.apple.calculator`. |
 | `category` | category id | A category of the `apps` tab. |
 
-On Windows `path` is a `.exe` or a `.lnk` under Program Files, the Start Menu or `AppData\Local\Programs`; `bundle_id` has no meaning there.
+On Windows `path` is a `.exe` or a `.lnk` under Program Files, the Start Menu, `AppData\Local\Programs` or `System32`; `bundle_id` has no meaning there.
 
 An app needs a `path`, a `bundle_id` or both. With a bundle id hopto opens it with `open -b`, which still works after the app moves; with only a path, with `open <path>`. Adding a found app by hand (⌘E on it) gives it a category, and it then shows once, as your entry.
 

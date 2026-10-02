@@ -121,7 +121,7 @@ internal/
   discover/           /Applications, ~/Applications, /System/Applications, Edge web apps
     shelllink.go      a parser of the Shell Link (.lnk) format
     startmenu.go      the apps of the two Start Menus, from their shortcuts
-    scan_windows.go   the folders the scan watches, and the System32 tools
+    scan_windows.go   walks the Start Menus and treats System32 as a fixed-list root
     inspect_windows.go  one app read from its shortcut
   icons/              .icns reading, fetching, normalising to PNG, /user-icons/
     dib.go            GDI pixels (BGRA, straight alpha) to an image
@@ -214,7 +214,7 @@ done
 | Limitation | Reason |
 |-----------|--------|
 | Not signed or notarised | There is no Developer ID yet; the first open needs the steps in the README. |
-| Shortcuts are read at start | Carbon registers them once in `startup`; a change needs Quit and open. |
+| Shortcuts are read at start | They are registered once in `startup` on both systems; a change needs Quit and open. |
 | The menu bar item keeps its labels after a language change | The labels are set when the item is built at start. |
 | Open at login assumes the running binary is not reached through a symbolic link | The bundle path is taken from `os.Executable` as it is, without resolving links. |
 | A data folder hopto cannot write to makes every launch a first run | "First run" means `library.toml` did not exist, and the seed write never lands, so the welcome shows each time. |

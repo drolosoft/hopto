@@ -6,6 +6,7 @@
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/github/v/release/drolosoft/hopto?label=release" alt="GitHub Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/macOS-12%2B-lightgrey.svg" alt="macOS 12+"></a>
+  <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/Windows-10%2B-lightgrey.svg" alt="Windows 10+"></a>
 </p>
 
 > **⌨️⚡🔗 Keyboard launcher for your macOS and Windows apps and links. One shortcut, type, Enter.**
@@ -221,7 +222,8 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make test` | Page unit tests, `go vet`, Go tests with the race detector |
 | `make e2e` | Browser tests in WebKit against the built page (after `make build`) |
 | `make lint` | `gofmt` and `golangci-lint` |
-| `make dist` | The release zip, `build/dist/hopto-<version>-macos-universal.zip`, and its SHA-256 |
+| `make build-windows` | `hopto-windows-amd64.exe` and `hopto-windows-arm64.exe` in `build/bin`, cross-compiled on the Mac |
+| `make dist` | The universal macOS zip and the two Windows zips (`hopto-<version>-windows-amd64.zip`, `-arm64.zip`) in `build/dist`, each with its `.sha256` |
 | `make hooks` | Installs the pre-commit guard against internal files |
 | `make clean` | Removes the build output |
 
@@ -239,7 +241,7 @@ Runs on macOS 12 or later, and on Windows 10 (1809) or later with WebView2. Buil
 
 **Open at login does nothing.** hopto refuses to write the LaunchAgent while it runs from a translocated copy, the state macOS gives a fresh download opened without being moved first. Move hopto.app to /Applications, open it again, then tick the box.
 
-**The shortcut does nothing on Windows.** Another program holds it; the welcome names it. Ctrl+Shift+Space is also an input method key in some IMEs.
+**The shortcut does nothing on Windows.** Another program holds it; the welcome shows which shortcut is taken. Ctrl+Shift+Space is also an input method key in some IMEs.
 
 **A shortcut does nothing.** Another app may have it. The welcome panel and `~/Library/Logs/hopto.log` say whether each one registered (`hotkey 1 registered`, or `RegisterEventHotKey failed` with a status). Pick another in `library.toml`, then quit hopto from the menu bar item and open it again.
 
