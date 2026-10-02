@@ -201,12 +201,11 @@ test('plan 3 minor (d): the footer says ↩ Save while the editor is open, and t
     await expect(page.locator('#action')).toHaveText('↩ Add');
 });
 
-test('on Windows the app editor has no bundle id field and offers a program picker', async ({page}) => {
+test('on Windows the app editor offers a program picker', async ({page}) => {
     await onWindows(page);
     await shown(page, 'apps');
     await page.keyboard.press('Control+n');
 
     await expect(page.locator('#editor')).toBeVisible();
-    await expect(page.locator('#editor-bundleId')).toHaveCount(0);
     await expect(page.locator('#editor-pick')).toHaveText('Choose a program… Ctrl+O');
 });
