@@ -15,6 +15,11 @@ type Hotkey struct {
 	Modifiers uint32
 }
 
+// windowClassName is the Win32 class of hopto's window, set through
+// Wails' options so the native side can find the window by name. macOS
+// ignores it.
+const windowClassName = "hoptoWindow"
+
 // The hot key ids handed to Carbon; they come back in the event so the
 // handler knows which tab to open.
 const (

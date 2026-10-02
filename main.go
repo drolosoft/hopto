@@ -7,6 +7,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -51,6 +52,20 @@ func main() {
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,
+		},
+
+		// Windows: the same transparent window the page paints its
+		// rounded panel on, without a backdrop effect (it would be a
+		// rectangle behind the panel), without the window icon (there is
+		// no title bar) and with a class name of our own, so the native
+		// side of hotkey_windows.go can find this window by name.
+		Windows: &windows.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			BackdropType:         windows.None,
+			DisableWindowIcon:    true,
+			WindowClassName:      windowClassName,
+			Theme:                windows.SystemDefault,
 		},
 	})
 
