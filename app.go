@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -105,12 +104,6 @@ func (w *wailsWindow) PickFile(directory string) (string, error) {
 
 // Quit ends the app; the only way out besides pkill, from the menu.
 func (w *wailsWindow) Quit() { runtime.Quit(w.ctx) }
-
-// runOpen is /usr/bin/open, the only way hopto starts anything: it handles
-// bundles and URLs the way a double click in the Finder does.
-func runOpen(args ...string) error {
-	return exec.Command("/usr/bin/open", args...).Run()
-}
 
 // App is what the page talks to. It owns the show/hide state of the window
 // and translates between the page and the packages under internal/.

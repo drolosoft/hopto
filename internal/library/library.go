@@ -90,8 +90,8 @@ func Default() Library {
 		Version: CurrentVersion,
 		Settings: Settings{
 			Language:         "auto",
-			HotkeyApps:       "cmd+shift+space",
-			HotkeyLinks:      "cmd+option+space",
+			HotkeyApps:       rules.defaultAppsHotkey,
+			HotkeyLinks:      rules.defaultLinksHotkey,
 			Screen:           "last",
 			ScanApplications: true,
 			DiscoverEdgeApps: true,

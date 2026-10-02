@@ -64,9 +64,6 @@ const (
 // name icon files and usage keys, so nothing else is allowed.
 var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
-// bundlePattern is a reverse-DNS bundle identifier, as `open -b` wants it.
-var bundlePattern = regexp.MustCompile(`^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$`)
-
 // iconShPattern is a selfh.st icon hint: "sh:" followed by the same slug
 // shape as every id in the library.
 var iconShPattern = regexp.MustCompile(`^sh:[a-z0-9][a-z0-9-]{0,63}$`)
@@ -389,11 +386,7 @@ func CheckCategory(category Category) []Problem {
 
 // AllowedAppRoots are the folders an app entry may point into.
 func AllowedAppRoots(home string) []string {
-	return []string{
-		"/Applications",
-		"/System/Applications",
-		filepath.Join(home, "Applications"),
-	}
+	return rules.appRoots(home)
 }
 
 // HostOf returns the host of a web URL, or why the string is not one. Only
@@ -513,18 +506,31 @@ func checkAppPath(path, home string) string {
 		return "path must be absolute and clean"
 	}
 
-	if filepath.Ext(path) != ".app" {
-		return "path must end in .app"
+	if !hasAppExtension(path) {
+		return "path must end in " + strings.Join(rules.appExtensions, " or ")
 	}
 
-	for _, root := range AllowedAppRoots(home) {
-		if strings.HasPrefix(path, root+"/") {
+	for _, root := range rules.appRoots(home) {
+		if rules.underRoot(path, root) {
 			return ""
 		}
 	}
 
-	return "path must be under /Applications, /System/Applications " +
-		"or ~/Applications"
+	return rules.appPathHint
+}
+
+// hasAppExtension says whether the path ends like an app of this
+// platform, without case: Windows does not care and macOS bundles are
+// always lower case anyway.
+func hasAppExtension(path string) bool {
+	ext := filepath.Ext(path)
+	for _, allowed := range rules.appExtensions {
+		if strings.EqualFold(ext, allowed) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // checkCategoryRef makes sure an entry points at a chip of its own tab.
@@ -590,15 +596,14 @@ func checkSettings(settings Settings) error {
 		}
 	}
 
-	// Named so the line fits: a browser set but not shaped like a
-	// bundle id.
+	// Named so the line fits: a browser set but not shaped the way
+	// this platform names one.
 	badBrowser := settings.SecondaryBrowser != "" &&
-		!bundlePattern.MatchString(settings.SecondaryBrowser)
+		!rules.browserOK(settings.SecondaryBrowser)
 	if badBrowser {
 		return &Problem{
 			Field: "secondary_browser", Key: "settings.browser",
-			Detail: "secondary_browser must be a bundle id like " +
-				"com.apple.Safari",
+			Detail: rules.browserHint,
 		}
 	}
 
