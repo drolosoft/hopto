@@ -25,7 +25,8 @@ linters:
     # the standard library package image/color, neither of which can be
     # renamed. Center is the App's window interface method, named to match
     # Wails' own runtime API (window.Center()); it is an exported method
-    # name, not a typo.
+    # name, not a typo. colors only appears inside the Win32 constant
+    # DIB_RGB_COLORS, quoted in a comment where GetDIBits is called.
     misspell:
       locale: UK
       ignore-rules:
@@ -36,6 +37,7 @@ linters:
         - normalize
         - color
         - center
+        - colors
   exclusions:
     paths:
       - testdata

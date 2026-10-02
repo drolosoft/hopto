@@ -134,7 +134,7 @@ func bundleIconDataURL(iconPath string) string {
 		return ""
 	}
 
-	raw, ok := icons.PNG(iconPath)
+	raw, ok := icons.SourcePNG(iconPath)
 	if !ok {
 		return ""
 	}

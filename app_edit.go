@@ -561,7 +561,7 @@ func (a *App) RefetchIcon(tab, id string) (string, error) {
 			return "", fmt.Errorf("%w: %s", errNoIconFound, app.Path)
 		}
 
-		raw, ok := icons.PNG(bundle.IconPath)
+		raw, ok := icons.SourcePNG(bundle.IconPath)
 		if !ok {
 			return "", fmt.Errorf("%w: %s", errNoIconFound, bundle.IconPath)
 		}

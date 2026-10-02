@@ -153,7 +153,7 @@ func (h *Handler) lookup(id string) ([]byte, bool) {
 	stamp := fmt.Sprintf("icns:%s:%d", icnsPath, info.ModTime().UnixNano())
 
 	return h.cached(id, stamp, func() ([]byte, error) {
-		raw, ok := PNG(icnsPath)
+		raw, ok := SourcePNG(icnsPath)
 		if !ok {
 			return nil, errors.New("icons: no PNG in " + icnsPath)
 		}
