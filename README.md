@@ -8,7 +8,7 @@
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/macOS-12%2B-lightgrey.svg" alt="macOS 12+"></a>
 </p>
 
-> **⌨️⚡🔗 Keyboard launcher for your macOS apps and links. One shortcut, type, Enter.**
+> **⌨️⚡🔗 Keyboard launcher for your macOS and Windows apps and links. One shortcut, type, Enter.**
 
 ⌘⇧Space opens your apps, ⌘⌥Space your links. Type a few letters, press Enter, and the panel is gone. Your links live in one TOML file you can read, edit and keep in git.
 
@@ -94,6 +94,15 @@ No Dock icon, no window until you call it, one small app.
 
 To start hopto at login, tick **Open at login** in its menu bar item.
 
+#### Windows
+
+1. Download `hopto-vX.Y.Z-windows-amd64.zip` from the [latest release](https://github.com/drolosoft/hopto/releases/latest), or the `arm64` one on a Snapdragon machine.
+2. Unzip it anywhere under Program Files or `AppData\Local\Programs`, and run `hopto.exe`.
+3. The program is not signed, so SmartScreen warns the first time: **More info**, then **Run anyway**.
+4. Press **Ctrl+Shift+Space**.
+
+WebView2 comes with Windows 11 and with Edge on Windows 10; hopto asks to download it when it is missing.
+
 **Build from source** (Go 1.27, Node 22, the Xcode Command Line Tools):
 
 ```sh
@@ -134,11 +143,14 @@ icon = "sh:mozilla"
 - hopto reads the file again every time the panel opens, so a hand edit shows up at once. The shortcuts are read at start: quit from the menu bar item and open hopto again after changing them.
 - A file with a mistake is never overwritten. The panel shows the line with a button that opens the file, and adding or editing waits until it parses again. The previous good file is `library.toml.bak`.
 - Comments you add by hand are lost the next time hopto saves the file.
+- On Windows the file is `%AppData%\hopto\library.toml`; `cmd` in a shortcut means the Win key there, `ctrl` means Ctrl, and `secondary_browser` is the path of a browser's exe.
 - [config.example.toml](config.example.toml) explains every setting in place, and [doc/configuration.md](doc/configuration.md) lists every key.
 
 ---
 
 ### Keyboard
+
+On Windows read Ctrl for ⌘, Alt for ⌥ and Enter for ↩; the default shortcuts are Ctrl+Shift+Space and Ctrl+Alt+Space.
 
 | Anywhere | |
 |---|---|
@@ -213,7 +225,7 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make hooks` | Installs the pre-commit guard against internal files |
 | `make clean` | Removes the build output |
 
-Requires macOS 12 or later, Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcode Command Line Tools.
+Runs on macOS 12 or later, and on Windows 10 (1809) or later with WebView2. Building needs Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcode Command Line Tools.
 
 ---
 
@@ -226,6 +238,8 @@ Requires macOS 12 or later, Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcod
 **There is no Dock icon.** By design. Use the shortcuts, or the menu bar item, which also has Quit.
 
 **Open at login does nothing.** hopto refuses to write the LaunchAgent while it runs from a translocated copy, the state macOS gives a fresh download opened without being moved first. Move hopto.app to /Applications, open it again, then tick the box.
+
+**The shortcut does nothing on Windows.** Another program holds it; the welcome names it. Ctrl+Shift+Space is also an input method key in some IMEs.
 
 **A shortcut does nothing.** Another app may have it. The welcome panel and `~/Library/Logs/hopto.log` say whether each one registered (`hotkey 1 registered`, or `RegisterEventHotKey failed` with a status). Pick another in `library.toml`, then quit hopto from the menu bar item and open it again.
 

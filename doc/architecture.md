@@ -106,3 +106,11 @@ The page puts favourites first, then the five items opened most recently, then e
 ## 13. Limits
 
 The known limits and their reasons are in [ARCHITECTURE.md](../ARCHITECTURE.md#known-limitations).
+
+## 14. Windows
+
+The engine is the same binary logic; what differs sits in files that end in `_windows.go`. One goroutine locked to its thread (`native_windows.go`) owns a hidden window, the tray icon, the two shortcuts (`RegisterHotKey`) and the one message loop their events arrive in; every entry point the engine calls posts work to that thread and waits, so user32 only ever sees its owner. The tray menu is built from the current items at each click, so its ticks are always the latest. No library does this: the two Go tray libraries pump messages from a thread that does not own their window, and the hotkey library polls every 10 ms.
+
+The window is Wails' own, found by the class name `hoptoWindow`; it gets the tool-window style so it has no taskbar button, is centred on a monitor with `SetWindowPos`, and is brought to the front from the native thread, which holds the right to take the foreground after a hotkey press. Monitors are remembered by a hash of their device name.
+
+Apps are the shortcuts of the two Start Menus, read by a parser of the Shell Link format (`internal/discover/shelllink.go`); the shortcut itself is what opens, through `ShellExecute`, as every other open on Windows does. Icons come from the shell's 256 px image list. "Open at login" is a value in the user's `Run` key.

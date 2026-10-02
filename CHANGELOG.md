@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- hopto runs on Windows: tray icon with the same menu, Ctrl+Shift+Space and Ctrl+Alt+Space, the programs of the Start Menu with their icons, links in the default browser, the library under `%AppData%\hopto`, open at login, the system language, and `amd64` and `arm64` zips in every release.
 
 ### Changed
+- `cmd` in a shortcut means the Win key on Windows; the page prints Ctrl, Alt and Enter there.
 
 ### Fixed
 

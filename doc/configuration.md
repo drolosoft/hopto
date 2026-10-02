@@ -13,6 +13,15 @@ hopto keeps everything it knows about your apps and links in one file, `library.
 | `~/Library/Application Support/hopto/window.json` | The display the panel was last shown on |
 | `~/Library/Logs/hopto.log` | What hopto did: shortcuts registered, items opened, problems |
 
+On Windows the same files sit in these folders:
+
+| | macOS | Windows |
+|---|---|---|
+| Data folder | `~/Library/Application Support/hopto/` | `%UserProfile%\AppData\Roaming\hopto\` |
+| Log | `~/Library/Logs/hopto.log` | `%UserProfile%\AppData\Local\hopto\hopto.log` |
+
+The Windows folder is derived from the profile folder, so a redirected `APPDATA` is not followed.
+
 The folder is private to your user (`0700`, files `0600`). **Edit library.toml** in the menu bar item opens the file in your text editor, and the help panel (`?`) shows its path.
 
 ## How hopto reads the file
@@ -44,7 +53,7 @@ The schema of the file. Leave it as it is: hopto refuses to rewrite a file with 
 | `scan_applications` | boolean | `true` | Lists the apps of `/Applications` and `~/Applications` (their `Utilities` and `*.localized` folders too), and finds those of `/System/Applications` while typing. |
 | `discover_edge_apps` | boolean | `true` | Lists the web apps installed from Microsoft Edge (`~/Applications/Edge Apps.localized`). |
 | `icon_services` | list of `"site"`, `"duckduckgo"`, `"google"` | `["site"]` | Where link icons come from after the link's own `icon` hint, in this order. `site` reads the icons the page declares. The two services receive the host of every link you add, so they are off unless listed. |
-| `secondary_browser` | bundle id | none | The browser ⌘↩ opens links in, such as `"com.apple.Safari"` or `"org.mozilla.firefox"`. Without it, ⌘↩ on a link says there is none. |
+| `secondary_browser` | bundle id, or path | none | The browser ⌘↩ opens links in, such as `"com.apple.Safari"` or `"org.mozilla.firefox"`. On Windows it is the path of a browser's exe. Without it, ⌘↩ on a link says there is none. |
 | `allow_private_icon_hosts` | boolean | `false` | Lets icon downloads and page reading reach loopback, private, link-local and CGNAT (tailnet) addresses, for links to a router or a home server. |
 
 ### Shortcuts
@@ -55,6 +64,9 @@ A shortcut is modifiers joined by `+`, then one key, in any order and any case: 
 - Keys: `a` to `z`, `0` to `9`, `space`, `return`, `tab`, `escape`, `f1` to `f12`. Letters and digits are the physical keys of an ANSI keyboard, whatever your layout prints on them.
 - `cmd+space` (Spotlight) and `cmd+tab` are refused.
 - A shortcut that does not parse falls back to its default, with a line in the log. If both are the same, the links one goes back to its default.
+- What the modifiers mean depends on the system. On macOS `cmd` is ⌘, `option` (or `alt`) is ⌥ and `ctrl` is ⌃. On Windows `cmd` is the Win key, `ctrl` is Ctrl, and `alt` or `option` is Alt.
+- The seeds differ: `cmd+shift+space` and `cmd+option+space` on macOS, `ctrl+shift+space` and `ctrl+alt+space` on Windows.
+- The list of refused shortcuts changes with the system. On Windows it holds Win+L, Win+Tab, Win+Space and Win+Shift+Space.
 - `cmd+option+space` belongs to the Finder ("Show Finder search window") until you turn that off in System Settings, Keyboard, Keyboard Shortcuts, Spotlight. The welcome panel warns about it.
 
 ## `[[categories]]`
@@ -95,6 +107,8 @@ Apps added by hand. Found apps are not stored here; they are listed afresh every
 | `path` | text | An absolute path ending in `.app`, under `/Applications`, `/System/Applications` or `~/Applications`. |
 | `bundle_id` | text | Such as `com.apple.calculator`. |
 | `category` | category id | A category of the `apps` tab. |
+
+On Windows `path` is a `.exe` or a `.lnk` under Program Files, the Start Menu or `AppData\Local\Programs`; `bundle_id` has no meaning there.
 
 An app needs a `path`, a `bundle_id` or both. With a bundle id hopto opens it with `open -b`, which still works after the app moves; with only a path, with `open <path>`. Adding a found app by hand (⌘E on it) gives it a category, and it then shows once, as your entry.
 

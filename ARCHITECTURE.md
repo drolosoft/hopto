@@ -99,15 +99,34 @@ hotkeystatus.go       what RegisterEventHotKey answered, for the welcome
 symbolichotkeys.go    macOS's own shortcuts, to spot the Finder's ⌘⌥Space
 hotkey_darwin.go      cgo: hotkeys, accessory policy, placing, Spaces, round corners, reopen
 statusbar_darwin.go   cgo: NSStatusItem and its menu
+shutdown_darwin.go    nothing to undo at exit: the status item goes with the process
+keycodes_windows.go   "ctrl+shift+space" to a virtual key code and a MOD_* mask
+native_windows.go     the locked native thread: hidden window, tray icon, RegisterHotKey, message loop
+hotkey_windows.go     finds Wails' window, hides its taskbar button, places and raises it
+statusbar_windows.go  the tray icon's menu, built from the current items at each click
+paths_windows.go      %UserProfile%\AppData\Roaming\hopto and the log under AppData\Local
+language_windows.go   the system language, from the user's locale name
+open_windows.go       ShellExecute, the Windows side of every open
+open_args.go          the small dialect of `open` the engine speaks, as ShellExecute arguments
+login_windows.go      Open at login: the value hopto in HKCU\...\Run
+logincmd.go           the command line of that value, refusing Temp folders and zips
+platform_windows.go   what newApp and the file picker need from Windows
 *_other.go            stubs, so go vet and the pure tests run off macOS
 language*.go          the system language (AppleLanguages)
 logfile.go, paths.go  ~/Library/Logs/hopto.log; the data folder
 internal/
   atomicfile/         write to a temp file, sync, rename; keep a .bak
-  library/            types, validation, ids, duplicates, the store
+  library/            types, validation, ids, duplicates, the store; rules_unix.go and rules_windows.go: which app paths are accepted
   usage/              open counts, last opened, favourites
   discover/           /Applications, ~/Applications, /System/Applications, Edge web apps
+    shelllink.go      a parser of the Shell Link (.lnk) format
+    startmenu.go      the apps of the two Start Menus, from their shortcuts
+    scan_windows.go   the folders the scan watches, and the System32 tools
+    inspect_windows.go  one app read from its shortcut
   icons/              .icns reading, fetching, normalising to PNG, /user-icons/
+    dib.go            GDI pixels (BGRA, straight alpha) to an image
+    exeicon_windows.go  a program's icon from the shell's 256 px image list
+    source_windows.go   the icon of an installed app as a PNG
   inspect/            a page's title, site name, description and icons
   safehttp/           https, time and size limits, no private addresses
 seed/                 the first library, in English and Spanish
@@ -118,6 +137,7 @@ frontend/src/         the page:
   keys.js               key presses to actions
   draft.js               the editor's draft
   hotkeys.js              "cmd+shift+space" as "⇧⌘Space"
+  modifiers.js            how a chord is written on each system
   i18n.js                English and Spanish
   tabs.js                what differs between the two tabs
   render.js, cards.js    the list, chips, footer and help
@@ -126,7 +146,7 @@ frontend/src/         the page:
   keyboard.js            routes key presses
   welcome.js             the first-run welcome
 frontend/test/        node --test for the pure modules, Playwright specs, the fake-bridge harness
-scripts/              internal-files guard, real-app helpers, demo recording, release notes, icon drawing
+scripts/              verify-hopto-windows.ps1, internal-files guard, real-app helpers, demo recording, release notes, icon drawing
 ```
 
 `state.js`, `filter.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js` touch neither the DOM nor Wails, so `node --test` covers them without a browser.
@@ -193,7 +213,6 @@ done
 
 | Limitation | Reason |
 |-----------|--------|
-| macOS only | Carbon, Cocoa and the WKWebView. A port needs another hotkey backend behind `registerToggleHotkeys` and another window layer. |
 | Not signed or notarised | There is no Developer ID yet; the first open needs the steps in the README. |
 | Shortcuts are read at start | Carbon registers them once in `startup`; a change needs Quit and open. |
 | The menu bar item keeps its labels after a language change | The labels are set when the item is built at start. |
@@ -203,3 +222,8 @@ done
 | Opening an item with a click paints the list once before the new selection | `openAt` renders, then moves the selection. |
 | Comments added to `library.toml` by hand are lost at the next save | The TOML encoder writes the whole file. |
 | Links are http and https only | Other schemes could reach other apps or the file system. |
+| Store apps are not listed on Windows | They live in `shell:AppsFolder`, not as shortcuts; a later milestone. |
+| No bundle id opening on Windows | Apps open by path; `bundle_id` is kept as a field and ignored. |
+| The Windows exe is unsigned | SmartScreen warns on the first run. |
+| A redirected `APPDATA` is not followed | The data folder is derived from the profile folder. |
+| Transparency on Windows 10 is untested | Verified on Windows 11 only. |
