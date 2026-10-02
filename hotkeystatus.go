@@ -2,10 +2,6 @@ package main
 
 import "sync"
 
-// hotkeyExistsStatus is Carbon's eventHotKeyExistsErr: another app
-// registered the same combination first.
-const hotkeyExistsStatus = -9878
-
 // hotkeyStatuses keeps what RegisterEventHotKey answered for each id.
 // It is global because the answer arrives through a C callback that
 // knows nothing of the App; the welcome reads it from here.
