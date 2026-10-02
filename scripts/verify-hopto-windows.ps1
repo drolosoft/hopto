@@ -2,14 +2,16 @@
 verify-hopto-windows.ps1: drives hopto.exe on Windows and checks what a
 person would check by hand: both shortcuts register, each one shows the
 panel with the keyboard, the same shortcut hides it, Esc hides it, the
-window has no taskbar button, and the tray menu quits the process.
+window has no taskbar button. The tray menu is checked by hand (see
+doc/testing.md).
 
 It runs on a profile of its own (a temporary USERPROFILE), never on
 yours. Run it inside the Windows session, not over SSH: synthetic keys
-only reach the desktop they are sent from.
+only reach the desktop they are sent from. It stops any hopto that is
+running before it starts and does not start one again afterwards.
 
 Usage: powershell -ExecutionPolicy Bypass -File scripts\verify-hopto-windows.ps1 -Exe C:\path\hopto.exe
-Exit status: 0 every check passed, 1 a check failed, 3 something missing.
+Exit status: 0 every check passed, 1 a check failed, 3 the exe is missing.
 #>
 param([Parameter(Mandatory = $true)][string]$Exe)
 
@@ -21,7 +23,7 @@ public static class Native {
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
+  [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
 }
 "@
@@ -56,39 +58,52 @@ function WaitVisible([int]$want, [int]$seconds = 3) {
     return $false
 }
 
+# Waits up to $seconds for the hopto window to exist, hidden or not: a cold
+# WebView2 start on an empty profile can take well over five seconds.
+function WaitWindow([int]$seconds = 20) {
+    for ($i = 0; $i -lt $seconds * 5; $i++) {
+        if ([Native]::FindWindow('hoptoWindow', $null) -ne [IntPtr]::Zero) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
 $failures = 0
 function Check([string]$name, [bool]$ok) {
     if ($ok) { Write-Output "✓ $name" } else { Write-Output "✗ $name"; $script:failures++ }
 }
 
 # A profile of its own: the data folder and the log land under it.
-$profile = Join-Path $env:TEMP ("hopto-verify-" + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Force $profile | Out-Null
-$env:USERPROFILE = $profile
-$log = Join-Path $profile 'AppData\Local\hopto\hopto.log'
+$tempProfile = Join-Path $env:TEMP ("hopto-verify-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force $tempProfile | Out-Null
+$env:USERPROFILE = $tempProfile
+$log = Join-Path $tempProfile 'AppData\Local\hopto\hopto.log'
 
 Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Process -FilePath $Exe
-Start-Sleep 5
 
-Check 'the panel starts hidden' ((Visible) -eq 0)
-Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
-Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', $null))
-Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
-Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
-Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
+if (WaitWindow) {
+    Check 'the panel starts hidden' ((Visible) -eq 0)
+    Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
+    Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', $null))
+    Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
+    Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
+    Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
 
-$h = [Native]::FindWindow('hoptoWindow', $null)
-$style = [Native]::GetWindowLongPtr($h, -20).ToInt64()
-Check 'no taskbar button (WS_EX_TOOLWINDOW)' (($style -band $ToolWindow) -ne 0)
+    $h = [Native]::FindWindow('hoptoWindow', $null)
+    $style = [Native]::GetWindowLong($h, -20)
+    Check 'no taskbar button (WS_EX_TOOLWINDOW)' (($style -band $ToolWindow) -ne 0)
 
-$text = if (Test-Path $log) { Get-Content $log -Raw } else { '' }
-Check 'hotkey 1 registered' ($text -match 'hotkey 1 registered')
-Check 'hotkey 2 registered' ($text -match 'hotkey 2 registered')
-Check 'the tray icon was added' ($text -match 'tray icon added')
-Check 'library.toml was seeded' (Test-Path (Join-Path $profile 'AppData\Roaming\hopto\library.toml'))
+    $text = if (Test-Path $log) { Get-Content $log -Raw } else { '' }
+    Check 'hotkey 1 registered' ($text -match 'hotkey 1 registered')
+    Check 'hotkey 2 registered' ($text -match 'hotkey 2 registered')
+    Check 'the tray icon was added' ($text -match 'tray icon added')
+    Check 'library.toml was seeded' (Test-Path (Join-Path $tempProfile 'AppData\Roaming\hopto\library.toml'))
+} else {
+    Check 'hopto did not start within 20 s' $false
+}
 
 Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
-Remove-Item -Recurse -Force $profile -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force $tempProfile -ErrorAction SilentlyContinue
 
 if ($failures -gt 0) { exit 1 } else { exit 0 }
