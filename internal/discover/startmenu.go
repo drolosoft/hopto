@@ -174,19 +174,20 @@ func ScanStartMenu(roots []string, systemRoot string) []App {
 					continue
 				}
 
+				// Edge apps are listed by the Edge scan, like on macOS.
+				// They are decided first so that their shared msedge.exe
+				// target does not hide the plain Edge shortcut.
+				app, _ := InspectShortcut(path)
+				if app.Source == SourceEdge {
+					continue
+				}
+
 				target := strings.ToLower(link.Target)
 				if target != "" && seenTarget[target] {
 					continue
 				}
 
 				seenTarget[target] = true
-
-				app, _ := InspectShortcut(path)
-				if app.Source == SourceEdge {
-					// Edge apps are listed by the Edge scan, like on
-					// macOS.
-					continue
-				}
 
 				apps = append(apps, app)
 			}

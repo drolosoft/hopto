@@ -101,3 +101,28 @@ func TestStartMenuIDs(t *testing.T) {
 		t.Errorf("got %+v", apps)
 	}
 }
+
+// An Edge web app shares msedge.exe with the browser's own shortcut: it
+// must not make the browser look like a duplicate.
+func TestEdgeAppDoesNotHideEdge(t *testing.T) {
+	root := t.TempDir()
+	edge := `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
+	writeLink(t, root, "Example", edge,
+		"--app-id=x --app-url=https://example.org/")
+	writeLink(t, root, "Microsoft Edge", edge, "")
+
+	names := map[string]bool{}
+	for _, app := range ScanStartMenu([]string{root}, "") {
+		names[app.Name] = true
+	}
+
+	if !names["Microsoft Edge"] || names["Example"] {
+		t.Errorf("start menu apps: %v", names)
+	}
+
+	edgeApps := ScanEdgeShortcuts(root)
+	if len(edgeApps) != 1 || edgeApps[0].Name != "Example" ||
+		edgeApps[0].Host != "example.org" {
+		t.Errorf("edge apps: %+v", edgeApps)
+	}
+}
