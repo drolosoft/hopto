@@ -20,8 +20,8 @@ var (
 // For returns the seed for a language; anything but "es" gets English.
 func For(language string) []byte {
 	if language == "es" {
-		return spanish
+		return platformSeed(spanish)
 	}
 
-	return english
+	return platformSeed(english)
 }

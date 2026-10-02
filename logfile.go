@@ -6,18 +6,19 @@ import (
 	"path/filepath"
 )
 
-// openLog sends the standard logger to ~/Library/Logs/hopto.log. An app
-// opened with `open` has no terminal, so this file is the only place to see
-// what happened (for instance whether a shortcut could be registered).
+// openLog sends the standard logger to the platform's log file (logPath).
+// An app opened from the Finder or the Start menu has no terminal, so this
+// file is the only place to see what happened (for instance whether a
+// shortcut could be registered).
 func openLog() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
 
-	path := filepath.Join(home, "Library", "Logs", "hopto.log")
+	path := logPath(home)
 
-	// A brand-new home has no Library/Logs folder yet.
+	// A brand-new home has no logs folder yet.
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
 	}
