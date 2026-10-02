@@ -2,12 +2,17 @@ package icons
 
 import "image"
 
-// rgbaFromDIB turns the pixels GetDIBits hands back (top-down, 32 bits,
-// BGRA) into an RGBA image. An icon drawn before alpha existed has every
-// alpha byte at zero and a 1-bit mask instead; when the whole alpha
-// channel is zero the mask decides, with a set bit meaning transparent.
-func rgbaFromDIB(width, height int, colour, mask []byte) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
+// nrgbaFromDIB turns the pixels GetDIBits hands back (top-down, 32 bits,
+// BGRA) into an image. GDI keeps the alpha straight (not multiplied into
+// the colour), which is what image.NRGBA stores; image.RGBA would be read
+// as premultiplied and the soft edges of the icon would come out wrong.
+// An icon drawn before alpha existed has every alpha byte at zero and a
+// 1-bit mask instead; when the whole alpha channel is zero the mask
+// decides, with a set bit meaning transparent.
+func nrgbaFromDIB(
+	width, height int, colour, mask []byte,
+) *image.NRGBA {
+	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	if len(colour) < width*height*4 {
 		return img
 	}

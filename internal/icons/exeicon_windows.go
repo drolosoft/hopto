@@ -5,6 +5,7 @@ package icons
 import (
 	"bytes"
 	"image/png"
+	"runtime"
 	"syscall"
 	"unsafe"
 
@@ -107,15 +108,44 @@ type bitmapInfo struct {
 }
 
 // shellIconPNG is the icon of path as a PNG: jumbo first, large second.
+// The shell resolves shortcuts through COM, which has to be initialised
+// on the calling thread, and the device context from GetDC must be
+// released on the thread that took it; callers are goroutines that Go
+// may move between threads, so the thread is locked for the whole call.
 func shellIconPNG(path string) ([]byte, bool) {
-	icon := jumboIcon(path)
-	if icon == 0 {
-		icon = largeIcon(path)
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// S_FALSE (already initialised here) still counts and needs its
+	// CoUninitialize; x/sys reports it as an error value. A thread in a
+	// different mode (RPC_E_CHANGED_MODE, 0x80010106) is usable as it
+	// is, but must not be uninitialised by us.
+	err := windows.CoInitializeEx(0, windows.COINIT_APARTMENTTHREADED)
+	if err == nil || err == syscall.Errno(windows.S_FALSE) {
+		defer windows.CoUninitialize()
 	}
 
+	// A handle that cannot be drawn (a broken jumbo icon, say) must not
+	// hide the 32 px one, so the second source gets its turn.
+	icon := jumboIcon(path)
+	if icon != 0 {
+		raw, ok := drawAndDestroy(icon)
+		if ok {
+			return raw, true
+		}
+	}
+
+	icon = largeIcon(path)
 	if icon == 0 {
 		return nil, false
 	}
+
+	return drawAndDestroy(icon)
+}
+
+// drawAndDestroy turns an icon handle into a PNG and always destroys the
+// handle, whether or not the drawing worked.
+func drawAndDestroy(icon windows.Handle) ([]byte, bool) {
 	defer func() { _, _, _ = procDestroyIcon.Call(uintptr(icon)) }()
 
 	return iconPNG(icon)
@@ -208,7 +238,7 @@ func comObject(holder *uintptr) unsafe.Pointer {
 }
 
 // iconPNG draws an icon's pixels into a PNG: GetIconInfo gives the
-// colour and mask bitmaps, GetDIBits their bytes, rgbaFromDIB the image.
+// colour and mask bitmaps, GetDIBits their bytes, nrgbaFromDIB the image.
 func iconPNG(icon windows.Handle) ([]byte, bool) {
 	var info iconInfo
 	found, _, _ := procGetIconInfo.Call(
@@ -241,7 +271,7 @@ func iconPNG(icon windows.Handle) ([]byte, bool) {
 	mask := dibBits(screen, info.Mask, width, height, 1)
 
 	var out bytes.Buffer
-	img := rgbaFromDIB(width, height, colour, mask)
+	img := nrgbaFromDIB(width, height, colour, mask)
 	if err := png.Encode(&out, img); err != nil {
 		return nil, false
 	}
