@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -22,5 +23,24 @@ func TestDataDirIsUnderHome(t *testing.T) {
 
 	if !strings.HasPrefix(logPath(home), home) {
 		t.Errorf("log %s is not under %s", logPath(home), home)
+	}
+}
+
+// On macOS the folders are the ones the system expects, exactly.
+func TestMacPathsAreExact(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("the exact paths below are the macOS ones")
+	}
+
+	home := "/Users/someone"
+
+	wantData := "/Users/someone/Library/Application Support/hopto"
+	if got := dataDir(home); got != wantData {
+		t.Errorf("dataDir = %q, want %q", got, wantData)
+	}
+
+	wantLog := "/Users/someone/Library/Logs/hopto.log"
+	if got := logPath(home); got != wantLog {
+		t.Errorf("logPath = %q, want %q", got, wantLog)
 	}
 }

@@ -1,0 +1,2 @@
+# The seed is read by a line regexp on Windows, so keep LF endings there.
+*.toml text eol=lf
