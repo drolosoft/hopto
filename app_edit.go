@@ -556,7 +556,7 @@ func (a *App) RefetchIcon(tab, id string) (string, error) {
 			continue
 		}
 
-		bundle, err := discover.InspectBundle(app.Path)
+		bundle, err := discover.Inspect(app.Path)
 		if err != nil || bundle.IconPath == "" {
 			return "", fmt.Errorf("%w: %s", errNoIconFound, app.Path)
 		}
