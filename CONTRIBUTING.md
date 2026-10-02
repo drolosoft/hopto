@@ -63,7 +63,7 @@ make lint     # gofmt and golangci-lint
 
 The browser tests run the real page in WebKit, the engine of the app's WKWebView, with `frontend/test/harness/fake-bridge.js` in place of Go: each call the page makes lands in `window.calls`, and `window.emit('links')` plays the `shown` event. See [doc/testing.md](doc/testing.md).
 
-A change to the window, the shortcuts or anything native is done when it has been seen in the real app. `scripts/verify-hopto.sh` drives the build from the shell on a library of its own, refuses to run while you are using the Mac, and puts your data back afterwards. [doc/testing.md](doc/testing.md) explains how to prove each thing with the log, `count windows` or a screenshot, and why every key a script sends first checks that hopto is in front.
+A change to the window, the shortcuts or anything native is done when it has been seen in the real app. `scripts/verify-hopto.sh` drives the build from the shell on a library of its own, refuses to run while you are using the Mac, and puts your data back afterwards. On Windows, `scripts/verify-hopto-windows.ps1` does the same from PowerShell; anything native to Windows (the tray, the shortcuts, the window) is done when it has been seen there. [doc/testing.md](doc/testing.md) explains how to prove each thing with the log, `count windows` or a screenshot, and why every key a script sends first checks that hopto is in front.
 
 ## Pull Request Guidelines
 

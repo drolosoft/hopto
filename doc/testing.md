@@ -96,6 +96,18 @@ make build && bash scripts/verify-hopto.sh
 
 Exit status: 0 every check passed, 1 a check failed (the log of the run follows), 2 the Mac is in use, 3 there is no build.
 
+## The real app on Windows
+
+Windows has no `osascript`; the checks use Win32 from PowerShell. The exe cross-compiles on the Mac (`make build-windows`), so the only thing a Windows machine (a VM does) is needed for is running it.
+
+- **The window**: `FindWindow('hoptoWindow', $null)` finds it by the class name `main.go` sets; `IsWindowVisible` is the "count windows" of Windows, 1 shown and 0 hidden. `GetWindowLongPtr(h, -20)` with bit `0x80` set means no taskbar button.
+- **Keys**: `keybd_event` sends a chord; `RegisterHotKey` sees synthetic keys. They only reach the desktop they are sent from, so the script runs inside the session, never over SSH.
+- **The log**: `%LocalAppData%\hopto\hopto.log`; the lines are the same as on macOS, plus `native: tray icon added`.
+- **The tray menu**: by hand, right-click the icon → Quit; `Get-Process hopto` empty and `menu 5 picked` in the log.
+- **Open at login**: `Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run | Select-Object hopto`.
+
+`scripts/verify-hopto-windows.ps1 -Exe <path>` runs the shortcut, focus, taskbar and seed checks on a temporary profile and prints one line per check, like `verify-hopto.sh`.
+
 ## Before saying "done"
 
 1. `make lint`, `make test`, and `make build && make e2e` when the page changed.

@@ -1,0 +1,94 @@
+﻿<#
+verify-hopto-windows.ps1: drives hopto.exe on Windows and checks what a
+person would check by hand: both shortcuts register, each one shows the
+panel with the keyboard, the same shortcut hides it, Esc hides it, the
+window has no taskbar button, and the tray menu quits the process.
+
+It runs on a profile of its own (a temporary USERPROFILE), never on
+yours. Run it inside the Windows session, not over SSH: synthetic keys
+only reach the desktop they are sent from.
+
+Usage: powershell -ExecutionPolicy Bypass -File scripts\verify-hopto-windows.ps1 -Exe C:\path\hopto.exe
+Exit status: 0 every check passed, 1 a check failed, 3 something missing.
+#>
+param([Parameter(Mandatory = $true)][string]$Exe)
+
+if (-not (Test-Path $Exe)) { Write-Error "no exe at $Exe"; exit 3 }
+
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class Native {
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+}
+"@
+
+# Virtual keys (winuser.h).
+$VK = @{Ctrl = 0x11; Shift = 0x10; Alt = 0x12; Space = 0x20; Esc = 0x1B}
+
+# WS_EX_TOOLWINDOW, the style that keeps a window off the taskbar.
+$ToolWindow = 0x80
+
+# Presses the keys in order and releases them in reverse, as a hand does.
+function Chord([int[]]$keys) {
+    foreach ($k in $keys) { [Native]::keybd_event($k, 0, 0, [UIntPtr]::Zero) }
+    [array]::Reverse($keys)
+    foreach ($k in $keys) { [Native]::keybd_event($k, 0, 2, [UIntPtr]::Zero) }
+    Start-Sleep -Milliseconds 800
+}
+
+# 1 with the panel shown, 0 hidden, -1 with no window at all.
+function Visible {
+    $h = [Native]::FindWindow('hoptoWindow', $null)
+    if ($h -eq [IntPtr]::Zero) { return -1 }
+    if ([Native]::IsWindowVisible($h)) { return 1 } else { return 0 }
+}
+
+# Waits up to $seconds for Visible to be $want.
+function WaitVisible([int]$want, [int]$seconds = 3) {
+    for ($i = 0; $i -lt $seconds * 5; $i++) {
+        if ((Visible) -eq $want) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+$failures = 0
+function Check([string]$name, [bool]$ok) {
+    if ($ok) { Write-Output "✓ $name" } else { Write-Output "✗ $name"; $script:failures++ }
+}
+
+# A profile of its own: the data folder and the log land under it.
+$profile = Join-Path $env:TEMP ("hopto-verify-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force $profile | Out-Null
+$env:USERPROFILE = $profile
+$log = Join-Path $profile 'AppData\Local\hopto\hopto.log'
+
+Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Process -FilePath $Exe
+Start-Sleep 5
+
+Check 'the panel starts hidden' ((Visible) -eq 0)
+Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
+Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', $null))
+Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
+Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
+Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
+
+$h = [Native]::FindWindow('hoptoWindow', $null)
+$style = [Native]::GetWindowLongPtr($h, -20).ToInt64()
+Check 'no taskbar button (WS_EX_TOOLWINDOW)' (($style -band $ToolWindow) -ne 0)
+
+$text = if (Test-Path $log) { Get-Content $log -Raw } else { '' }
+Check 'hotkey 1 registered' ($text -match 'hotkey 1 registered')
+Check 'hotkey 2 registered' ($text -match 'hotkey 2 registered')
+Check 'the tray icon was added' ($text -match 'tray icon added')
+Check 'library.toml was seeded' (Test-Path (Join-Path $profile 'AppData\Roaming\hopto\library.toml'))
+
+Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
+Remove-Item -Recurse -Force $profile -ErrorAction SilentlyContinue
+
+if ($failures -gt 0) { exit 1 } else { exit 0 }

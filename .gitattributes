@@ -1,2 +1,4 @@
 # The seed is read by a line regexp on Windows, so keep LF endings there.
 *.toml text eol=lf
+# PowerShell 5.1 reads LF-only scripts badly, so keep CRLF endings there.
+*.ps1 text eol=crlf
