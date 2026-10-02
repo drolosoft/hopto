@@ -21,5 +21,8 @@ func activeDisplays() []uint32 { return nil }
 // handleReopen has no application delegate to hook.
 func handleReopen(show func()) {}
 
+// shutdownNative has no tray icon to remove.
+func shutdownNative() {}
+
 // activateApp has nothing to bring forward.
 func activateApp() {}

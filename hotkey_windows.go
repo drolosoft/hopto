@@ -5,6 +5,7 @@ package main
 import (
 	"hash/fnv"
 	"log"
+	"sync"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -52,11 +53,10 @@ const (
 	swpNoActivate = 0x0010
 )
 
-// MonitorFrom* fallbacks (winuser.h).
-const (
-	monitorDefaultToPrimary = 0x1
-	monitorDefaultToNearest = 0x2
-)
+// monitorDefaultToNearest is the MonitorFrom* fallback (winuser.h
+// MONITOR_DEFAULTTONEAREST): a point outside every monitor gets the
+// closest one.
+const monitorDefaultToNearest = 0x2
 
 // rect is RECT.
 type rect struct {
@@ -140,24 +140,55 @@ func monitorInfo(monitor uintptr) (monitorInfoEx, bool) {
 	return info, ok != 0
 }
 
+// monitorCallback is the MONITORENUMPROC handed to EnumDisplayMonitors.
+// It is made once: the runtime keeps every callback it creates in a table
+// of 2000 slots that is never freed, so creating one per call would crash
+// the process after about a thousand shows.
+var monitorCallback = windows.NewCallback(collectMonitor)
+
+// enumeration is where collectMonitor puts what it finds. The callback
+// cannot be a closure over a local (that is the one-callback-per-call
+// problem again), and turning the data argument back into a pointer is
+// what go vet rejects, so the list is shared and enumerationLock keeps
+// two enumerations from mixing.
+var (
+	enumeration     []monitorInfoEx
+	enumerationLock sync.Mutex
+)
+
+// collectMonitor appends one monitor to the enumeration in progress.
+func collectMonitor(monitor, dc, area, data uintptr) uintptr {
+	if info, ok := monitorInfo(monitor); ok {
+		enumeration = append(enumeration, info)
+	}
+
+	// Non-zero continues the enumeration.
+	return 1
+}
+
 // monitors lists the attached monitors with their info.
 func monitors() []monitorInfoEx {
-	var found []monitorInfoEx
+	enumerationLock.Lock()
+	defer enumerationLock.Unlock()
 
-	callback := windows.NewCallback(
-		func(monitor, dc uintptr, area *rect, data uintptr) uintptr {
-			if info, ok := monitorInfo(monitor); ok {
-				found = append(found, info)
-			}
+	enumeration = nil
+	_, _, _ = procEnumDisplayMonitors.Call(0, 0, monitorCallback, 0)
 
-			// Non-zero continues the enumeration.
-			return 1
-		},
-	)
+	return enumeration
+}
 
-	_, _, _ = procEnumDisplayMonitors.Call(0, 0, callback, 0)
+// shutdownNative takes the tray icon away before the process exits:
+// Wails ends with a WM_QUIT to its own thread, so the native window is
+// never destroyed and its WM_DESTROY never arrives. Nothing to do when
+// the native thread never started.
+func shutdownNative() {
+	if native.window == 0 {
+		return
+	}
 
-	return found
+	runNative(func() {
+		removeTrayIcon(native.window)
+	})
 }
 
 // chosenMonitor picks the monitor for this show: under the mouse, the

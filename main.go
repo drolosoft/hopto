@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 
 	"github.com/wailsapp/wails/v2"
@@ -42,6 +43,11 @@ func main() {
 		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		OnStartup:         app.startup,
 		Bind:              []any{app},
+
+		// Wails ends with a WM_QUIT that never reaches the tray window, so
+		// the Windows tray icon is taken away here or it would stay in the
+		// notification area as a ghost.
+		OnShutdown: func(ctx context.Context) { shutdownNative() },
 
 		// A second launch (`open -n`, or a launcher that starts a new
 		// copy) quits at once and shows this copy's panel instead.

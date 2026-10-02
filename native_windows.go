@@ -167,7 +167,8 @@ func startNative() {
 }
 
 // nativeLoop is the whole life of the native thread: the window, the
-// tray icon, and then messages until the window is destroyed.
+// tray icon, and then messages until the process exits. Nothing destroys
+// the window, so the icon is removed by shutdownNative instead.
 func nativeLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -300,7 +301,14 @@ func runNative(fn func()) {
 	})
 	native.mu.Unlock()
 
-	_, _, _ = procPostMessageW.Call(uintptr(native.window), nativeJob, 0, 0)
+	posted, _, _ := procPostMessageW.Call(
+		uintptr(native.window), nativeJob, 0, 0,
+	)
+	if posted == 0 {
+		// Nobody will run the job, so waiting for it would block for good.
+		return
+	}
+
 	<-done
 }
 
@@ -444,6 +452,12 @@ func registerHotkey(id uint32, hotkey Hotkey) {
 			status := int32(0)
 			if errno, isErrno := err.(windows.Errno); isErrno {
 				status = int32(errno)
+			}
+
+			// A failure that left no error code must still not read as
+			// success, which is what status 0 means to the welcome.
+			if status == 0 {
+				status = -1
 			}
 
 			recordHotkeyStatus(id, status)
