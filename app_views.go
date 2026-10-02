@@ -358,7 +358,7 @@ func (a *App) iconSource(id string) (string, bool) {
 			continue
 		}
 
-		bundle, _ := discover.InspectBundle(app.Path)
+		bundle, _ := discover.Inspect(app.Path)
 
 		return bundle.IconPath, bundle.IconPath != ""
 	}

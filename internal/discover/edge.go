@@ -1,7 +1,6 @@
 package discover
 
 import (
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,39 +14,6 @@ const edgeAppsDir = "Applications/Edge Apps.localized"
 // EdgeAppsDir is the Edge web apps folder of a home directory.
 func EdgeAppsDir(home string) string {
 	return filepath.Join(home, edgeAppsDir)
-}
-
-// ScanEdgeApps lists the web app bundles in dir. A missing folder is not
-// an error: the tab just has no Edge apps.
-func ScanEdgeApps(dir string) []App {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return []App{}
-	}
-
-	apps := []App{}
-	for _, entry := range entries {
-		path, ok := isBundle(dir, entry)
-		if !ok {
-			continue
-		}
-
-		// A web app whose plist cannot be read is still an app the user
-		// installed: it keeps its folder name and opens by path.
-		app, _ := InspectBundle(path)
-		app.Source = SourceEdge
-
-		if app.Description == "" {
-			app.Description = "Edge"
-		}
-
-		apps = append(apps, app)
-	}
-
-	sortByName(apps)
-	assignIDs(apps, PrefixEdge)
-
-	return apps
 }
 
 // sortByName orders apps the way a list should read, ignoring case.

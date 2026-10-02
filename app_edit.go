@@ -220,7 +220,7 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 	in = tidyAppInput(in)
 
 	if in.Name == "" && in.Path != "" {
-		bundle, _ := discover.InspectBundle(in.Path)
+		bundle, _ := discover.Inspect(in.Path)
 		in.Name = bundle.Name
 	}
 

@@ -99,7 +99,7 @@ func (a *App) endDialog() {
 // reported for the editor to show under the field.
 func (a *App) appDraft(path string) AppDraft {
 	path = filepath.Clean(path)
-	bundle, err := discover.InspectBundle(path)
+	bundle, err := discover.Inspect(path)
 	if err != nil {
 		log.Printf("pick app %s: %v", path, err)
 	}

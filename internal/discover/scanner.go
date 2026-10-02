@@ -26,7 +26,7 @@ func (s *Scanner) Applications(roots []string) []App {
 
 	signature := signatureOf(roots)
 	if signature != s.signature || s.apps == nil {
-		s.apps = ScanApplications(roots)
+		s.apps = scanRoots(roots)
 		s.signature = signature
 	}
 
