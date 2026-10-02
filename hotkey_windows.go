@@ -199,8 +199,13 @@ func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
 		var cursor point
 		_, _, _ = procGetCursorPos.Call(uintptr(unsafe.Pointer(&cursor)))
 
+		// MonitorFromPoint takes the POINT by value, and on amd64 and
+		// arm64 an 8-byte struct travels in one register: X in the low
+		// half, Y in the high half. Passed as two arguments, Windows
+		// would read (X, 0) and take Y for the flags.
+		packed := uintptr(uint32(cursor.X)) | uintptr(uint32(cursor.Y))<<32
 		monitor, _, _ := procMonitorFromPoint.Call(
-			uintptr(cursor.X), uintptr(cursor.Y), monitorDefaultToNearest,
+			packed, monitorDefaultToNearest,
 		)
 
 		return monitorInfo(monitor)
@@ -303,8 +308,11 @@ func handleReopen(show func()) {}
 // It runs on the native thread, the one that registered the hotkey and
 // so holds the right to take the foreground after a press. If Windows
 // still refuses (the panel opened from the tray, say), the thread of
-// the window in front lends its input queue for the one call, the
-// documented way round the foreground lock.
+// the window in front lends its input queue to the thread that owns
+// the launcher for the one call, the documented way round the
+// foreground lock. The launcher belongs to Wails' thread, not to this
+// one, so this thread joins that queue too: SetFocus only lands on a
+// window whose input queue the calling thread shares.
 func activateApp() {
 	runNative(func() {
 		window := launcherWindow()
@@ -319,18 +327,40 @@ func activateApp() {
 
 		front, _, _ := procGetForegroundWindow.Call()
 		frontThread, _, _ := procGetWindowThreadProcessId.Call(front, 0)
-		ourThread := windows.GetCurrentThreadId()
+		windowThread, _, _ := procGetWindowThreadProcessId.Call(
+			uintptr(window), 0,
+		)
+		ourThread := uintptr(windows.GetCurrentThreadId())
 
-		if frontThread != 0 && uint32(frontThread) != ourThread {
-			_, _, _ = procAttachThreadInput.Call(
-				frontThread, uintptr(ourThread), 1,
-			)
-			_, _, _ = procBringWindowToTop.Call(uintptr(window))
-			_, _, _ = procSetForegroundWindow.Call(uintptr(window))
-			_, _, _ = procSetFocus.Call(uintptr(window))
-			_, _, _ = procAttachThreadInput.Call(
-				frontThread, uintptr(ourThread), 0,
-			)
+		if frontThread == 0 || windowThread == 0 {
+			return
 		}
+
+		attachInput(frontThread, windowThread, true)
+		attachInput(ourThread, windowThread, true)
+
+		_, _, _ = procBringWindowToTop.Call(uintptr(window))
+		_, _, _ = procSetForegroundWindow.Call(uintptr(window))
+		_, _, _ = procSetFocus.Call(uintptr(window))
+
+		attachInput(ourThread, windowThread, false)
+		attachInput(frontThread, windowThread, false)
 	})
+}
+
+// attachInput joins the input queue of one thread to the one of
+// another, or parts them. AttachThreadInput refuses a thread joined to
+// itself, so that case is skipped rather than left to fail.
+func attachInput(from, to uintptr, attach bool) {
+	if from == to {
+		return
+	}
+
+	// The third argument is the Win32 BOOL: 1 joins, 0 parts.
+	flag := uintptr(0)
+	if attach {
+		flag = 1
+	}
+
+	_, _, _ = procAttachThreadInput.Call(from, to, flag)
 }

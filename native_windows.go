@@ -39,6 +39,8 @@ var (
 	procGetCursorPos        = user32.NewProc("GetCursorPos")
 	procLoadIconW           = user32.NewProc("LoadIconW")
 	procShellNotifyIconW    = shell32.NewProc("Shell_NotifyIconW")
+
+	procRegisterWindowMessageW = user32.NewProc("RegisterWindowMessageW")
 )
 
 // Window messages (winuser.h). trayMessage is our own number in the
@@ -152,6 +154,19 @@ var native struct {
 	jobs  []func()
 }
 
+// taskbarCreated is the number Windows gave the "TaskbarCreated"
+// message, which Explorer broadcasts to every top-level window when it
+// starts again after a crash or a restart: the notification area comes
+// back empty, and the tray is the only place to quit hopto, so the icon
+// has to be added again. It is 0 until the native thread registers it,
+// and only that thread reads or writes it, as with readdFailureLogged.
+var taskbarCreated uint32
+
+// readdFailureLogged keeps a failing re-add to one line in the log.
+// Explorer also sends TaskbarCreated when the DPI changes, with the icon
+// still there, and NIM_ADD of an id that exists fails harmlessly.
+var readdFailureLogged bool
+
 // trayClassName is the class of the hidden tray window.
 const trayClassName = "hoptoTray"
 
@@ -182,6 +197,7 @@ func nativeLoop() {
 	}
 
 	native.window = window
+	registerTaskbarCreated()
 	addTrayIcon(window)
 	close(native.ready)
 
@@ -202,8 +218,9 @@ func nativeLoop() {
 // createTrayWindow registers the class and creates a top-level window
 // that is never shown. A message-only window (HWND_MESSAGE) would do for
 // WM_HOTKEY, but the shell posts the tray icon's clicks to a window it
-// can find, so this is an ordinary hidden one, as every tray library
-// makes it.
+// can find, and a message-only window never receives broadcasts such as
+// TaskbarCreated, so this is an ordinary hidden one, as every tray
+// library makes it.
 func createTrayWindow() (windows.Handle, error) {
 	instance, err := moduleHandle()
 	if err != nil {
@@ -248,6 +265,14 @@ func trayWindowProc(
 	msg uint32,
 	wParam, lParam uintptr,
 ) uintptr {
+	// Explorer started again and the icon it drew is gone. The number
+	// is not a constant, so it cannot be a case of the switch below.
+	if taskbarCreated != 0 && msg == taskbarCreated {
+		readdTrayIcon(window)
+
+		return 0
+	}
+
 	switch msg {
 	case wmHotkey:
 		id := uint32(wParam)
@@ -348,9 +373,30 @@ func appIcon() windows.Handle {
 	return windows.Handle(icon)
 }
 
-// addTrayIcon puts hopto in the notification area, with its clicks sent
-// to the window as trayMessage.
-func addTrayIcon(window windows.Handle) {
+// registerTaskbarCreated asks Windows for the number of the message
+// Explorer broadcasts when it starts. A failure leaves taskbarCreated at
+// 0, which matches no message: hopto then works as before, minus the
+// icon coming back after an Explorer restart.
+func registerTaskbarCreated() {
+	name, err := windows.UTF16PtrFromString("TaskbarCreated")
+	if err != nil {
+		return
+	}
+
+	number, _, err := procRegisterWindowMessageW.Call(
+		uintptr(unsafe.Pointer(name)),
+	)
+	if number == 0 {
+		log.Printf("native: TaskbarCreated: %v", err)
+		return
+	}
+
+	taskbarCreated = uint32(number)
+}
+
+// notifyAdd asks the shell for hopto's icon in the notification area,
+// with its clicks sent to the window as trayMessage.
+func notifyAdd(window windows.Handle) error {
 	data := notifyIconData{
 		Window:          window,
 		ID:              1,
@@ -365,11 +411,36 @@ func addTrayIcon(window windows.Handle) {
 		nimAdd, uintptr(unsafe.Pointer(&data)),
 	)
 	if ok == 0 {
+		return err
+	}
+
+	return nil
+}
+
+// addTrayIcon puts hopto in the notification area at start-up.
+func addTrayIcon(window windows.Handle) {
+	if err := notifyAdd(window); err != nil {
 		log.Printf("native: tray icon: %v", err)
 		return
 	}
 
 	log.Printf("native: tray icon added")
+}
+
+// readdTrayIcon puts the icon back after Explorer restarted. A failure
+// is logged once only: the same message also arrives while the icon is
+// still there, and the add then fails through no fault of hopto's.
+func readdTrayIcon(window windows.Handle) {
+	err := notifyAdd(window)
+	if err == nil {
+		log.Printf("native: tray icon added again")
+		return
+	}
+
+	if !readdFailureLogged {
+		readdFailureLogged = true
+		log.Printf("native: tray icon again: %v", err)
+	}
 }
 
 // removeTrayIcon takes the icon away when the window goes.
