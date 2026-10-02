@@ -35,3 +35,25 @@ test('the translator fills the modifier placeholders for the platform', () => {
     assert.equal(translator('en', 'windows')('footer.pair'), 'Enter app · Ctrl+Enter web');
     assert.equal(translator('es', 'windows')('help.edit').startsWith('Ctrl+N nuevo'), true);
 });
+
+test('two words change meaning on Windows: the Explorer and the program picker', () => {
+    const cases = [
+        ['en', 'reveal in Finder', 'show in Explorer'],
+        ['es', 'mostrar en el Finder', 'mostrar en el Explorador'],
+    ];
+
+    for (const [language, finder, explorer] of cases) {
+        const onMac = translator(language)('help.open');
+        const onWindows = translator(language, 'windows')('help.open');
+
+        assert.ok(onMac.includes(finder));
+        assert.ok(onWindows.includes(explorer));
+        assert.ok(!onMac.includes('{'));
+        assert.ok(!onWindows.includes('{'));
+    }
+
+    assert.equal(translator('en', 'windows')('editor.pick'), 'Choose a program… Ctrl+O');
+    assert.equal(translator('es', 'windows')('editor.pick'), 'Elegir un programa… Ctrl+O');
+    assert.ok(translator('en', 'windows')('editor.hintsApp').includes('Choose a program'));
+    assert.ok(!translator('en', 'windows')('editor.hintsApp').includes('{'));
+});

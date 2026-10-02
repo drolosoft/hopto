@@ -24,12 +24,16 @@ const APP_FIELDS = ['path', 'name', 'description'];
 let parts = null;
 
 /**
- * The text fields a draft shows.
+ * The text fields a draft shows. A Windows app has no bundle id (nothing on
+ * that system opens one), so that field is never offered there.
  * @param {{tab: string}} draft
+ * @param {string} platform darwin or windows
  * @returns {string[]}
  */
-function fieldsOf(draft) {
-    return draft.tab === 'apps' ? APP_FIELDS : LINK_FIELDS;
+function fieldsOf(draft, platform) {
+    const fields = draft.tab === 'apps' ? APP_FIELDS : LINK_FIELDS;
+
+    return platform === 'windows' ? fields.filter((name) => name !== 'bundleId') : fields;
 }
 
 /**
@@ -284,7 +288,7 @@ export function mountEditor(draft, categories, t, handlers) {
     elements.editor.appendChild(heading);
 
     const fields = {};
-    for (const name of fieldsOf(draft)) {
+    for (const name of fieldsOf(draft, t.platform)) {
         const field = textField(name, t, handlers);
         field.input.value = draft[name] ?? '';
         fields[name] = field;

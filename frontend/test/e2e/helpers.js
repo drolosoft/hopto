@@ -59,3 +59,17 @@ export async function payloads(page, name) {
         .filter((call) => call.startsWith(`${name}:`))
         .map((call) => call.slice(name.length + 1));
 }
+
+/**
+ * Makes the next page load say it runs on Windows: the fake bridge reads
+ * window.platform when the page asks for its settings. The shared
+ * beforeEach already loaded the page once as macOS, so this loads it again.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function onWindows(page) {
+    await page.addInitScript(() => {
+        window.platform = 'windows';
+    });
+    await page.goto(process.env.HARNESS_URL + '/');
+    await page.waitForFunction(() => typeof window.emit === 'function');
+}

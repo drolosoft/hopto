@@ -1,5 +1,5 @@
 import {test, expect} from '@playwright/test';
-import {guardEveryTest, calls} from './helpers.js';
+import {guardEveryTest, calls, onWindows} from './helpers.js';
 
 guardEveryTest(test);
 
@@ -97,4 +97,18 @@ test('a broken library shows its line and a button that opens the file', async (
     await expect(page.locator('#status .text')).toHaveText('library.toml, line 12: expected key');
     await page.locator('#status .fix').click();
     expect(await calls(page)).toContain('EditLibrary');
+});
+
+test('on Windows the welcome prints the shortcuts with words', async ({page}) => {
+    await onWindows(page);
+    await showWith(page, {
+        show: true, firstRun: true, finderConflict: false,
+        hotkeys: [
+            {tab: 'apps', spec: 'ctrl+shift+space', state: 'registered', status: 0},
+            {tab: 'links', spec: 'ctrl+alt+space', state: 'taken', status: 1409},
+        ],
+    });
+
+    await expect(page.locator('#welcome')).toContainText('Ctrl+Shift+Space');
+    await expect(page.locator('#welcome')).not.toContainText('Finder');
 });

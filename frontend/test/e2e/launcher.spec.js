@@ -1,4 +1,5 @@
 import {test, expect} from '@playwright/test';
+import {onWindows} from './helpers.js';
 
 // Every test starts from a fresh page with the `shown` event fired for a
 // tab, and ends with no page error and no CSP violation at all: either one
@@ -281,4 +282,21 @@ test('supuesto 3: ↑ and ↓ stop at the edges of the cards grid, ← and → w
 
     await page.keyboard.press('ArrowRight');
     await expect(options.nth(0)).toHaveAttribute('aria-selected', 'true');
+});
+
+test('on Windows the footer and the help speak Control, and Ctrl+Enter opens elsewhere', async ({page}) => {
+    await onWindows(page);
+    await shown(page, 'apps');
+    await page.keyboard.type('git');
+    await expect(page.locator('#grid [role="option"]')).toHaveCount(2);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#action')).toHaveText('Enter app · Ctrl+Enter web');
+
+    await page.keyboard.press('Control+Enter');
+    expect(await calls(page)).toContain('OpenLink:github');
+
+    await page.keyboard.press('?');
+    await expect(page.locator('#help')).toContainText('show in Explorer');
+    await expect(page.locator('#help')).not.toContainText('⌘');
 });

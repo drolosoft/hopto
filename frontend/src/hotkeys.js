@@ -42,8 +42,8 @@ const NAMED_KEYS = {
 };
 
 /**
- * "cmd+shift+space" → "⇧⌘Space" on macOS, "Ctrl+Shift+Space" written as
- * "ctrl+shift+space" on Windows. A spec with no modifier or an unknown
+ * "cmd+shift+space" → "⇧⌘Space" on macOS; on Windows "ctrl+shift+space"
+ * prints as "Ctrl+Shift+Space". A spec with no modifier or an unknown
  * word comes back as it was: better the raw text than a wrong glyph.
  * @param {string} spec
  * @param {Function} t
