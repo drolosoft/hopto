@@ -2,7 +2,7 @@
 # run build itself (see wails.json), and it is what writes frontend/wailsjs
 # and frontend/dist, which go:embed needs — running npm separately first
 # would fail on a fresh clone before wailsjs exists.
-.PHONY: build test e2e lint hooks clean dist
+.PHONY: build build-windows build-windows-dist test e2e lint hooks clean dist
 
 # What `make build` stamps into the binary for the help panel: what git
 # describes (the tag, or the commit, plus -dirty for local changes), the
@@ -17,6 +17,15 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.builtAt=$
 # the touch puts that empty file back so the tree stays clean.
 build:
 	wails build -clean -ldflags "$(LDFLAGS)"
+	touch frontend/dist/gitkeep
+
+# The Windows exes, both architectures, cross-compiled from here: Wails
+# is pure Go on Windows, so none of their toolchain is needed. The first
+# build cleans build/bin and the frontend; the second keeps the frontend
+# the first one just built.
+build-windows:
+	wails build -clean -trimpath -platform windows/arm64 -ldflags "$(LDFLAGS)" -o hopto-windows-arm64.exe
+	wails build -trimpath -platform windows/amd64 -ldflags "$(LDFLAGS)" -o hopto-windows-amd64.exe
 	touch frontend/dist/gitkeep
 
 test:
@@ -36,6 +45,22 @@ e2e:
 # hopto-v0.1.0-macos-universal.zip.
 DIST := build/dist
 ZIP := $(DIST)/hopto-$(VERSION)-macos-universal.zip
+
+# The Windows zips: the exe and the licence at the root, one per
+# architecture, with the same $HOME check as the Mac binary. dist depends
+# on this one, and not the other way round, because build-windows cleans
+# build/bin: the exes have to be built before the universal .app, or the
+# .app would be wiped out.
+dist: build-windows-dist
+
+build-windows-dist: build-windows
+	mkdir -p $(DIST)
+	for arch in amd64 arm64; do \
+	  test -z "$$(strings build/bin/hopto-windows-$$arch.exe | grep -F "$$HOME")" || exit 1; \
+	  rm -f $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(DIST)/hopto-$(VERSION)-windows-$$arch.zip.sha256; \
+	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip build/bin/hopto-windows-$$arch.exe LICENSE; \
+	  (cd $(DIST) && shasum -a 256 hopto-$(VERSION)-windows-$$arch.zip > hopto-$(VERSION)-windows-$$arch.zip.sha256); \
+	done
 
 dist:
 	wails build -clean -trimpath -platform darwin/universal -ldflags "$(LDFLAGS)"

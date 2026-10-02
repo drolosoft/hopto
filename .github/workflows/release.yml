@@ -14,7 +14,8 @@ permissions:
 jobs:
   release:
     # Carbon and Cocoa only build on macOS, and the universal binary needs
-    # the Apple toolchain for both architectures.
+    # the Apple toolchain for both architectures; the Windows exes
+    # cross-compile here too.
     runs-on: macos-latest
 
     steps:
@@ -72,9 +73,10 @@ jobs:
       - name: Frontend tests
         run: cd frontend && npm ci && npm test
 
-      # make dist builds the universal .app, refuses a binary that carries
-      # the runner's home folder, and writes the zip and its SHA-256.
-      - name: Universal build and zip
+      # make dist builds the Windows exes and the universal .app, refuses
+      # a binary that carries the runner's home folder, and writes each
+      # zip and its SHA-256.
+      - name: Build and zip, macOS and Windows
         run: make dist
 
       # The Go package embeds frontend/dist, which the build just wrote.
