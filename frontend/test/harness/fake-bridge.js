@@ -118,7 +118,7 @@ window.go = {main: {App: {
     },
     Usage: async () => ({opens: {'links:gitea': 2}, lastOpened: {'links:gitea': '2026-09-26T10:00:00Z'}, favorites: window.favs}),
     About: async () => ({version: 'v0.3.0-test', commit: 'abc1234', builtAt: '2026-09-27', goVersion: 'go1.27.1', libraryPath: '/Users/someone/Library/Application Support/hopto/library.toml'}),
-    Settings: async () => ({language: window.language ?? 'en', hotkeyApps: 'cmd+shift+space', hotkeyLinks: 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
+    Settings: async () => ({language: window.language ?? 'en', platform: window.platform ?? 'darwin', hotkeyApps: window.platform === 'windows' ? 'ctrl+shift+space' : 'cmd+shift+space', hotkeyLinks: window.platform === 'windows' ? 'ctrl+alt+space' : 'cmd+option+space', secondaryBrowser: window.browser ?? '', scanApplications: true, discoverEdgeApps: true, iconServices: ['site'], allowPrivateIconHosts: false}),
     // Named libraryStatus, not status: window.status is a native Window
     // property (the old status-bar text) that stringifies anything
     // assigned to it, so a test object set there would never arrive.

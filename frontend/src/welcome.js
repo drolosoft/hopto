@@ -151,7 +151,7 @@ function paint(view) {
     if (view.firstRun && apps && links) {
         const intro = document.createElement('p');
         intro.className = 'intro';
-        intro.textContent = `${t('welcome.open', {apps: prettyHotkey(apps.spec, t)})} · ${t('welcome.links', {links: prettyHotkey(links.spec, t)})}`;
+        intro.textContent = `${t('welcome.open', {apps: prettyHotkey(apps.spec, t, t.platform)})} · ${t('welcome.links', {links: prettyHotkey(links.spec, t, t.platform)})}`;
         panel.appendChild(intro);
     }
 
@@ -160,7 +160,7 @@ function paint(view) {
         const line = document.createElement('li');
         line.className = `hotkey ${hotkey.state}`;
         line.textContent = t(`welcome.hotkey.${hotkey.state}`, {
-            spec: prettyHotkey(hotkey.spec, t),
+            spec: prettyHotkey(hotkey.spec, t, t.platform),
             tab: t(TABS[hotkey.tab]?.label ?? hotkey.tab),
             status: hotkey.status,
         });
@@ -174,7 +174,7 @@ function paint(view) {
     if (view.finderConflict) {
         const warning = document.createElement('p');
         warning.className = 'warning';
-        warning.textContent = t('welcome.finder', {spec: prettyHotkey(FINDER_SPEC, t)});
+        warning.textContent = t('welcome.finder', {spec: prettyHotkey(FINDER_SPEC, t, t.platform)});
         panel.appendChild(warning);
 
         actions.appendChild(button('welcome-settings', t('welcome.settings'), openSettings));

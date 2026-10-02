@@ -127,7 +127,7 @@ function renderCategories(state, t, handlers) {
 
         // ⌘1 is "All", ⌘2 the favourites, ⌘3 the first category, and so on.
         if (index < 9) {
-            chip.title = `⌘${index + 1}`;
+            chip.title = t('chip.shortcut', {index: index + 1});
         }
 
         chip.addEventListener('click', () => handlers.onChip(category.id));

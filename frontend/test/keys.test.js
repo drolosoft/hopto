@@ -119,3 +119,18 @@ test('in the editor ⌘E asks to edit the duplicate', () => {
 test('in the editor ⌘O asks for the native dialog', () => {
     assert.deepEqual(actionFor(press('o', {metaKey: true}), {...idle, editing: true, field: 'name'}), {type: 'pickApp'});
 });
+
+const win = {...idle, platform: 'windows'};
+
+test('on Windows the Control chords do what the Command chords do on macOS', () => {
+    assert.deepEqual(actionFor(press('n', {ctrlKey: true}), win), {type: 'new'});
+    assert.deepEqual(actionFor(press('Enter', {ctrlKey: true}), win), {type: 'openAlt'});
+    assert.deepEqual(actionFor(press('1', {ctrlKey: true}), win), {type: 'category', index: 0});
+    assert.equal(actionFor(press('n', {metaKey: true}), win), null, 'the Win key is not a chord key');
+});
+
+test('Ctrl+Backspace on Windows deletes an entry only with an empty search', () => {
+    assert.deepEqual(actionFor(press('Backspace', {ctrlKey: true}), win), {type: 'delete'});
+    assert.equal(actionFor(press('Backspace', {ctrlKey: true}), {...win, query: 'mdn'}), null, 'word delete belongs to the field');
+    assert.deepEqual(actionFor(press('Backspace', {metaKey: true}), {...idle, query: 'mdn'}), {type: 'delete'}, 'macOS keeps ⌘⌫ as it was');
+});

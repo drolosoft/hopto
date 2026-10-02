@@ -3,6 +3,8 @@
  * `node --test`.
  */
 
+import {primaryKey} from './modifiers.js';
+
 /**
  * The index after moving the selection by delta positions in a list of
  * count items, wrapping around at both ends. The double modulo keeps the
@@ -26,7 +28,7 @@ export function nextIndex(selected, delta, count) {
  * the search box should keep the key. Letters are compared lowercased so
  * Caps Lock changes nothing; a press during IME composition is ignored.
  * @param {{key: string, metaKey: boolean, altKey: boolean, shiftKey: boolean, ctrlKey: boolean, isComposing: boolean}} event
- * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number, field?: string, confirming?: boolean, renaming?: boolean}} context
+ * @param {{query: string, editing: boolean, helpOpen: boolean, columns: number, field?: string, confirming?: boolean, renaming?: boolean, platform?: string}} context
  * @returns {{type: string, delta?: number, index?: number}|null}
  */
 export function actionFor(event, context) {
@@ -36,8 +38,11 @@ export function actionFor(event, context) {
 
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
 
+    // Command on macOS, Control on Windows: the key every chord starts with.
+    const primary = primaryKey(event, context.platform);
+
     if (context.editing) {
-        return editorAction(event, key, context.field);
+        return editorAction(event, key, context.field, primary);
     }
 
     if (context.renaming) {
@@ -45,13 +50,13 @@ export function actionFor(event, context) {
     }
 
     if (context.helpOpen) {
-        return key === 'Escape' || key === '?' || (event.metaKey && key === '/') ? {type: 'help'} : null;
+        return key === 'Escape' || key === '?' || (primary && key === '/') ? {type: 'help'} : null;
     }
 
     // A row (or a chip) waiting for "delete? ↩ yes · Esc no" takes the
     // answer; any other key falls through and dispatch cancels the
     // question before doing it, so moving away never deletes.
-    const plain = !event.metaKey && !event.altKey && !event.shiftKey;
+    const plain = !primary && !event.altKey && !event.shiftKey;
     if (context.confirming && key === 'Enter' && plain) {
         return {type: 'confirm'};
     }
@@ -60,20 +65,28 @@ export function actionFor(event, context) {
         return {type: 'cancelConfirm'};
     }
 
-    if (event.metaKey && /^[1-9]$/.test(key)) {
+    if (primary && /^[1-9]$/.test(key)) {
         // A query already typed means the chips are not what the digit is
         // about; ⌘1-9 only picks a category while the search box is empty.
         return context.query ? null : {type: 'category', index: Number(key) - 1};
     }
 
-    if (event.metaKey) {
+    if (primary) {
         switch (key) {
             case 'f': return {type: 'favorite'};
             case 'c': return {type: 'copy'};
             case 'n': return {type: 'new'};
             case 'e': return event.shiftKey ? {type: 'renameCategory'} : {type: 'edit'};
             case '/': return {type: 'help'};
-            case 'Backspace': return event.shiftKey ? {type: 'deleteCategory'} : {type: 'delete'};
+            case 'Backspace':
+                // On Windows Ctrl+Backspace is "delete a word" in any
+                // field; it only means "delete the entry" with nothing
+                // typed. macOS keeps ⌘⌫ whatever the query.
+                if (context.platform === 'windows' && context.query) {
+                    return null;
+                }
+
+                return event.shiftKey ? {type: 'deleteCategory'} : {type: 'delete'};
             case 'Enter': return event.shiftKey ? {type: 'openAll'} : {type: 'openAlt'};
             default: return null;
         }
@@ -97,12 +110,13 @@ export function actionFor(event, context) {
  * saves from any of them, ⌘1-9 picks a category, and the arrows move
  * between chips only while the chip row has the focus (in a text field
  * they belong to the caret).
- * @param {{key: string, metaKey: boolean, shiftKey: boolean}} event
+ * @param {{key: string, shiftKey: boolean}} event
  * @param {string} key the key, lowercased when it is a letter
  * @param {string|undefined} field the focused field of the editor
+ * @param {boolean} primary whether the primary chord key is down
  * @returns {{type: string, delta?: number, index?: number}|null}
  */
-function editorAction(event, key, field) {
+function editorAction(event, key, field, primary) {
     if (key === 'Escape') {
         return {type: 'closeEditor'};
     }
@@ -111,15 +125,15 @@ function editorAction(event, key, field) {
         return {type: 'save'};
     }
 
-    if (event.metaKey && key === 'o') {
+    if (primary && key === 'o') {
         return {type: 'pickApp'};
     }
 
-    if (event.metaKey && key === 'e') {
+    if (primary && key === 'e') {
         return {type: 'editDuplicate'};
     }
 
-    if (event.metaKey && /^[1-9]$/.test(key)) {
+    if (primary && /^[1-9]$/.test(key)) {
         return {type: 'pickCategory', index: Number(key) - 1};
     }
 

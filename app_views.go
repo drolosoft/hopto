@@ -64,6 +64,9 @@ type Ref struct {
 
 // SettingsView is the library's settings with the language resolved.
 type SettingsView struct {
+	// Platform is the system the page runs on, darwin or windows: it
+	// decides the chord key and the glyphs.
+	Platform              string   `json:"platform"`
 	Language              string   `json:"language"`
 	HotkeyApps            string   `json:"hotkeyApps"`
 	HotkeyLinks           string   `json:"hotkeyLinks"`
@@ -170,6 +173,7 @@ func (a *App) Settings() SettingsView {
 	settings := a.library.Snapshot().Settings
 
 	return SettingsView{
+		Platform:              platformName,
 		Language:              languageFor(settings.Language, a.language),
 		HotkeyApps:            settings.HotkeyApps,
 		HotkeyLinks:           settings.HotkeyLinks,

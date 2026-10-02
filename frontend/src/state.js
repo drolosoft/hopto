@@ -33,7 +33,7 @@ export function initialState(tab) {
         appCategories: [],
         linkCategories: [],
         usage: {opens: {}, lastOpened: {}, favorites: []},
-        settings: {language: 'en', secondaryBrowser: ''},
+        settings: {language: 'en', secondaryBrowser: '', platform: 'darwin'},
         status: {path: '', error: '', line: 0, readOnly: false},
     };
 }

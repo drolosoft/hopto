@@ -558,7 +558,7 @@ async function refresh() {
         state.apps = decorate(apps ?? [], state.usage);
         state.links = decorate(links ?? [], state.usage);
 
-        t = translator(resolveLanguage(state.settings.language, navigator.language));
+        t = translator(resolveLanguage(state.settings.language, navigator.language), state.settings.platform);
     } catch (error) {
         // A failed call must not strand the caller's .then(): the search
         // box still has to get focus, and the page still has to paint
@@ -751,7 +751,7 @@ function dispatch(action) {
 }
 
 installKeyboard(
-    () => ({query: state.query, editing: state.editing, helpOpen: state.helpOpen, columns: columns(), field: state.editing ? focusedField() : '', confirming: Boolean(state.confirming), renaming: Boolean(state.renaming)}),
+    () => ({query: state.query, editing: state.editing, helpOpen: state.helpOpen, columns: columns(), field: state.editing ? focusedField() : '', confirming: Boolean(state.confirming), renaming: Boolean(state.renaming), platform: state.settings.platform}),
     dispatch,
 );
 

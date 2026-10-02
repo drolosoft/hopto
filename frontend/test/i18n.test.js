@@ -29,3 +29,9 @@ test('plural picks one or other', () => {
 test('both dictionaries have the same keys', () => {
     assert.deepEqual(Object.keys(MESSAGES.es).sort(), Object.keys(MESSAGES.en).sort());
 });
+
+test('the translator fills the modifier placeholders for the platform', () => {
+    assert.equal(translator('en')('footer.pair'), '↩ app · ⌘↩ web');
+    assert.equal(translator('en', 'windows')('footer.pair'), 'Enter app · Ctrl+Enter web');
+    assert.equal(translator('es', 'windows')('help.edit').startsWith('Ctrl+N nuevo'), true);
+});

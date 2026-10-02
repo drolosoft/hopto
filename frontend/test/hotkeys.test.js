@@ -20,3 +20,12 @@ test('prettyHotkey leaves what it does not understand as it came', () => {
     assert.equal(prettyHotkey('hyper+k', t), 'hyper+k');
     assert.equal(prettyHotkey(undefined, t), '');
 });
+
+test('prettyHotkey writes Windows specs with words and plus signs', () => {
+    const t = translator('en', 'windows');
+
+    assert.equal(prettyHotkey('ctrl+shift+space', t, 'windows'), 'Ctrl+Shift+Space');
+    assert.equal(prettyHotkey('ctrl+alt+space', t, 'windows'), 'Ctrl+Alt+Space');
+    assert.equal(prettyHotkey('cmd+shift+space', t, 'windows'), 'Win+Shift+Space');
+    assert.equal(prettyHotkey('ctrl+shift+space', translator('es', 'windows'), 'windows'), 'Ctrl+Shift+Espacio');
+});
