@@ -2,11 +2,6 @@ package main
 
 import "log"
 
-// keyboardSettingsURL opens System Settings on the Keyboard pane, where
-// Keyboard Shortcuts → Spotlight holds the Finder's ⌘⌥Space.
-const keyboardSettingsURL = "x-apple.systempreferences:" +
-	"com.apple.Keyboard-Settings.extension"
-
 // The states of a shortcut as the welcome shows them.
 const (
 	hotkeyRegistered = "registered"
@@ -46,8 +41,7 @@ func (a *App) Welcome() WelcomeView {
 			hotkeyView(tabApps, settings.HotkeyApps, hotkeyApps),
 			hotkeyView(tabLinks, settings.HotkeyLinks, hotkeyLinks),
 		},
-		FinderConflict: usesFinderShortcut(settings) &&
-			finderSearchShortcutEnabled(a.symbolicHotkeys),
+		FinderConflict: finderConflict(a, settings),
 	}
 
 	problem := view.FinderConflict

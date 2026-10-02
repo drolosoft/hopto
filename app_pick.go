@@ -20,9 +20,6 @@ var errDialogBusy = errors.New("a file dialog is already open")
 // reopen until Quit.
 var errPanelHidden = errors.New("the panel is hidden")
 
-// pickFolder is where the open panel starts: where apps are installed.
-const pickFolder = "/Applications"
-
 // AppDraft is what the editor pre-fills after the user picks a .app: the
 // bundle's name, id and icon, the problem with its path (outside the app
 // roots) and the entry that already lists the same app, if any.
@@ -46,7 +43,7 @@ func (a *App) PickApp() (AppDraft, error) {
 	}
 	defer a.endDialog()
 
-	path, err := a.window.PickFile(pickFolder)
+	path, err := a.window.PickFile(pickFolder())
 	if err != nil {
 		log.Printf("pick app: %v", err)
 		return AppDraft{}, err

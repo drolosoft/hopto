@@ -31,10 +31,6 @@ const (
 // but a runaway loop there must not fill the disk.
 const maxDebugRunes = 500
 
-// systemAppsRoot holds the apps macOS ships (Mail, Notes, Terminal):
-// searchable, but not part of the grid the user curates.
-const systemAppsRoot = "/System/Applications"
-
 // window is what App needs from the Wails window, behind an interface so
 // the tests can run toggle, Launch and OpenLink without a display.
 type window interface {
@@ -96,9 +92,7 @@ func (w *wailsWindow) SetAlwaysOnTop(on bool) {
 func (w *wailsWindow) PickFile(directory string) (string, error) {
 	return runtime.OpenFileDialog(w.ctx, runtime.OpenDialogOptions{
 		DefaultDirectory: directory,
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Applications", Pattern: "*.app"},
-		},
+		Filters:          pickFilters(),
 	})
 }
 
@@ -191,23 +185,16 @@ func newApp(
 	language string,
 ) *App {
 	app := &App{
-		window:   win,
-		open:     open,
-		home:     home,
-		dataDir:  dataDir,
-		language: language,
-		scanner:  &discover.Scanner{},
-		appRoots: []string{
-			"/Applications",
-			filepath.Join(home, "Applications"),
-			systemAppsRoot,
-		},
-		edgeDir:    discover.EdgeAppsDir(home),
-		systemApps: systemAppsRoot,
-		login: loginAgent{
-			path:       launchAgentPath(home),
-			executable: os.Executable,
-		},
+		window:          win,
+		open:            open,
+		home:            home,
+		dataDir:         dataDir,
+		language:        language,
+		scanner:         &discover.Scanner{},
+		appRoots:        appRoots(home),
+		edgeDir:         edgeAppsDir(home),
+		systemApps:      systemAppsRoot(),
+		login:           newLoginAgent(home),
 		symbolicHotkeys: filepath.Join(home, symbolicHotkeysFile),
 		tab:             tabApps,
 		discovered:      map[string]discover.App{},
