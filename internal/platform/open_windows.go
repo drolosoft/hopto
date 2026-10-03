@@ -70,7 +70,9 @@ func RunOpen(args ...string) error {
 	if result <= shellExecuteFailure {
 		log.Printf("open %v: ShellExecute code %d", args, result)
 
-		return fmt.Errorf("%w: code %d", errShellExecute, result)
+		// The text users see in the toast: kept as it was before the error
+		// got a name.
+		return fmt.Errorf("%w with code %d", errShellExecute, result)
 	}
 
 	return nil

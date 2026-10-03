@@ -29,9 +29,13 @@ type Hooks struct {
 // MenuItem is one entry of the menu bar item or the tray menu. A
 // Separator has no label and no tag.
 type MenuItem struct {
-	Tag       int
-	Label     string
-	Checked   bool
+	// Tag is what MenuPicked reports when the entry is chosen.
+	Tag int
+	// Label is the text of the entry, already translated by the caller.
+	Label string
+	// Checked draws the tick of an on/off entry.
+	Checked bool
+	// Separator makes the entry a line between groups.
 	Separator bool
 }
 

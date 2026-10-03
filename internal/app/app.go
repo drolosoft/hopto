@@ -1,3 +1,7 @@
+// Package app is the launcher behind the page: the App that Wails binds,
+// with its views, editor, opening, menu, welcome and window placement.
+// It talks to the operating system through internal/platform and to the
+// shortcuts, the menu bar item and the tray through internal/native.
 package app
 
 import (

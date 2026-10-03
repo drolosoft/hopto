@@ -15,7 +15,7 @@ import (
 	"github.com/drolosoft/hopto/seed"
 )
 
-// Review Focus 5: config.example.toml is the English seed with comments.
+// config.example.toml is the English seed with comments.
 // It must stay a library hopto accepts, with no key hopto would ignore
 // (a typo there would teach the typo), and hold exactly what a first
 // run writes, so the documented example and the real one never drift.

@@ -37,7 +37,7 @@ hopto is a Go program with a Wails v2 window. Go owns the library, the scans, th
 ### ⌨️ A shortcut
 
 ```
-Carbon handler (main thread) → go onHotkey(tab)
+Carbon handler (main thread) → go hooks.Toggle(tab)
   → App.toggle(tab), under the App's lock
     → a file dialog is open        → nothing
     → shown on this tab            → remember the display → Hide
@@ -185,7 +185,7 @@ done
 | The menu bar item keeps its labels after a language change | The labels are set when the item is built at start. |
 | Open at login assumes the running binary is not reached through a symbolic link | The bundle path is taken from `os.Executable` as it is, without resolving links. |
 | A data folder hopto cannot write to makes every launch a first run | "First run" means `library.toml` did not exist, and the seed write never lands, so the welcome shows each time. |
-| A second copy reads `library.toml` before the single-instance lock sends it away | `NewApp` runs before Wails checks the lock. The second copy never writes. |
+| A second copy reads `library.toml` before the single-instance lock sends it away | `app.New` runs before Wails checks the lock. The second copy never writes. |
 | Opening an item with a click paints the list once before the new selection | `openAt` renders, then moves the selection. |
 | Comments added to `library.toml` by hand are lost at the next save | The TOML encoder writes the whole file. |
 | Links are http and https only | Other schemes could reach other apps or the file system. |
