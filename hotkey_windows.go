@@ -5,7 +5,6 @@ package main
 import (
 	"hash/fnv"
 	"log"
-	"strings"
 	"sync"
 	"unsafe"
 
@@ -31,8 +30,6 @@ var (
 	procAttachThreadInput   = user32.NewProc("AttachThreadInput")
 	procBringWindowToTop    = user32.NewProc("BringWindowToTop")
 	procSetFocus            = user32.NewProc("SetFocus")
-	procEnumChildWindows    = user32.NewProc("EnumChildWindows")
-	procGetClassNameW       = user32.NewProc("GetClassNameW")
 
 	procGetWindowThreadProcessId = user32.NewProc(
 		"GetWindowThreadProcessId",
@@ -315,7 +312,8 @@ func handleReopen(show func()) {}
 // the launcher for the one call, the documented way round the
 // foreground lock. The launcher belongs to Wails' thread, not to this
 // one, so this thread joins that queue too: SetFocus only lands on a
-// window whose input queue the calling thread shares.
+// window whose input queue the calling thread shares. The keyboard
+// itself is handed to the page by Wails, nudged by nudgeFocus.
 func activateApp() {
 	runNative(func() {
 		window := launcherWindow()
@@ -324,7 +322,7 @@ func activateApp() {
 		}
 
 		bringForward(window)
-		focusWebview(window)
+		nudgeFocus(window)
 	})
 }
 
@@ -359,76 +357,28 @@ func bringForward(window windows.Handle) {
 	attachInput(frontThread, windowThread, false)
 }
 
-// webviewClassPrefix starts the class name of the Chromium widgets
-// WebView2 creates under the launcher window.
-const webviewClassPrefix = "Chrome_WidgetWin"
+// wmSetFocus is the message a window gets when it has just gained the
+// keyboard focus (winuser.h WM_SETFOCUS).
+const wmSetFocus = 0x0007
 
-// childCallback is the WNDENUMPROC handed to EnumChildWindows. It is
-// made once, for the same reason as monitorCallback: the runtime never
-// frees the callbacks it creates.
-var childCallback = windows.NewCallback(findWebviewChild)
-
-// webviewChild is where findWebviewChild leaves the widget it found,
-// guarded by webviewChildLock for the same reason as enumeration.
-var (
-	webviewChild     uintptr
-	webviewChildLock sync.Mutex
-)
-
-// findWebviewChild stops the enumeration at the first child whose class
-// name starts with webviewClassPrefix and remembers it.
-func findWebviewChild(child, data uintptr) uintptr {
-	// 256 UTF-16 units is the longest class name Windows allows.
-	var name [256]uint16
-
-	length, _, _ := procGetClassNameW.Call(
-		child, uintptr(unsafe.Pointer(&name[0])), uintptr(len(name)),
+// nudgeFocus asks Wails to hand the keyboard to the WebView2 widget.
+// Wails does that in its WM_SETFOCUS handler, with Chromium's own
+// MoveFocus on its own thread, and the activation bringForward starts
+// ends in that message. The message never comes when the launcher was
+// already the active window while hidden (right after start, or when
+// nothing else took the keyboard after a hide): the focus then stays on
+// the bare window and the page sees no key. Posting the same message
+// runs the handler in both cases; a second MoveFocus after a real
+// activation changes nothing. Moving the focus from this thread
+// instead, with SetFocus under an input-queue loan, raced the pending
+// activation and now and then left the desktop with no foreground
+// window at all.
+func nudgeFocus(window windows.Handle) {
+	posted, _, _ := procPostMessageW.Call(
+		uintptr(window), wmSetFocus, 0, 0,
 	)
-	if length == 0 {
-		return 1
-	}
-
-	class := windows.UTF16ToString(name[:length])
-	if strings.HasPrefix(class, webviewClassPrefix) {
-		webviewChild = child
-
-		// Zero stops the enumeration.
-		return 0
-	}
-
-	return 1
-}
-
-// focusWebview hands the keyboard focus to the WebView2 widget. Wails
-// asks Chromium to take the focus with MoveFocus, but that does not
-// move the HWND focus when another thread brought the window forward,
-// and the page cannot receive a key until the Chromium widget holds
-// it. So this thread joins the input queue of the widget's thread for
-// the one SetFocus call, on every activation because the panel is
-// hidden and shown many times. It logs only when something fails.
-func focusWebview(window windows.Handle) {
-	webviewChildLock.Lock()
-	defer webviewChildLock.Unlock()
-
-	webviewChild = 0
-	_, _, _ = procEnumChildWindows.Call(uintptr(window), childCallback, 0)
-
-	if webviewChild == 0 {
-		log.Println("native: focus: no webview child")
-		return
-	}
-
-	childThread, _, _ := procGetWindowThreadProcessId.Call(
-		webviewChild, 0,
-	)
-	ourThread := uintptr(windows.GetCurrentThreadId())
-
-	attachInput(childThread, ourThread, true)
-	focused, _, _ := procSetFocus.Call(webviewChild)
-	attachInput(childThread, ourThread, false)
-
-	if focused == 0 {
-		log.Println("native: focus: SetFocus failed")
+	if posted == 0 {
+		log.Println("native: focus: nudge not posted")
 	}
 }
 
