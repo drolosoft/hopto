@@ -85,8 +85,12 @@ dist: build-windows-dist
 fmt:
 	test -z "$$(gofmt -l .)"
 
+# Linted twice: the build tags and GOOS pick which files the linter
+# sees, so the *_windows.go files are only checked by the second run.
+# Windows needs no cgo, so cross-linting works from any host.
 lint: fmt
 	golangci-lint run ./...
+	GOOS=windows GOARCH=amd64 golangci-lint run ./...
 
 # What the CI test job runs, in its order: the build writes the bindings
 # and the page that test (go vet) and e2e need. The workflow calls this

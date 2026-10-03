@@ -9,6 +9,7 @@ linters:
     - unused
     - gocritic
     - misspell
+    - errorlint
   settings:
     gocritic:
       enabled-checks:
