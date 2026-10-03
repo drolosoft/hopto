@@ -280,7 +280,7 @@ func launcherReopened() {
 
 	// The delegate calls this on the main thread; the Wails runtime is
 	// only ever used from a goroutine, as for the hotkeys.
-	go hooks.Reopen()
+	go currentHooks().Reopen()
 }
 
 // BecomeAccessory removes the launcher from the Dock and from Cmd+Tab once

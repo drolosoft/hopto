@@ -13,9 +13,27 @@ import (
 func TestNilHooksDoNothing(t *testing.T) {
 	Start(Hooks{})
 
+	current := currentHooks()
+
 	// None of these may panic.
-	hooks.Toggle(library.TabApps)
-	hooks.Reopen()
-	hooks.MenuPicked(1)
-	hooks.HotkeyRegistered(platform.HotkeyApps, 0)
+	current.Toggle(library.TabApps)
+	current.Reopen()
+	current.MenuPicked(1)
+	current.HotkeyRegistered(platform.HotkeyApps, 0)
+}
+
+// TestEventsBeforeStartAreDropped clears whatever an earlier test stored
+// and sends each event helper an event, as the first shortcut would
+// arrive before the launcher has called Start: none may panic.
+func TestEventsBeforeStartAreDropped(t *testing.T) {
+	hooks.Store(nil)
+	t.Cleanup(func() { hooks.Store(nil) })
+
+	hotkeyPressed(platform.HotkeyApps)
+	hotkeyRegistered(platform.HotkeyApps, 0, "RegisterHotKey")
+	hotkeyRegistered(platform.HotkeyApps, 1, "RegisterHotKey")
+	menuPicked(1)
+
+	// The reopen hook only has a caller on macOS, so it is read here.
+	currentHooks().Reopen()
 }

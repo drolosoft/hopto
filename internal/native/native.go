@@ -7,6 +7,7 @@ package native
 
 import (
 	"log"
+	"sync/atomic"
 
 	"github.com/drolosoft/hopto/internal/platform"
 )
@@ -39,15 +40,30 @@ type MenuItem struct {
 	Separator bool
 }
 
-// hooks are the callbacks the C handlers and the native thread reach.
-// Start fills them once; until then they are the empty ones, so an
-// event that comes in first is dropped instead of calling a nil func.
-var hooks = defaultHooks(Hooks{})
+// hooks holds the callbacks the C handlers and the native thread reach.
+// Start stores them once; those threads load them on every event, so the
+// hand-over is atomic and does not depend on Start having returned before
+// the first shortcut is registered. Until Start runs it holds nothing,
+// and currentHooks answers with the empty ones.
+var hooks atomic.Pointer[Hooks]
 
 // Start keeps the launcher's hooks for the native side to call. It is
 // called once, in startup, before the shortcuts are registered.
 func Start(given Hooks) {
-	hooks = defaultHooks(given)
+	filled := defaultHooks(given)
+	hooks.Store(&filled)
+}
+
+// currentHooks returns the hooks Start stored, or the empty ones when an
+// event comes in before Start: it is dropped instead of calling a nil
+// func.
+func currentHooks() Hooks {
+	stored := hooks.Load()
+	if stored == nil {
+		return defaultHooks(Hooks{})
+	}
+
+	return *stored
 }
 
 // defaultHooks returns given with an empty function in place of every
@@ -82,14 +98,14 @@ func hotkeyPressed(id uint32) {
 
 	log.Printf("hotkey %d pressed: %s", id, tab)
 
-	go hooks.Toggle(tab)
+	go currentHooks().Toggle(tab)
 }
 
 // hotkeyRegistered passes on what the system said to one shortcut and
 // leaves it in the log. call is the system function that answered
 // (RegisterEventHotKey or RegisterHotKey), named when it refused.
 func hotkeyRegistered(id uint32, status int32, call string) {
-	hooks.HotkeyRegistered(id, status)
+	currentHooks().HotkeyRegistered(id, status)
 
 	if status != 0 {
 		log.Printf("hotkey %d: %s failed with status %d", id, call, status)
@@ -105,5 +121,5 @@ func hotkeyRegistered(id uint32, status int32, call string) {
 func menuPicked(tag int) {
 	log.Printf("menu %d picked", tag)
 
-	go hooks.MenuPicked(tag)
+	go currentHooks().MenuPicked(tag)
 }
