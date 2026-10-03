@@ -174,7 +174,7 @@ func (a *App) Settings() SettingsView {
 	settings := a.library.Snapshot().Settings
 
 	return SettingsView{
-		Platform:              platformName,
+		Platform:              platform.Name,
 		Language:              platform.LanguageFor(settings.Language, a.language),
 		HotkeyApps:            settings.HotkeyApps,
 		HotkeyLinks:           settings.HotkeyLinks,

@@ -249,6 +249,7 @@ import (
 	"log"
 
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // onHotkey is what the Carbon handler calls, with the tab of the pressed
@@ -265,7 +266,7 @@ const maxDisplays = 16
 
 //export launcherHotkeyPressed
 func launcherHotkeyPressed(id C.UInt32) {
-	tab := tabForHotkey(uint32(id))
+	tab := platform.TabForHotkey(uint32(id))
 
 	log.Printf("hotkey %d pressed: %s", id, tab)
 
@@ -307,13 +308,15 @@ func becomeAccessory() {
 // registerToggleHotkeys binds the apps shortcut to the apps tab and the
 // links shortcut to the links tab. The specs come from the library; the
 // defaults are in hotkeyspec.go.
-func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
+func registerToggleHotkeys(
+	toggle func(tab string), apps, links platform.Hotkey,
+) {
 	onHotkey = toggle
 	C.registerHotkey(
-		hotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers),
+		platform.HotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers),
 	)
 	C.registerHotkey(
-		hotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers),
+		platform.HotkeyLinks, C.UInt32(links.KeyCode), C.UInt32(links.Modifiers),
 	)
 }
 

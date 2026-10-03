@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package platform
 
 import (
 	"math"
@@ -11,9 +11,9 @@ import (
 	"github.com/drolosoft/hopto/internal/library"
 )
 
-// symbolicHotkeysFile, under the home folder, is where macOS keeps its
+// SymbolicHotkeysFile, under the home folder, is where macOS keeps its
 // own shortcuts (System Settings → Keyboard → Keyboard Shortcuts).
-const symbolicHotkeysFile = "Library/Preferences/" +
+const SymbolicHotkeysFile = "Library/Preferences/" +
 	"com.apple.symbolichotkeys.plist"
 
 // finderSearchHotkey is the entry of "Show Finder search window", which

@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // The window side of the native layer: find Wails' window, keep it off
@@ -81,7 +82,7 @@ var onHotkey = func(tab string) {}
 
 // launcherWindow is Wails' window, found by the class name main.go set.
 func launcherWindow() windows.Handle {
-	className, _ := windows.UTF16PtrFromString(windowClassName)
+	className, _ := windows.UTF16PtrFromString(platform.WindowClassName)
 	window, _, _ := procFindWindowW.Call(
 		uintptr(unsafe.Pointer(className)), 0,
 	)
@@ -108,10 +109,12 @@ func becomeAccessory() {
 
 // registerToggleHotkeys binds the apps shortcut to the apps tab and the
 // links shortcut to the links tab, on the native thread.
-func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
+func registerToggleHotkeys(
+	toggle func(tab string), apps, links platform.Hotkey,
+) {
 	onHotkey = toggle
-	registerHotkey(hotkeyApps, apps)
-	registerHotkey(hotkeyLinks, links)
+	registerHotkey(platform.HotkeyApps, apps)
+	registerHotkey(platform.HotkeyLinks, links)
 }
 
 // displayID is the id hopto keeps for a monitor: FNV-32 of its device

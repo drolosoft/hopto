@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // withHotkeys records the two registrations as Carbon would, and forgets
@@ -10,8 +12,8 @@ import (
 func withHotkeys(t *testing.T, apps, links int32) {
 	t.Helper()
 
-	recordHotkeyStatus(hotkeyApps, apps)
-	recordHotkeyStatus(hotkeyLinks, links)
+	recordHotkeyStatus(platform.HotkeyApps, apps)
+	recordHotkeyStatus(platform.HotkeyLinks, links)
 
 	t.Cleanup(func() {
 		hotkeyStatuses.Lock()
@@ -75,7 +77,7 @@ func TestOpenKeyboardSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(open.calls) != 1 || open.calls[0][0] != keyboardSettingsURL {
+	if len(open.calls) != 1 || open.calls[0][0] != platform.KeyboardSettingsURL {
 		t.Errorf("open = %v", open.calls)
 	}
 }

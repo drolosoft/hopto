@@ -8,6 +8,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/drolosoft/hopto/internal/platform"
 	"golang.org/x/sys/windows"
 )
 
@@ -276,7 +277,7 @@ func trayWindowProc(
 	switch msg {
 	case wmHotkey:
 		id := uint32(wParam)
-		tab := tabForHotkey(id)
+		tab := platform.TabForHotkey(id)
 		log.Printf("hotkey %d pressed: %s", id, tab)
 		go onHotkey(tab)
 
@@ -512,7 +513,7 @@ func showTrayMenu(window windows.Handle) {
 // registerHotkey registers one shortcut on the native thread and records
 // what Windows said, so the welcome can show a taken combination. A held
 // key fires once.
-func registerHotkey(id uint32, hotkey Hotkey) {
+func registerHotkey(id uint32, hotkey platform.Hotkey) {
 	runNative(func() {
 		ok, _, err := procRegisterHotKey.Call(
 			uintptr(native.window), uintptr(id),

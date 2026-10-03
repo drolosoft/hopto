@@ -2,12 +2,17 @@
 
 package main
 
+import "github.com/drolosoft/hopto/internal/platform"
+
 // The native side only exists on macOS; these stubs let `go vet` and the
 // pure tests run elsewhere. Nothing shows a window here.
 func becomeAccessory() {}
 
 // registerToggleHotkeys registers nothing: global shortcuts are Carbon's.
-func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {}
+func registerToggleHotkeys(
+	toggle func(tab string), apps, links platform.Hotkey,
+) {
+}
 
 // centerWindow has no window to move.
 func centerWindow(mode string, display uint32) {}

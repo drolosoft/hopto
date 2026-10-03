@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package seed_test
 
 // config.example.toml is the macOS seed with its Command shortcuts, so
 // this test runs everywhere but Windows, whose seed differs in them.
@@ -20,7 +20,7 @@ import (
 // (a typo there would teach the typo), and hold exactly what a first
 // run writes, so the documented example and the real one never drift.
 func TestConfigExampleIsTheSeed(t *testing.T) {
-	data, err := os.ReadFile("config.example.toml")
+	data, err := os.ReadFile("../config.example.toml")
 	if err != nil {
 		t.Fatal(err)
 	}

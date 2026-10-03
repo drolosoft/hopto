@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package platform
 
 import (
 	"errors"
@@ -49,10 +49,10 @@ type launchAgent struct {
 	RunAtLoad        bool     `plist:"RunAtLoad"`
 }
 
-// loginAgent is the "Open at login" switch. It is not registered with
+// launchdLogin is the "Open at login" switch. It is not registered with
 // launchctl (supuesto 8): launchd reads the folder at the next login, so
 // ticking the box never starts a second copy right now.
-type loginAgent struct {
+type launchdLogin struct {
 	path       string
 	executable func() (string, error)
 }
@@ -98,13 +98,13 @@ func bundlePath(executable string) (string, error) {
 }
 
 // Enabled reports whether the agent file is there.
-func (l loginAgent) Enabled() bool {
+func (l launchdLogin) Enabled() bool {
 	_, err := os.Stat(l.path)
 	return err == nil
 }
 
 // Enable writes the agent for the running bundle.
-func (l loginAgent) Enable() error {
+func (l launchdLogin) Enable() error {
 	executable, err := l.executable()
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func (l loginAgent) Enable() error {
 }
 
 // Disable removes the agent; a file already gone is not an error.
-func (l loginAgent) Disable() error {
+func (l launchdLogin) Disable() error {
 	err := os.Remove(l.path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil

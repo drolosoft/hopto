@@ -3,7 +3,7 @@
 package main
 
 import (
-	"path/filepath"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -11,21 +11,17 @@ import (
 	"github.com/drolosoft/hopto/internal/platform"
 )
 
-// These tests run hopto as hopto.app and toggle its LaunchAgent, a
-// macOS fixture, so they run everywhere but Windows: there the login
-// item is the user's real Run key, which a test must not touch.
+// These tests read the menu's titles and its macOS entries, so they run
+// everywhere but Windows. The login switch is a fake: the real
+// LaunchAgent is tested inside the platform package.
 
-// withMenu installs a fake menu bar item and points the login switch
-// at a bundle inside the test's home.
+// withMenu installs a fake menu bar item and a fake login agent.
 func withMenu(t *testing.T, app *App) *fakeMenu {
 	t.Helper()
 
 	menu := &fakeMenu{}
 	app.menu = menu
-	bundle := filepath.Join(app.home, "Applications", "hopto.app")
-	app.login.executable = func() (string, error) {
-		return filepath.Join(bundle, "Contents", "MacOS", "hopto"), nil
-	}
+	app.login = &fakeLogin{}
 
 	app.installMenu()
 
@@ -60,29 +56,42 @@ func TestMenuItems(t *testing.T) {
 	}
 }
 
-// Review Focus 5: the entry writes and removes the agent and the tick
-// follows the disk; outside a bundle it refuses and stays unticked.
-func TestMenuLoginItemToggles(t *testing.T) {
-	app, _, _ := newTestApp(t)
-	menu := withMenu(t, app)
-
-	app.menuAction(menuLogin)
-	if !app.login.Enabled() || !menu.isChecked(menuLogin) {
-		t.Fatal("first click did not enable")
+// The menu entry reaches the agent through menuAction and the tick
+// follows what the agent says afterwards: a switch that works flips it,
+// a refusal leaves the agent and the tick off.
+func TestMenuLoginItemUsesTheAgent(t *testing.T) {
+	cases := []struct {
+		name        string
+		err         error
+		wantEnabled bool
+	}{
+		{"the agent accepts", nil, true},
+		{"the agent refuses", errors.New("not in a bundle"), false},
 	}
 
-	app.menuAction(menuLogin)
-	if app.login.Enabled() || menu.isChecked(menuLogin) {
-		t.Fatal("second click did not disable")
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, _, _ := newTestApp(t)
+			menu := withMenu(t, app)
+			agent := &fakeLogin{err: tc.err}
+			app.login = agent
 
-	app.login.executable = func() (string, error) {
-		return filepath.Join(t.TempDir(), "hopto.test"), nil
-	}
+			app.menuAction(menuLogin)
+			if agent.Enabled() != tc.wantEnabled ||
+				menu.isChecked(menuLogin) != tc.wantEnabled {
+				t.Fatalf("first click: enabled=%v ticked=%v",
+					agent.Enabled(), menu.isChecked(menuLogin))
+			}
 
-	app.menuAction(menuLogin)
-	if app.login.Enabled() || menu.isChecked(menuLogin) {
-		t.Error("enabled outside a bundle")
+			if tc.err != nil {
+				return
+			}
+
+			app.menuAction(menuLogin)
+			if agent.Enabled() || menu.isChecked(menuLogin) {
+				t.Fatal("second click did not disable")
+			}
+		})
 	}
 }
 
@@ -134,6 +143,39 @@ func TestMenuHelpWaitsForTheDialog(t *testing.T) {
 	if strings.Contains(win.joined(), "emit:help") {
 		t.Errorf("help under a dialog: %q", win.joined())
 	}
+}
+
+// fakeLogin is a LoginAgent that only remembers what was asked of it. A
+// canned err makes it refuse, as the real one does outside a bundle:
+// the switch is left as it was.
+type fakeLogin struct {
+	enabled bool
+	err     error
+}
+
+// Enabled reports the last switch.
+func (f *fakeLogin) Enabled() bool { return f.enabled }
+
+// Enable switches on unless the canned error refuses.
+func (f *fakeLogin) Enable() error {
+	if f.err != nil {
+		return f.err
+	}
+
+	f.enabled = true
+
+	return f.err
+}
+
+// Disable switches off unless the canned error refuses.
+func (f *fakeLogin) Disable() error {
+	if f.err != nil {
+		return f.err
+	}
+
+	f.enabled = false
+
+	return f.err
 }
 
 // fakeMenu records what App puts in the menu bar item.

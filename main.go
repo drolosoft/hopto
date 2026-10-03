@@ -71,7 +71,7 @@ func main() {
 			WindowIsTranslucent:  true,
 			BackdropType:         windows.None,
 			DisableWindowIcon:    true,
-			WindowClassName:      windowClassName,
+			WindowClassName:      platform.WindowClassName,
 			Theme:                windows.SystemDefault,
 		},
 	})

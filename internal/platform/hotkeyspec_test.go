@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package platform
 
 // These tests check Carbon key codes and the Command shortcuts of the
 // macOS seed, so they run everywhere but Windows; the Windows table is
@@ -70,11 +70,16 @@ func TestParseHotkeyRejects(t *testing.T) {
 // The hot key ids handed to Carbon come back in the event; anything
 // unknown opens the apps tab rather than nothing.
 func TestTabForHotkey(t *testing.T) {
-	cases := map[uint32]string{1: tabApps, 2: tabLinks, 0: tabApps, 7: tabApps}
+	cases := map[uint32]string{
+		1: library.TabApps,
+		2: library.TabLinks,
+		0: library.TabApps,
+		7: library.TabApps,
+	}
 
 	for id, want := range cases {
-		if got := tabForHotkey(id); got != want {
-			t.Errorf("tabForHotkey(%d) = %q, want %q", id, got, want)
+		if got := TabForHotkey(id); got != want {
+			t.Errorf("TabForHotkey(%d) = %q, want %q", id, got, want)
 		}
 	}
 }
@@ -86,7 +91,7 @@ func TestHotkeysFromSettings(t *testing.T) {
 	custom.HotkeyApps = "ctrl+option+a"
 	custom.HotkeyLinks = "ctrl+option+l"
 
-	apps, links := hotkeysFromSettings(custom)
+	apps, links := HotkeysFromSettings(custom)
 	if apps.KeyCode != 0 || links.KeyCode != 37 {
 		t.Errorf("custom: apps %+v links %+v", apps, links)
 	}
@@ -94,9 +99,9 @@ func TestHotkeysFromSettings(t *testing.T) {
 	broken := library.Default().Settings
 	broken.HotkeyApps = "cmd+space"
 
-	apps, links = hotkeysFromSettings(broken)
-	wrong := apps != mustHotkey(defaultAppsHotkey) ||
-		links != mustHotkey(defaultLinksHotkey)
+	apps, links = HotkeysFromSettings(broken)
+	wrong := apps != mustHotkey(DefaultAppsHotkey) ||
+		links != mustHotkey(DefaultLinksHotkey)
 	if wrong {
 		t.Errorf("broken: apps %+v links %+v", apps, links)
 	}
@@ -105,7 +110,7 @@ func TestHotkeysFromSettings(t *testing.T) {
 	same.HotkeyApps = "cmd+option+space"
 	same.HotkeyLinks = "cmd+option+space"
 
-	apps, links = hotkeysFromSettings(same)
+	apps, links = HotkeysFromSettings(same)
 	if apps == links {
 		t.Errorf("same: both shortcuts are %+v", apps)
 	}

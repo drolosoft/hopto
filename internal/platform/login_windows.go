@@ -1,12 +1,11 @@
 //go:build windows
 
-package main
+package platform
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/drolosoft/hopto/internal/platform"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -19,10 +18,10 @@ const runValue = "hopto"
 // errTemporary answers an exe that would not be there at login.
 var errTemporary = errors.New("hopto is running from a temporary folder")
 
-// loginAgent is the "Open at login" switch on Windows: a value in the
+// runValueLogin is the "Open at login" switch on Windows: a value in the
 // user's Run key. executable is injectable so the tests never read
 // the real one.
-type loginAgent struct {
+type runValueLogin struct {
 	executable func() (string, error)
 }
 
@@ -35,7 +34,7 @@ func openRunKey() (registry.Key, error) {
 }
 
 // Enabled reports whether the value is there.
-func (l loginAgent) Enabled() bool {
+func (l runValueLogin) Enabled() bool {
 	key, err := openRunKey()
 	if err != nil {
 		return false
@@ -48,13 +47,13 @@ func (l loginAgent) Enabled() bool {
 }
 
 // Enable writes the value for the running exe.
-func (l loginAgent) Enable() error {
+func (l runValueLogin) Enable() error {
 	exe, err := l.executable()
 	if err != nil {
 		return err
 	}
 
-	if platform.TemporaryExecutable(exe) {
+	if TemporaryExecutable(exe) {
 		return fmt.Errorf("%w: %s", errTemporary, exe)
 	}
 
@@ -64,11 +63,11 @@ func (l loginAgent) Enable() error {
 	}
 	defer func() { _ = key.Close() }()
 
-	return key.SetStringValue(runValue, platform.QuotedCommand(exe))
+	return key.SetStringValue(runValue, QuotedCommand(exe))
 }
 
 // Disable removes the value; a value that is not there is fine.
-func (l loginAgent) Disable() error {
+func (l runValueLogin) Disable() error {
 	key, err := openRunKey()
 	if err != nil {
 		return err

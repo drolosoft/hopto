@@ -1,4 +1,4 @@
-package main
+package platform
 
 import (
 	"fmt"
@@ -15,16 +15,16 @@ type Hotkey struct {
 	Modifiers uint32
 }
 
-// windowClassName is the Win32 class of hopto's window, set through
+// WindowClassName is the Win32 class of hopto's window, set through
 // Wails' options so the native side can find the window by name. macOS
 // ignores it.
-const windowClassName = "hoptoWindow"
+const WindowClassName = "hoptoWindow"
 
 // The hot key ids handed to Carbon; they come back in the event so the
 // handler knows which tab to open.
 const (
-	hotkeyApps  = 1
-	hotkeyLinks = 2
+	HotkeyApps  = 1
+	HotkeyLinks = 2
 )
 
 // ParseHotkey turns "cmd+shift+space" into a Hotkey. At least one of cmd,
@@ -74,15 +74,15 @@ func ParseHotkey(spec string) (Hotkey, error) {
 	return hotkey, nil
 }
 
-// tabForHotkey maps the id Carbon hands back to the tab that shortcut
+// TabForHotkey maps the id Carbon hands back to the tab that shortcut
 // opens. An id we did not register opens the apps tab: showing something is
 // better than swallowing the press.
-func tabForHotkey(id uint32) string {
-	if id == hotkeyLinks {
-		return tabLinks
+func TabForHotkey(id uint32) string {
+	if id == HotkeyLinks {
+		return library.TabLinks
 	}
 
-	return tabApps
+	return library.TabApps
 }
 
 // mustHotkey parses a built-in spec; a typo there is a programming error,
@@ -96,14 +96,14 @@ func mustHotkey(spec string) Hotkey {
 	return hotkey
 }
 
-// hotkeysFromSettings parses the two shortcuts of the library. A spec that
+// HotkeysFromSettings parses the two shortcuts of the library. A spec that
 // does not parse falls back to its default with a log line, so a typo in
 // the file never leaves hopto unreachable; two equal specs cannot both be
 // registered, so the links one goes back to its default.
-func hotkeysFromSettings(settings library.Settings) (apps, links Hotkey) {
-	apps = parseOrDefault("hotkey_apps", settings.HotkeyApps, defaultAppsHotkey)
+func HotkeysFromSettings(settings library.Settings) (apps, links Hotkey) {
+	apps = parseOrDefault("hotkey_apps", settings.HotkeyApps, DefaultAppsHotkey)
 	links = parseOrDefault(
-		"hotkey_links", settings.HotkeyLinks, defaultLinksHotkey,
+		"hotkey_links", settings.HotkeyLinks, DefaultLinksHotkey,
 	)
 
 	if apps == links {
@@ -111,10 +111,10 @@ func hotkeysFromSettings(settings library.Settings) (apps, links Hotkey) {
 			"hotkeys: hotkey_apps and hotkey_links are both %q, using the defaults",
 			settings.HotkeyLinks,
 		)
-		links = mustHotkey(defaultLinksHotkey)
+		links = mustHotkey(DefaultLinksHotkey)
 
 		if apps == links {
-			apps = mustHotkey(defaultAppsHotkey)
+			apps = mustHotkey(DefaultAppsHotkey)
 		}
 	}
 

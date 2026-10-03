@@ -1,12 +1,11 @@
 //go:build windows
 
-package main
+package platform
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/seed"
 )
 
@@ -31,21 +30,21 @@ func TestWindowsReservedHotkeys(t *testing.T) {
 
 // The defaults of the Windows seed must parse with the Windows tables.
 func TestWindowsDefaultsParse(t *testing.T) {
-	for _, spec := range []string{defaultAppsHotkey, defaultLinksHotkey} {
+	for _, spec := range []string{DefaultAppsHotkey, DefaultLinksHotkey} {
 		if _, err := ParseHotkey(spec); err != nil {
 			t.Errorf("%s: %v", spec, err)
 		}
 	}
 
-	if defaultAppsHotkey != "ctrl+shift+space" {
-		t.Errorf("apps default is %q", defaultAppsHotkey)
+	if DefaultAppsHotkey != "ctrl+shift+space" {
+		t.Errorf("apps default is %q", DefaultAppsHotkey)
 	}
 }
 
 // The seed and the parser agree on the Windows defaults.
 func TestWindowsSeedUsesTheDefaults(t *testing.T) {
-	data := string(seed.For(platform.LanguageEnglish))
-	for _, spec := range []string{defaultAppsHotkey, defaultLinksHotkey} {
+	data := string(seed.For(LanguageEnglish))
+	for _, spec := range []string{DefaultAppsHotkey, DefaultLinksHotkey} {
 		if !strings.Contains(data, `"`+spec+`"`) {
 			t.Errorf("seed lacks %q", spec)
 		}

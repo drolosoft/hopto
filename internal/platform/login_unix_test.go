@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package platform
 
 import (
 	"errors"
@@ -98,7 +98,7 @@ func TestBundlePathRefusesTranslocation(t *testing.T) {
 func TestLoginAgentEnableDisable(t *testing.T) {
 	home := t.TempDir()
 	executable := "/Applications/hopto.app/Contents/MacOS/hopto"
-	agent := loginAgent{
+	agent := launchdLogin{
 		path:       launchAgentPath(home),
 		executable: func() (string, error) { return executable, nil },
 	}

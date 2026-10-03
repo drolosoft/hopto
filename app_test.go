@@ -334,7 +334,7 @@ func TestSettingsAndStatus(t *testing.T) {
 
 	settings := app.Settings()
 	wrongSettings := settings.Language != platform.LanguageSpanish ||
-		settings.HotkeyApps != defaultAppsHotkey ||
+		settings.HotkeyApps != platform.DefaultAppsHotkey ||
 		settings.IconServices == nil
 	if wrongSettings {
 		t.Errorf("settings = %+v", settings)

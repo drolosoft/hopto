@@ -1,16 +1,16 @@
 //go:build windows
 
-package main
+package platform
 
 // The shortcut tables in Windows' terms: RegisterHotKey wants a virtual
 // key code and a MOD_* mask. Same names as keycodes_unix.go.
 
-// platformName is what the page gets as `platform`.
-const platformName = "windows"
+// Name is what the page gets as `platform`.
+const Name = "windows"
 
-// hotkeyExistsStatus is ERROR_HOTKEY_ALREADY_REGISTERED (1409): another
+// HotkeyExistsStatus is ERROR_HOTKEY_ALREADY_REGISTERED (1409): another
 // app registered the same combination first.
-const hotkeyExistsStatus int32 = 1409
+const HotkeyExistsStatus int32 = 1409
 
 // Modifier masks of RegisterHotKey (winuser.h: MOD_ALT, MOD_CONTROL,
 // MOD_SHIFT, MOD_WIN). "cmd" is the Win key: it sits where Command does.
@@ -25,8 +25,8 @@ const (
 // switch the input language and Alt+Space opens a window's system menu;
 // Ctrl+Shift+Space and Ctrl+Alt+Space are free on a stock system.
 const (
-	defaultAppsHotkey  = "ctrl+shift+space"
-	defaultLinksHotkey = "ctrl+alt+space"
+	DefaultAppsHotkey  = "ctrl+shift+space"
+	DefaultLinksHotkey = "ctrl+alt+space"
 )
 
 // modifierNames maps the words of a spec to their masks. "ctrl" and

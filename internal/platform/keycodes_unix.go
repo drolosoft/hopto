@@ -1,19 +1,19 @@
 //go:build !windows
 
-package main
+package platform
 
 import "runtime"
 
 // The shortcut tables of macOS. keycodes_windows.go holds the same names
 // in Windows' terms, so ParseHotkey and its tests compile on both.
 
-// platformName is what the page gets as `platform`; Linux says linux,
+// Name is what the page gets as `platform`; Linux says linux,
 // which the page treats like macOS until it has tables of its own.
-const platformName = runtime.GOOS
+const Name = runtime.GOOS
 
-// hotkeyExistsStatus is Carbon's eventHotKeyExistsErr: another app
+// HotkeyExistsStatus is Carbon's eventHotKeyExistsErr: another app
 // registered the same combination first.
-const hotkeyExistsStatus int32 = -9878
+const HotkeyExistsStatus int32 = -9878
 
 // Modifier masks from Carbon's Events.h (cmdKey, shiftKey, optionKey,
 // controlKey). They live here as plain numbers so this file has no cgo and
@@ -30,8 +30,8 @@ const (
 // Spotlight). Cmd+Option+Space is "Show Finder search window" in macOS and
 // the user has to disable that for the links shortcut to arrive.
 const (
-	defaultAppsHotkey  = "cmd+shift+space"
-	defaultLinksHotkey = "cmd+option+space"
+	DefaultAppsHotkey  = "cmd+shift+space"
+	DefaultLinksHotkey = "cmd+option+space"
 )
 
 // modifierNames maps the words of a spec to their masks. "ctrl" and

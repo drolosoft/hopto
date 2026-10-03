@@ -93,8 +93,22 @@ func (w *wailsWindow) SetAlwaysOnTop(on bool) {
 func (w *wailsWindow) PickFile(directory string) (string, error) {
 	return runtime.OpenFileDialog(w.ctx, runtime.OpenDialogOptions{
 		DefaultDirectory: directory,
-		Filters:          pickFilters(),
+		Filters:          wailsFilters(platform.PickFilters()),
 	})
+}
+
+// wailsFilters turns the platform's file filters into Wails' type: the
+// platform package must not import the Wails runtime.
+func wailsFilters(filters []platform.FileFilter) []runtime.FileFilter {
+	out := make([]runtime.FileFilter, 0, len(filters))
+
+	for _, filter := range filters {
+		out = append(out, runtime.FileFilter{
+			DisplayName: filter.Name, Pattern: filter.Pattern,
+		})
+	}
+
+	return out
 }
 
 // Quit ends the app; the only way out besides pkill, from the menu.
@@ -124,7 +138,7 @@ type App struct {
 	// menu is the menu bar item and login the LaunchAgent behind its
 	// "Open at login" entry; the tests put fakes in both.
 	menu  menuBar
-	login loginAgent
+	login platform.LoginAgent
 
 	// background counts the icon fetches in flight, so the tests (and a
 	// future clean shutdown) can wait for them.
@@ -195,11 +209,11 @@ func newApp(
 		dataDir:         dataDir,
 		language:        language,
 		scanner:         &discover.Scanner{},
-		appRoots:        appRoots(home),
-		edgeDir:         edgeAppsDir(home),
-		systemApps:      systemAppsRoot(),
-		login:           newLoginAgent(home),
-		symbolicHotkeys: filepath.Join(home, symbolicHotkeysFile),
+		appRoots:        platform.AppRoots(home),
+		edgeDir:         platform.EdgeAppsDir(home),
+		systemApps:      platform.SystemAppsRoot(),
+		login:           platform.NewLoginAgent(home),
+		symbolicHotkeys: filepath.Join(home, platform.SymbolicHotkeysFile),
 		tab:             tabApps,
 		discovered:      map[string]discover.App{},
 		fetched:         map[string]bool{},
@@ -255,7 +269,7 @@ func (a *App) startup(ctx context.Context) {
 
 	becomeAccessory()
 
-	apps, links := hotkeysFromSettings(a.library.Snapshot().Settings)
+	apps, links := platform.HotkeysFromSettings(a.library.Snapshot().Settings)
 	registerToggleHotkeys(a.toggle, apps, links)
 
 	// The menu bar item is the way to quit and to reach the help or the

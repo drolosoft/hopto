@@ -9,6 +9,7 @@ import (
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // errDialogBusy answers a second PickApp while the first panel is up.
@@ -43,7 +44,7 @@ func (a *App) PickApp() (AppDraft, error) {
 	}
 	defer a.endDialog()
 
-	path, err := a.window.PickFile(pickFolder())
+	path, err := a.window.PickFile(platform.PickFolder())
 	if err != nil {
 		log.Printf("pick app: %v", err)
 		return AppDraft{}, err

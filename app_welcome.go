@@ -1,6 +1,10 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/drolosoft/hopto/internal/platform"
+)
 
 // The states of a shortcut as the welcome shows them.
 const (
@@ -38,10 +42,10 @@ func (a *App) Welcome() WelcomeView {
 	view := WelcomeView{
 		FirstRun: a.firstRun,
 		Hotkeys: []HotkeyView{
-			hotkeyView(tabApps, settings.HotkeyApps, hotkeyApps),
-			hotkeyView(tabLinks, settings.HotkeyLinks, hotkeyLinks),
+			hotkeyView(tabApps, settings.HotkeyApps, platform.HotkeyApps),
+			hotkeyView(tabLinks, settings.HotkeyLinks, platform.HotkeyLinks),
 		},
-		FinderConflict: finderConflict(a, settings),
+		FinderConflict: platform.FinderConflict(a.symbolicHotkeys, settings),
 	}
 
 	problem := view.FinderConflict
@@ -74,7 +78,7 @@ func hotkeyView(tab, spec string, id uint32) HotkeyView {
 	switch status {
 	case 0:
 		view.State = hotkeyRegistered
-	case hotkeyExistsStatus:
+	case platform.HotkeyExistsStatus:
 		view.State = hotkeyTaken
 	default:
 		view.State = hotkeyFailed
@@ -125,5 +129,5 @@ func (a *App) DismissWelcome() {
 // OpenKeyboardSettings opens the pane where the Finder's shortcut can be
 // turned off.
 func (a *App) OpenKeyboardSettings() error {
-	return a.open(keyboardSettingsURL)
+	return a.open(platform.KeyboardSettingsURL)
 }

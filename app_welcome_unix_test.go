@@ -53,7 +53,7 @@ func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 	)
 	closeIcons(t, app)
 
-	withHotkeys(t, 0, hotkeyExistsStatus)
+	withHotkeys(t, 0, platform.HotkeyExistsStatus)
 
 	view := app.Welcome()
 	if !view.Show || view.FirstRun || view.Hotkeys[1].State != "taken" {
@@ -64,7 +64,7 @@ func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 		t.Error("no symbolic hotkeys file means 65 is on, and links is ⌘⌥Space")
 	}
 
-	recordHotkeyStatus(hotkeyLinks, -50)
+	recordHotkeyStatus(platform.HotkeyLinks, -50)
 	state := app.Welcome().Hotkeys[1]
 	if state.State != "failed" || state.Status != -50 {
 		t.Errorf("failed = %+v", state)
@@ -90,7 +90,7 @@ func TestPresentWelcomeStaysQuietAfterTheFirstRun(t *testing.T) {
 	)
 	closeIcons(t, app)
 
-	withHotkeys(t, 0, hotkeyExistsStatus)
+	withHotkeys(t, 0, platform.HotkeyExistsStatus)
 
 	view := app.Welcome()
 	if !view.Show || view.FirstRun {
