@@ -106,6 +106,11 @@ func TestPanelReturnsToItsDisplay(t *testing.T) {
 	again := newApp(
 		app.home, app.dataDir, &fakeWindow{}, nil, languageEnglish,
 	)
+
+	// A second App on the same home holds the icons folder too, and Windows
+	// cannot remove it while that handle is open.
+	closeIcons(t, again)
+
 	if again.display != 9 {
 		t.Errorf("a new run remembers %d, want 9", again.display)
 	}

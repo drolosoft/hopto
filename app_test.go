@@ -148,6 +148,23 @@ func removeWithRetries(t *testing.T, path string) {
 	t.Errorf("remove %s: %v", path, err)
 }
 
+// closeIcons releases the icons folder an App holds open once the test
+// ends. Windows cannot remove a folder while a handle on it is open, and
+// testHome removes the temp home. Cleanups run last in, first out, so this
+// one runs before that removal. The background work goes first because it
+// may still be reading an icon.
+func closeIcons(t *testing.T, app *App) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		app.background.Wait()
+
+		if app.iconHandler != nil {
+			_ = app.iconHandler.Close()
+		}
+	})
+}
+
 // newTestApp builds an App over a temp home, with discovery pointed at
 // folders inside it and English texts.
 func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
@@ -167,17 +184,7 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	app.windowDisplay = func() uint32 { return 0 }
 	app.attachedDisplays = func() []uint32 { return []uint32{1} }
 
-	// The icons folder must be released before testHome removes it, which
-	// Windows refuses while a handle is open. Cleanups run last in, first
-	// out, so this one runs before the removal registered by testHome. The background work goes
-	// first because it may still be reading an icon.
-	t.Cleanup(func() {
-		app.background.Wait()
-
-		if app.iconHandler != nil {
-			_ = app.iconHandler.Close()
-		}
-	})
+	closeIcons(t, app)
 
 	return app, win, open
 }

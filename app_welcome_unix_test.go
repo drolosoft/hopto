@@ -32,6 +32,8 @@ func TestWelcomeOnTheFirstRunOnly(t *testing.T) {
 	again := newApp(
 		app.home, app.dataDir, &fakeWindow{}, app.open, languageEnglish,
 	)
+	closeIcons(t, again)
+
 	if view := again.Welcome(); view.Show || view.FirstRun {
 		t.Errorf("second run = %+v", view)
 	}
@@ -44,6 +46,8 @@ func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 	app := newApp(
 		first.home, first.dataDir, &fakeWindow{}, first.open, languageEnglish,
 	)
+	closeIcons(t, app)
+
 	withHotkeys(t, 0, hotkeyExistsStatus)
 
 	view := app.Welcome()
@@ -77,6 +81,8 @@ func TestPresentWelcomeStaysQuietAfterTheFirstRun(t *testing.T) {
 	first, _, _ := newTestApp(t)
 	win := &fakeWindow{}
 	app := newApp(first.home, first.dataDir, win, first.open, languageEnglish)
+	closeIcons(t, app)
+
 	withHotkeys(t, 0, hotkeyExistsStatus)
 
 	view := app.Welcome()
