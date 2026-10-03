@@ -5,8 +5,11 @@ import (
 	"fmt"
 )
 
-// errOpenFlag answers a flag of `open` this adapter does not know.
+// errOpenFlag: a flag of `open` this adapter does not know.
 var errOpenFlag = errors.New("unsupported open flag")
+
+// errNothingToOpen: `open` was called without arguments.
+var errNothingToOpen = errors.New("open: nothing to open")
 
 // openArguments maps the small dialect of `open` the engine speaks to a
 // ShellExecute call: a bare URL or path opens as a double click would;
@@ -29,6 +32,6 @@ func openArguments(args []string) (verb, file, params string, err error) {
 	case len(args) > 0:
 		return "", "", "", fmt.Errorf("%w: %v", errOpenFlag, args)
 	default:
-		return "", "", "", errors.New("open: nothing to open")
+		return "", "", "", errNothingToOpen
 	}
 }

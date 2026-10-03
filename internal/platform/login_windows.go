@@ -15,13 +15,15 @@ const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 // runValue is hopto's own entry in it.
 const runValue = "hopto"
 
-// errTemporary answers an exe that would not be there at login.
+// errTemporary: the exe sits in a folder where it will not exist at the
+// next login.
 var errTemporary = errors.New("hopto is running from a temporary folder")
 
 // runValueLogin is the "Open at login" switch on Windows: a value in the
-// user's Run key. executable is injectable so the tests never read
-// the real one.
+// user's Run key.
 type runValueLogin struct {
+	// executable is os.Executable in the app; it is a field so the
+	// tests never read the real one.
 	executable func() (string, error)
 }
 
@@ -34,7 +36,7 @@ func openRunKey() (registry.Key, error) {
 }
 
 // Enabled reports whether the value is there.
-func (l runValueLogin) Enabled() bool {
+func (runValueLogin) Enabled() bool {
 	key, err := openRunKey()
 	if err != nil {
 		return false
@@ -47,8 +49,8 @@ func (l runValueLogin) Enabled() bool {
 }
 
 // Enable writes the value for the running exe.
-func (l runValueLogin) Enable() error {
-	exe, err := l.executable()
+func (login runValueLogin) Enable() error {
+	exe, err := login.executable()
 	if err != nil {
 		return err
 	}
@@ -67,7 +69,7 @@ func (l runValueLogin) Enable() error {
 }
 
 // Disable removes the value; a value that is not there is fine.
-func (l runValueLogin) Disable() error {
+func (runValueLogin) Disable() error {
 	key, err := openRunKey()
 	if err != nil {
 		return err

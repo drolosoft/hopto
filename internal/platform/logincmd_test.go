@@ -2,8 +2,8 @@ package platform
 
 import "testing"
 
-// Review Focus 3: an exe run from a temporary folder or a mounted zip
-// would be gone at the next login.
+// An exe run from a temporary folder or a mounted zip would be gone at
+// the next login.
 func TestTemporaryExecutableRefused(t *testing.T) {
 	for _, exe := range []string{
 		`C:\Users\someone\AppData\Local\Temp\hopto\hopto.exe`,

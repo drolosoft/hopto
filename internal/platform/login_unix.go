@@ -23,16 +23,16 @@ const launchAgentLabel = "com.drolosoft.hopto"
 // refused at login.
 const launchAgentPerm = 0o644
 
-// errNotInBundle is the answer outside a .app (`go test`, `go build`):
-// a login item pointing at a bare binary would start it without the
-// bundle's Info.plist, as a Dock app, which is not hopto.
+// errNotInBundle: the binary is not inside a .app (`go test`,
+// `go build`). A login item pointing at a bare binary would start it
+// without the bundle's Info.plist, as a Dock app, which is not hopto.
 var errNotInBundle = errors.New("hopto is not running from a .app bundle")
 
-// errTranslocated is the answer when the running .app sits under macOS's
-// AppTranslocation folder: Gatekeeper puts a freshly downloaded,
-// unnotarised app there, in a folder it recreates on every launch and
-// empties on the next one, so a login item pointing at it would work
-// once and then quietly fail after a reboot.
+// errTranslocated: the running .app sits under macOS's AppTranslocation
+// folder. Gatekeeper puts a freshly downloaded, unnotarised app there, in
+// a folder it recreates on every launch and empties on the next one, so a
+// login item pointing at it would work once and then quietly fail after
+// a reboot.
 var errTranslocated = errors.New(
 	"hopto is running from a translocated copy, not /Applications",
 )
@@ -44,16 +44,25 @@ const translocationMarker = "/AppTranslocation/"
 // launchAgent is the plist launchd reads. `open` on the bundle instead
 // of the binary makes the login start behave like a double click.
 type launchAgent struct {
-	Label            string   `plist:"Label"`
+	// Label is the job's name for launchd, launchAgentLabel.
+	Label string `plist:"Label"`
+
+	// ProgramArguments is the command line launchd runs, program first.
 	ProgramArguments []string `plist:"ProgramArguments"`
-	RunAtLoad        bool     `plist:"RunAtLoad"`
+
+	// RunAtLoad starts the job as soon as launchd loads it, at login.
+	RunAtLoad bool `plist:"RunAtLoad"`
 }
 
-// launchdLogin is the "Open at login" switch. It is not registered with
-// launchctl (supuesto 8): launchd reads the folder at the next login, so
-// ticking the box never starts a second copy right now.
+// launchdLogin is the "Open at login" switch. It only writes the file and
+// never registers it with launchctl: launchd reads the folder at the next
+// login, so ticking the box never starts a second copy right now.
 type launchdLogin struct {
-	path       string
+	// path is the agent's plist under ~/Library/LaunchAgents.
+	path string
+
+	// executable is os.Executable in the app; a test passes its own so
+	// it can pretend to run from a bundle.
 	executable func() (string, error)
 }
 
@@ -98,14 +107,14 @@ func bundlePath(executable string) (string, error) {
 }
 
 // Enabled reports whether the agent file is there.
-func (l launchdLogin) Enabled() bool {
-	_, err := os.Stat(l.path)
+func (login launchdLogin) Enabled() bool {
+	_, err := os.Stat(login.path)
 	return err == nil
 }
 
 // Enable writes the agent for the running bundle.
-func (l launchdLogin) Enable() error {
-	executable, err := l.executable()
+func (login launchdLogin) Enable() error {
+	executable, err := login.executable()
 	if err != nil {
 		return err
 	}
@@ -120,12 +129,12 @@ func (l launchdLogin) Enable() error {
 		return err
 	}
 
-	return atomicfile.Write(l.path, data, launchAgentPerm)
+	return atomicfile.Write(login.path, data, launchAgentPerm)
 }
 
 // Disable removes the agent; a file already gone is not an error.
-func (l launchdLogin) Disable() error {
-	err := os.Remove(l.path)
+func (login launchdLogin) Disable() error {
+	err := os.Remove(login.path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}

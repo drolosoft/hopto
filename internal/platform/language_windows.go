@@ -9,12 +9,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-var (
-	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
+// kernel32 is the library GetUserDefaultLocaleName lives in.
+var kernel32 = windows.NewLazySystemDLL("kernel32.dll")
 
-	procGetUserDefaultLocaleName = kernel32.NewProc(
-		"GetUserDefaultLocaleName",
-	)
+// procGetUserDefaultLocaleName is kernel32's GetUserDefaultLocaleName,
+// which writes the user's locale name, like "es-ES", into a buffer.
+var procGetUserDefaultLocaleName = kernel32.NewProc(
+	"GetUserDefaultLocaleName",
 )
 
 // localeNameMaxLength is LOCALE_NAME_MAX_LENGTH (winnls.h).

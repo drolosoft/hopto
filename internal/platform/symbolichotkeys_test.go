@@ -21,10 +21,10 @@ func symbolicPrefs(entries string) []byte {
 // macOS writes an entry only once the user touches it; a missing one is
 // the factory setting, which for 65 is on. The flag alone is not enough
 // once an entry carries its own combo: it still warns when that combo is
-// missing (nothing to read yet, so the flag is trusted as before this
-// check existed) or still ⌥⌘Space, but not once the user has rebound it
-// elsewhere while leaving the flag on.
-func TestSymbolicHotkeyEnabled(t *testing.T) {
+// missing (nothing to read yet, so the flag decides) or still ⌥⌘Space,
+// but not once the user has rebound it elsewhere while leaving the flag
+// on.
+func TestFinderSearchShortcutOn(t *testing.T) {
 	off := `<key>65</key><dict><key>enabled</key><false/></dict>`
 	on := `<key>65</key><dict><key>enabled</key><true/></dict>`
 	other := `<key>64</key><dict><key>enabled</key><false/></dict>`
@@ -69,7 +69,7 @@ func TestSymbolicHotkeyEnabled(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		got := symbolicHotkeyEnabled(test.data, finderSearchHotkey)
+		got := finderSearchShortcutOn(test.data)
 		if got != test.want {
 			t.Errorf("%s: got %v", test.name, got)
 		}
@@ -111,8 +111,8 @@ func TestUsesFinderShortcut(t *testing.T) {
 	}
 }
 
-// Plan 3 minor (f): a whole number in range counts whatever Go type the
-// plist library picked for it; anything else is not a key code.
+// A whole number in range counts whatever Go type the plist library
+// picked for it; anything else is not a key code.
 func TestSymbolicHotkeyNumber(t *testing.T) {
 	cases := []struct {
 		value any

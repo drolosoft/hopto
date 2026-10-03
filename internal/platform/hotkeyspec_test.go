@@ -38,15 +38,15 @@ func TestParseHotkey(t *testing.T) {
 		{"option+1", Hotkey{KeyCode: 18, Modifiers: modifierOption}},
 	}
 
-	for _, tc := range cases {
-		got, err := ParseHotkey(tc.spec)
+	for _, test := range cases {
+		got, err := ParseHotkey(test.spec)
 		if err != nil {
-			t.Errorf("%q: %v", tc.spec, err)
+			t.Errorf("%q: %v", test.spec, err)
 			continue
 		}
 
-		if got != tc.want {
-			t.Errorf("%q = %+v, want %+v", tc.spec, got, tc.want)
+		if got != test.want {
+			t.Errorf("%q = %+v, want %+v", test.spec, got, test.want)
 		}
 	}
 }
@@ -67,8 +67,8 @@ func TestParseHotkeyRejects(t *testing.T) {
 	}
 }
 
-// The hot key ids handed to Carbon come back in the event; anything
-// unknown opens the apps tab rather than nothing.
+// The system hands back the hotkey id with each press; an id hopto did
+// not register opens the apps tab rather than nothing.
 func TestTabForHotkey(t *testing.T) {
 	cases := map[uint32]string{
 		1: library.TabApps,

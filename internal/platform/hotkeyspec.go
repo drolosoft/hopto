@@ -8,24 +8,38 @@ import (
 	"github.com/drolosoft/hopto/internal/library"
 )
 
-// Hotkey is a global shortcut in the terms Carbon's RegisterEventHotKey
-// wants: a virtual key code and a mask of modifiers.
+// Hotkey is a global shortcut in the terms Carbon's RegisterEventHotKey or
+// Windows' RegisterHotKey wants: a virtual key code and a modifier mask.
 type Hotkey struct {
-	KeyCode   uint32
+	// KeyCode is the system's virtual key code for the key, from keyCodes.
+	KeyCode uint32
+
+	// Modifiers is the system's own modifier mask; the bits differ
+	// between macOS and Windows, so a Hotkey never crosses systems.
 	Modifiers uint32
 }
 
-// WindowClassName is the Win32 class of hopto's window, set through
-// Wails' options so the native side can find the window by name. macOS
-// ignores it.
-const WindowClassName = "hoptoWindow"
-
-// The hot key ids handed to Carbon; they come back in the event so the
-// handler knows which tab to open.
+// The hotkey ids hopto registers; the system hands them back with each
+// press, so the handler knows which tab to open.
 const (
 	HotkeyApps  = 1
 	HotkeyLinks = 2
 )
+
+// modifierNames maps the words of a spec to the masks each system defines
+// in its keycodes file. "ctrl" and "control", "opt", "alt" and "option"
+// are the same key; on Windows "cmd" and "command" are the Win key, which
+// sits where Command does.
+var modifierNames = map[string]uint32{
+	"cmd":     modifierCmd,
+	"command": modifierCmd,
+	"shift":   modifierShift,
+	"option":  modifierOption,
+	"opt":     modifierOption,
+	"alt":     modifierOption,
+	"ctrl":    modifierControl,
+	"control": modifierControl,
+}
 
 // ParseHotkey turns "cmd+shift+space" into a Hotkey. At least one of cmd,
 // option or control is required: shift alone or a bare key would steal
@@ -34,8 +48,7 @@ func ParseHotkey(spec string) (Hotkey, error) {
 	parts := strings.Split(strings.ToLower(spec), "+")
 	if len(parts) < 2 {
 		return Hotkey{}, fmt.Errorf(
-			"hotkey %q: expected modifiers and a key, like cmd+shift+space",
-			spec,
+			"hotkey %q: expected modifiers and a key, like cmd+shift+space", spec,
 		)
 	}
 
@@ -66,15 +79,19 @@ func ParseHotkey(spec string) (Hotkey, error) {
 	}
 
 	if owner, reserved := reservedHotkeys[hotkey]; reserved {
-		return Hotkey{}, fmt.Errorf(
-			"hotkey %q: %s", spec, reservedBy(owner),
-		)
+		return Hotkey{}, fmt.Errorf("hotkey %q: %s", spec, reservedBy(owner))
 	}
 
 	return hotkey, nil
 }
 
-// TabForHotkey maps the id Carbon hands back to the tab that shortcut
+// reservedBy is the clause that completes the refusal of a combination
+// the system keeps for owner.
+func reservedBy(owner string) string {
+	return systemName + " keeps it for " + owner
+}
+
+// TabForHotkey maps the id the system hands back to the tab that shortcut
 // opens. An id we did not register opens the apps tab: showing something is
 // better than swallowing the press.
 func TabForHotkey(id uint32) string {

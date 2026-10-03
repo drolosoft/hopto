@@ -33,12 +33,12 @@ func TestLanguageFor(t *testing.T) {
 		{"fr", "es", "en"},
 	}
 
-	for _, tc := range cases {
-		got := LanguageFor(tc.setting, tc.system)
-		if got != tc.want {
+	for _, test := range cases {
+		got := LanguageFor(test.setting, test.system)
+		if got != test.want {
 			t.Errorf(
 				"LanguageFor(%q, %q) = %q, want %q",
-				tc.setting, tc.system, got, tc.want,
+				test.setting, test.system, got, test.want,
 			)
 		}
 	}

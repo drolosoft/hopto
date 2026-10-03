@@ -4,12 +4,15 @@ package platform
 
 import "runtime"
 
-// The shortcut tables of macOS. keycodes_windows.go holds the same names
-// in Windows' terms, so ParseHotkey and its tests compile on both.
+// The shortcut tables of macOS; Linux builds use them until Linux has its
+// own. keycodes_windows.go holds the same names in Windows' terms.
 
-// Name is what the page gets as `platform`; Linux says linux,
-// which the page treats like macOS until it has tables of its own.
+// Name is what the page gets as `platform`. On Linux it is "linux", which
+// the page treats like macOS.
 const Name = runtime.GOOS
+
+// systemName is how a refusal names the system that keeps a combination.
+const systemName = "macOS"
 
 // HotkeyExistsStatus is Carbon's eventHotKeyExistsErr: another app
 // registered the same combination first.
@@ -34,19 +37,6 @@ const (
 	DefaultLinksHotkey = "cmd+option+space"
 )
 
-// modifierNames maps the words of a spec to their masks. "ctrl" and
-// "control", "opt", "alt" and "option" are the same key.
-var modifierNames = map[string]uint32{
-	"cmd":     modifierCmd,
-	"command": modifierCmd,
-	"shift":   modifierShift,
-	"option":  modifierOption,
-	"opt":     modifierOption,
-	"alt":     modifierOption,
-	"ctrl":    modifierControl,
-	"control": modifierControl,
-}
-
 // keyCodes are the virtual key codes of an ANSI keyboard (Carbon's
 // Events.h, kVK_*). Letters and digits are positional: the code is the
 // physical key, whatever the layout prints on it.
@@ -66,11 +56,6 @@ var keyCodes = map[string]uint32{
 // reservedHotkeys are combinations macOS keeps for itself; Carbon would
 // accept them and the app would never receive the press.
 var reservedHotkeys = map[Hotkey]string{
-	{KeyCode: 49, Modifiers: modifierCmd}: "Spotlight",
-	{KeyCode: 48, Modifiers: modifierCmd}: "the app switcher",
-}
-
-// reservedBy words the refusal of a combination the system keeps.
-func reservedBy(owner string) string {
-	return "macOS keeps it for " + owner
+	{KeyCode: keyCodes["space"], Modifiers: modifierCmd}: "Spotlight",
+	{KeyCode: keyCodes["tab"], Modifiers: modifierCmd}:   "the app switcher",
 }

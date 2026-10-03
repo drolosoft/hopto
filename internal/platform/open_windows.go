@@ -4,16 +4,15 @@ package platform
 
 import (
 	"errors"
+	"fmt"
 	"log"
-	"strconv"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
-// shell32 is the library ShellExecute lives in. The root package loads
-// its own handle for the tray; a lazy handle is cheap, so each package
-// keeps the one it needs rather than sharing a global.
+// shell32 is the library ShellExecute lives in. The lazy handle is cheap;
+// each file loads the DLL it uses.
 var shell32 = windows.NewLazySystemDLL("shell32.dll")
 
 // procShellExecuteW is shell32's ShellExecuteW, which starts a file, a
@@ -28,6 +27,9 @@ const swShowNormal = 1
 // ShellExecute answers an error code up to 32, and an instance handle
 // above it.
 const shellExecuteFailure = 32
+
+// errShellExecute: ShellExecute returned one of its error codes.
+var errShellExecute = errors.New("ShellExecute failed")
 
 // RunOpen is the Windows side of /usr/bin/open: ShellExecute, the only
 // way hopto starts anything, so a .lnk, an .exe and a URL all open the
@@ -68,9 +70,7 @@ func RunOpen(args ...string) error {
 	if result <= shellExecuteFailure {
 		log.Printf("open %v: ShellExecute code %d", args, result)
 
-		return errors.New(
-			"ShellExecute failed with code " + strconv.Itoa(int(result)),
-		)
+		return fmt.Errorf("%w: code %d", errShellExecute, result)
 	}
 
 	return nil

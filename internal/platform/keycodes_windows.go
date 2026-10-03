@@ -8,6 +8,9 @@ package platform
 // Name is what the page gets as `platform`.
 const Name = "windows"
 
+// systemName is how a refusal names the system that keeps a combination.
+const systemName = "Windows"
+
 // HotkeyExistsStatus is ERROR_HOTKEY_ALREADY_REGISTERED (1409): another
 // app registered the same combination first.
 const HotkeyExistsStatus int32 = 1409
@@ -29,20 +32,6 @@ const (
 	DefaultLinksHotkey = "ctrl+alt+space"
 )
 
-// modifierNames maps the words of a spec to their masks. "ctrl" and
-// "control", "opt", "alt" and "option" are the same key; "cmd" and
-// "command" are the Win key.
-var modifierNames = map[string]uint32{
-	"cmd":     modifierCmd,
-	"command": modifierCmd,
-	"shift":   modifierShift,
-	"option":  modifierOption,
-	"opt":     modifierOption,
-	"alt":     modifierOption,
-	"ctrl":    modifierControl,
-	"control": modifierControl,
-}
-
 // keyCodes are virtual key codes (winuser.h, VK_*). Letters and digits
 // are their ASCII upper-case values; the named keys are VK_RETURN,
 // VK_TAB, VK_SPACE, VK_ESCAPE and VK_F1 to VK_F12.
@@ -60,23 +49,17 @@ var keyCodes = map[string]uint32{
 	"f11": 0x7A, "f12": 0x7B,
 }
 
-// languageSwitch is the owner of both Win+Space and Win+Shift+Space; it
-// is a constant so the two table rows stay within the line width.
-const languageSwitch = "the input language switch"
-
 // reservedHotkeys are combinations Windows keeps for itself:
 // RegisterHotKey accepts them and the press never arrives.
 var reservedHotkeys = map[Hotkey]string{
-	{KeyCode: 0x4C, Modifiers: modifierCmd}: "locking the session",
-	{KeyCode: 0x09, Modifiers: modifierCmd}: "Task View",
-	{KeyCode: 0x20, Modifiers: modifierCmd}: languageSwitch,
+	{KeyCode: keyCodes["l"], Modifiers: modifierCmd}:   "locking the session",
+	{KeyCode: keyCodes["tab"], Modifiers: modifierCmd}: "Task View",
 	{
-		KeyCode:   0x20,
+		KeyCode:   keyCodes["space"],
+		Modifiers: modifierCmd,
+	}: "the input language switch",
+	{
+		KeyCode:   keyCodes["space"],
 		Modifiers: modifierCmd | modifierShift,
-	}: languageSwitch,
-}
-
-// reservedBy words the refusal of a combination the system keeps.
-func reservedBy(owner string) string {
-	return "Windows keeps it for " + owner
+	}: "the input language switch",
 }

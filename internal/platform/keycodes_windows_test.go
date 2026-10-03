@@ -9,8 +9,8 @@ import (
 	"github.com/drolosoft/hopto/seed"
 )
 
-// Review Focus 4: a spec copied from the macOS docs registers the Win key
-// on Windows, and Win+Shift+Space is the input language switch.
+// A spec copied from the macOS docs registers the Win key on Windows,
+// and Win+Shift+Space is the input language switch.
 func TestWindowsReservedHotkeys(t *testing.T) {
 	_, err := ParseHotkey("cmd+shift+space")
 	if err == nil || !strings.Contains(err.Error(), "Windows keeps it") {

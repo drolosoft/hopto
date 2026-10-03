@@ -33,7 +33,7 @@ func AppRoots(home string) []string {
 }
 
 // SystemAppsRoot is System32: discover lists a short fixed set of its
-// tools (startmenu_windows.go).
+// tools (systemTools in internal/discover).
 func SystemAppsRoot() string {
 	return filepath.Join(os.Getenv("SystemRoot"), "System32")
 }
@@ -58,14 +58,15 @@ func PickFilters() []FileFilter {
 	}
 }
 
-// NewLoginAgent is the Run key switch of login_windows.go.
-func NewLoginAgent(home string) LoginAgent {
+// NewLoginAgent is the Run key switch of login_windows.go. It takes the
+// home folder only to share the macOS signature: the Run key is per user
+// already.
+func NewLoginAgent(_ string) LoginAgent {
 	return runValueLogin{executable: os.Executable}
 }
 
-// FinderConflict is a macOS question; Windows has no Finder.
-func FinderConflict(
-	symbolicHotkeysFile string, settings library.Settings,
-) bool {
+// FinderConflict is a macOS question; Windows has no Finder, and the
+// parameters are there only to share the macOS signature.
+func FinderConflict(_ string, _ library.Settings) bool {
 	return false
 }
