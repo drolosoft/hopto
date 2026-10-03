@@ -4,20 +4,18 @@
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite, DeleteLink, DeleteApp, HideApp, UnhideApp, RenameCategory, DeleteCategory} from '../wailsjs/go/app/App';
-import {decorate, visibleUnder, sections, unifiedSearch, FAVORITES, HIDDEN} from './filter.js';
+import {decorate, FAVORITES, HIDDEN} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems, removalOf} from './state.js';
+import {layoutOf} from './layout.js';
 import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
 import {renderAll, renderHelp, renderEditingFooter, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout, renameBox} from './render.js';
 import {installKeyboard} from './keyboard.js';
-import {addOffer, newDraft, editDraft, adoptDraft} from './draft.js';
+import {newDraft, editDraft, adoptDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
 import {installEditing, editableCategories, openEditor, closeEditor, leaveEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate, pickApp} from './editing.js';
 import {installWelcome, checkWelcome, hideWelcome, presentWelcome} from './welcome.js';
-
-// How many "Recent" items the empty-query layout shows.
-const RECENT_LIMIT = 5;
 
 // ⌘⇧↩ opens every item of the active chip at once; past this many, that
 // is a wall of windows rather than a shortcut, so it refuses instead.
@@ -35,87 +33,6 @@ let t = translator('en');
 const search = searchBox();
 
 /**
- * The "＋ Add" row the search offers when nothing matches, or at the end
- * when the text is an address. It is an entry like any other, so the
- * keyboard, the selection and the footer reach it with no special case.
- * @param {{text: string, url: boolean}} offer
- * @returns {object}
- */
-function addEntry(offer) {
-    return {
-        key: 'add:link',
-        kind: 'add',
-        id: '',
-        name: t('add.row', {text: offer.text}),
-        description: offer.url ? t('add.asURL') : t('add.asName'),
-        glyph: '＋',
-        text: offer.text,
-    };
-}
-
-/**
- * The "Search Applications…" row of the apps tab: Enter opens the app
- * editor with the native dialog.
- * @returns {object}
- */
-function pickEntry() {
-    return {
-        key: 'pick:app',
-        kind: 'pick',
-        id: '',
-        name: t('pick.row'),
-        description: t('pick.hint'),
-        glyph: '⌕',
-    };
-}
-
-/**
- * What the list shows for the state: the unified search while typing, a
- * flat list under a chip, or the sections of the tab.
- * @param {object} current
- * @returns {{entries: object[], groups: {title: string, start: number, count: number}[], unified: boolean}}
- */
-export function layoutOf(current) {
-    if (current.query) {
-        const entries = unifiedSearch(current.apps, current.links, current.query);
-        const offer = addOffer(current.query, entries.length);
-        if (offer) {
-            entries.push(addEntry(offer));
-
-            // On the apps tab the search also offers the native dialog
-            // (supuesto 4): the add row itself always adds a link.
-            if (current.tab === 'apps') {
-                entries.push(pickEntry());
-            }
-        }
-
-        return {entries, groups: [], unified: true};
-    }
-
-    const items = current.tab === 'links' ? current.links : current.apps;
-    const categories = current.tab === 'links' ? current.linkCategories : current.appCategories;
-
-    if (current.category) {
-        return {entries: visibleUnder(items, current.category), groups: [], unified: false};
-    }
-
-    const named = categories.map((category) => ({id: category.id, name: category.virtual ? t(`category.${category.id}`) : category.name}));
-    const grouped = sections(items, named, RECENT_LIMIT);
-
-    const entries = [];
-    const groups = [];
-    for (const group of grouped) {
-        const title = group.id === 'favorites' ? t('section.favorites')
-            : group.id === 'recent' ? t('section.recent')
-            : named.find((category) => category.id === group.id)?.name ?? group.id;
-        groups.push({title, start: entries.length, count: group.items.length});
-        entries.push(...group.items);
-    }
-
-    return {entries, groups, unified: false};
-}
-
-/**
  * Repaints from the state, keeping the selection inside the list.
  */
 function render() {
@@ -130,7 +47,7 @@ function render() {
 
     hideEditor();
 
-    const layout = layoutOf(state);
+    const layout = layoutOf(state, t);
 
     if (state.selected >= layout.entries.length) {
         state.selected = Math.max(0, layout.entries.length - 1);
@@ -144,7 +61,7 @@ function render() {
  * @returns {object|undefined}
  */
 function selectedEntry() {
-    return layoutOf(state).entries[state.selected];
+    return layoutOf(state, t).entries[state.selected];
 }
 
 /**
@@ -246,7 +163,7 @@ async function showSaved(key, toastKey) {
 
     await refresh();
 
-    const index = layoutOf(state).entries.findIndex((entry) => entry.key === key || entry.web?.key === key);
+    const index = layoutOf(state, t).entries.findIndex((entry) => entry.key === key || entry.web?.key === key);
     state.selected = Math.max(0, index);
     render();
     showToast(t(toastKey));
@@ -620,11 +537,13 @@ function dispatch(action) {
         }
     }
 
-    const entry = selectedEntry();
+    // One layout per key: the entry under the selection and a move both
+    // read it, and nothing changes the state between the two.
+    const layout = layoutOf(state, t);
+    const entry = layout.entries[state.selected];
 
     switch (action.type) {
         case 'move': {
-            const layout = layoutOf(state);
             if (layout.entries.length === 0) {
                 break;
             }

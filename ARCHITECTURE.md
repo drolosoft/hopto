@@ -99,6 +99,7 @@ frontend/src/         the page:
   main.js             glue: the state, calls to Go, wiring
   state.js             the state and the texts derived from it
   filter.js            search, ranking, sections
+  layout.js            what the list shows: rows, sections, add and pick rows
   keys.js               key presses to actions
   draft.js               the editor's draft
   hotkeys.js              "cmd+shift+space" as "⇧⌘Space"
@@ -116,7 +117,7 @@ scripts/              verify-hopto-windows.ps1, internal-files guard, real-app h
 
 The imports go one way: `main` to `app`, `app` to `native`, `platform`, `library` and the rest, `native` to `platform` and `library`, `platform` to `library`, `discover` and `atomicfile`. Neither `platform` nor `native` imports Wails or knows the App; `native` reaches the App only through the `native.Hooks` it is given at start.
 
-`state.js`, `filter.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js` touch neither the DOM nor Wails, so `node --test` covers them without a browser.
+`state.js`, `filter.js`, `layout.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js` touch neither the DOM nor Wails, so `node --test` covers them without a browser.
 
 ## Key Design Decisions
 
