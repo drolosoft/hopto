@@ -230,7 +230,7 @@ func TestParseShellLinkSurvivesEveryTruncation(t *testing.T) {
 		`%ProgramFiles%\Foo\foo.exe`,
 	)
 
-	for length := 0; length < len(full); length++ {
+	for length := range full {
 		// The result is dropped on purpose: only the absence of a
 		// panic is under test here.
 		_, _ = ParseShellLink(full[:length])

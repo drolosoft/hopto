@@ -138,7 +138,7 @@ func removeWithRetries(t *testing.T, path string) {
 	t.Helper()
 
 	var err error
-	for attempt := 0; attempt < 10; attempt++ {
+	for range 10 {
 		err = os.RemoveAll(path)
 		if err == nil {
 			return
