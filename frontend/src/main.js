@@ -3,18 +3,19 @@
  */
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
-import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite, DeleteLink, DeleteApp, HideApp, UnhideApp, RenameCategory, DeleteCategory} from '../wailsjs/go/app/App';
-import {decorate, FAVORITES, HIDDEN} from './filter.js';
+import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite} from '../wailsjs/go/app/App';
+import {decorate} from './filter.js';
 import {nextIndex} from './keys.js';
-import {initialState, chipItems, removalOf} from './state.js';
+import {initialState, chipItems} from './state.js';
 import {layoutOf} from './layout.js';
 import {TABS, otherTab} from './tabs.js';
 import {resolveLanguage, translator} from './i18n.js';
-import {renderAll, renderHelp, renderEditingFooter, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout, renameBox} from './render.js';
+import {renderAll, renderHelp, renderEditingFooter, showToast, animateAppearance, columns, searchBox, verticalNeighbour, setAbout} from './render.js';
 import {installKeyboard} from './keyboard.js';
 import {newDraft, editDraft, adoptDraft} from './draft.js';
 import {hideEditor, focusedField} from './editor.js';
 import {installEditing, editableCategories, openEditor, closeEditor, leaveEditor, saveEditor, chooseCategory, stepCategory, refreshEditorView, editDuplicate, pickApp} from './editing.js';
+import {installRemoving, askRemoval, confirmPending, startRename, finishRename, askCategoryDeletion} from './removing.js';
 import {installWelcome, checkWelcome, hideWelcome, presentWelcome} from './welcome.js';
 
 // ⌘⇧↩ opens every item of the active chip at once; past this many, that
@@ -211,162 +212,6 @@ function editEntry(entry) {
 function editReference(ref) {
     const key = `${ref.tab}:${ref.id}`;
     editEntry([...state.links, ...state.apps].find((item) => item.key === key));
-}
-
-/**
- * ⌘⌫ on an entry. A hidden app comes back at once, nothing is lost by
- * that; anything else waits for Enter with the question in the row and
- * in the footer.
- * @param {object|undefined} entry
- */
-function askRemoval(entry) {
-    const action = removalOf(entry);
-    if (action === '') {
-        return;
-    }
-
-    if (action === 'unhide') {
-        removeWith(() => UnhideApp(entry.id), 'toast.unhidden');
-        return;
-    }
-
-    const tab = entry.kind === 'link' ? 'links' : 'apps';
-    state.confirming = {action, key: entry.key, id: entry.id, tab, name: entry.name};
-    render();
-}
-
-/**
- * Enter on a pending question: does what it asked.
- */
-function confirmPending() {
-    const pending = state.confirming;
-    state.confirming = null;
-
-    if (!pending) {
-        return;
-    }
-
-    if (pending.action === 'deleteCategory') {
-        removeWith(() => DeleteCategory(pending.tab, pending.id), 'toast.deleted', () => {
-            state.category = '';
-        });
-        return;
-    }
-
-    if (pending.action === 'hide') {
-        removeWith(() => HideApp(pending.id), 'toast.hidden');
-        return;
-    }
-
-    const remove = pending.tab === 'links' ? DeleteLink : DeleteApp;
-    removeWith(() => remove(pending.id), 'toast.deleted');
-}
-
-/**
- * Runs a removal through Go, re-reads everything and says so. The
- * selection keeps its index, so the next item moves under it; the
- * hidden chip, once emptied, gives way to "All".
- * @param {() => Promise<void>} call
- * @param {string} toastKey
- * @param {() => void} [after] what changes in the state once it worked
- */
-async function removeWith(call, toastKey, after) {
-    try {
-        await call();
-    } catch (error) {
-        Debug(`remove: ${error}`);
-        showToast(t('toast.deleteFailed', {error: String(error)}));
-        render();
-        return;
-    }
-
-    after?.();
-    await refresh();
-
-    if (state.category === HIDDEN && !state.apps.some((app) => app.hidden)) {
-        state.category = '';
-        render();
-    }
-
-    showToast(t(toastKey));
-    search.focus();
-}
-
-/**
- * The chip ⌘⇧E and ⌘⇧⌫ act on: the active one, when it is a category of
- * the user (not All, the favourites or a virtual chip) and nothing is
- * typed.
- * @returns {{id: string, name: string}|null}
- */
-function activeUserCategory() {
-    if (state.query !== '' || state.category === '' || state.category === FAVORITES) {
-        return null;
-    }
-
-    return editableCategories(state.tab).find((category) => category.id === state.category) ?? null;
-}
-
-/**
- * ⌘⇧E: the active chip turns into a field holding its name, selected.
- */
-function startRename() {
-    const category = activeUserCategory();
-    if (!category) {
-        return;
-    }
-
-    state.renaming = {tab: state.tab, id: category.id, name: category.name};
-    render();
-
-    const box = renameBox();
-    box?.focus();
-    box?.select();
-}
-
-/**
- * Enter (keep) or Esc in the chip being renamed. An empty or unchanged
- * name is a cancel; Go's own checks (length, invisible characters) come
- * back as a toast.
- * @param {boolean} keep
- */
-async function finishRename(keep) {
-    const renaming = state.renaming;
-    const name = renameBox()?.value.trim() ?? '';
-    state.renaming = null;
-
-    if (keep && renaming && name !== '' && name !== renaming.name) {
-        try {
-            await RenameCategory(renaming.tab, renaming.id, name);
-            await refresh();
-            showToast(t('toast.renamed'));
-        } catch (error) {
-            Debug(`rename ${renaming.id}: ${error}`);
-            showToast(t('toast.renameFailed', {error: String(error)}));
-        }
-    }
-
-    render();
-    search.focus();
-}
-
-/**
- * ⌘⇧⌫: a chip that still has items is refused on the spot (Go refuses it
- * too); an empty one waits for Enter with the question in the footer.
- */
-function askCategoryDeletion() {
-    const category = activeUserCategory();
-    if (!category) {
-        return;
-    }
-
-    const items = state.tab === 'links' ? state.links : state.apps;
-    if (items.some((item) => item.category === category.id && item.source === 'library')) {
-        showToast(t('toast.categoryInUse'));
-        return;
-    }
-
-    state.confirming = {action: 'deleteCategory', key: `category:${category.id}`, id: category.id, tab: state.tab, name: category.name};
-    render();
 }
 
 /**
@@ -682,6 +527,15 @@ installEditing({
     closed: returnToSearch,
     toast: showToast,
     edit: editReference,
+});
+
+installRemoving({
+    state: () => state,
+    t: () => t,
+    render,
+    refresh,
+    toast: showToast,
+    focusSearch: () => search.focus(),
 });
 
 installWelcome({t: () => t, onClosed: () => search.focus()});

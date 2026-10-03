@@ -109,6 +109,7 @@ frontend/src/         the page:
   render.js, cards.js    the list, chips, footer and help
   editor.js              the editor panel
   editing.js             the editor's flow: open, inspect, save, close
+  removing.js            delete, hide and unhide, rename and delete a chip
   keyboard.js            routes key presses
   welcome.js             the first-run welcome
 frontend/test/        node --test for the pure modules, Playwright specs, the fake-bridge harness
