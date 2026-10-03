@@ -50,12 +50,14 @@ ZIP := $(DIST)/hopto-$(VERSION)-macos-universal.zip
 # architecture, with the same $HOME check as the Mac binary. dist depends
 # on this one, and not the other way round, because build-windows cleans
 # build/bin: the exes have to be built before the universal .app, or the
-# .app would be wiped out.
+# .app would be wiped out. The loop runs under set -e: make only sees the
+# exit status of the last command, so a zip that failed for amd64 would
+# otherwise be hidden by a good arm64.
 dist: build-windows-dist
 
 build-windows-dist: build-windows
 	mkdir -p $(DIST)
-	for arch in amd64 arm64; do \
+	set -e; for arch in amd64 arm64; do \
 	  test -z "$$(strings build/bin/hopto-windows-$$arch.exe | grep -F "$$HOME")" || exit 1; \
 	  rm -f $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(DIST)/hopto-$(VERSION)-windows-$$arch.zip.sha256; \
 	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip build/bin/hopto-windows-$$arch.exe LICENSE; \

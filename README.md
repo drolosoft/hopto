@@ -6,7 +6,7 @@
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/github/v/release/drolosoft/hopto?label=release" alt="GitHub Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/macOS-12%2B-lightgrey.svg" alt="macOS 12+"></a>
-  <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/Windows-10%2B-lightgrey.svg" alt="Windows 10+"></a>
+  <a href="https://github.com/drolosoft/hopto/releases/latest"><img src="https://img.shields.io/badge/Windows-11%2B-lightgrey.svg" alt="Windows 11+"></a>
 </p>
 
 > **⌨️⚡🔗 Keyboard launcher for your macOS and Windows apps and links. One shortcut, type, Enter.**
@@ -98,7 +98,7 @@ To start hopto at login, tick **Open at login** in its menu bar item.
 #### Windows
 
 1. Download `hopto-vX.Y.Z-windows-amd64.zip` from the [latest release](https://github.com/drolosoft/hopto/releases/latest), or the `arm64` one on a Snapdragon machine.
-2. Unzip it anywhere under Program Files or `AppData\Local\Programs`, and run `hopto.exe`.
+2. Unzip it anywhere under Program Files or `AppData\Local\Programs`, and run `hopto-windows-amd64.exe` (or `hopto-windows-arm64.exe`).
 3. The program is not signed, so SmartScreen warns the first time: **More info**, then **Run anyway**.
 4. Press **Ctrl+Shift+Space**.
 
@@ -227,7 +227,7 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make hooks` | Installs the pre-commit guard against internal files |
 | `make clean` | Removes the build output |
 
-Runs on macOS 12 or later, and on Windows 10 (1809) or later with WebView2. Building needs Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcode Command Line Tools.
+Runs on macOS 12 or later, and on Windows 11 22H2 or later with WebView2. Building needs Go 1.27, Node 22, the Wails CLI v2.16.0 and the Xcode Command Line Tools.
 
 ---
 

@@ -223,7 +223,7 @@ done
 | Comments added to `library.toml` by hand are lost at the next save | The TOML encoder writes the whole file. |
 | Links are http and https only | Other schemes could reach other apps or the file system. |
 | Store apps are not listed on Windows | They live in `shell:AppsFolder`, not as shortcuts; a later milestone. |
-| No bundle id opening on Windows | Apps open by path; `bundle_id` is kept as a field and ignored. |
+| No bundle id opening on Windows | Bundle ids are a macOS idea: an app entry with a `bundle_id` cannot open on Windows, even when it also has a `path`. The `path` is what opens there. |
 | The Windows exe is unsigned | SmartScreen warns on the first run. |
 | A redirected `APPDATA` is not followed | The data folder is derived from the profile folder. |
-| Transparency on Windows 10 is untested | Verified on Windows 11 only. |
+| Windows 10 is untested | Below Windows 11 22H2 (build 22621) Wails draws the translucent window as a blur over its whole rectangle, so hopto asks for Windows 11 22H2 or later. |
