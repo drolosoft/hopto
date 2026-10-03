@@ -355,12 +355,34 @@ func TestInspectURL(t *testing.T) {
 	}
 }
 
+// pointSeedLinksAt sends every link the library already holds to the
+// given local server and drops their icon hints. Listing the links starts
+// a background fetch for each one without an icon, and the starter
+// library's are real websites: left alone, the test would depend on the
+// network and on those sites staying up.
+func pointSeedLinksAt(t *testing.T, app *App, base string) {
+	t.Helper()
+
+	err := app.library.Apply(func(lib *library.Library) error {
+		for index := range lib.Links {
+			lib.Links[index].URL = base + "/" + lib.Links[index].ID
+			lib.Links[index].Icon = ""
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // An icon lands in the background while the file is edited by hand; the
 // hand edit survives, the icon is written, the page is told.
 func TestBackgroundIconFetchNeverTouchesTheLibrary(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	allowPrivate(t, app)
 	server := iconAndPage(t)
+	pointSeedLinksAt(t, app, server.URL)
 
 	mine := LinkInput{URL: server.URL + "/page", Name: "Mine", Category: "dev"}
 	if _, err := app.AddLink(mine); err != nil {
@@ -374,7 +396,7 @@ func TestBackgroundIconFetchNeverTouchesTheLibrary(t *testing.T) {
 	}
 
 	handEntry := "\n[[links]]\nid = \"by-hand\"\nname = \"By hand\"\n" +
-		"url = \"https://hand.test\"\ncategory = \"dev\"\n"
+		"url = \"" + server.URL + "/hand\"\ncategory = \"dev\"\n"
 	edited := string(data) + handEntry
 	writeErr := os.WriteFile(app.library.Path(), []byte(edited), 0o600)
 	if writeErr != nil {
