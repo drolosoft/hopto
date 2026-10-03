@@ -128,7 +128,16 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	app.windowDisplay = func() uint32 { return 0 }
 	app.attachedDisplays = func() []uint32 { return []uint32{1} }
 
-	t.Cleanup(app.background.Wait)
+	// The icons folder must be released before t.TempDir removes it, which
+	// Windows refuses while a handle is open. The background work goes
+	// first because it may still be reading an icon.
+	t.Cleanup(func() {
+		app.background.Wait()
+
+		if app.iconHandler != nil {
+			_ = app.iconHandler.Close()
+		}
+	})
 
 	return app, win, open
 }

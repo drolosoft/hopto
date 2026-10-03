@@ -65,6 +65,23 @@ func NewHandler(
 	return handler, nil
 }
 
+// Close releases the icons folder. The app keeps it open for as long as it
+// runs, so this exists for the tests and for a clean shutdown: on Windows an
+// open folder handle blocks the folder's deletion. It is safe on a nil
+// handler, and closing twice is harmless.
+func (h *Handler) Close() error {
+	if h == nil || h.root == nil {
+		return nil
+	}
+
+	err := h.root.Close()
+	if errors.Is(err, os.ErrClosed) {
+		return nil
+	}
+
+	return err
+}
+
 // ServeHTTP answers GET /user-icons/<id>.png.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

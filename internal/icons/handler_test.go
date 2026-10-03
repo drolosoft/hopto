@@ -29,6 +29,9 @@ func serve(
 		t.Fatal(err)
 	}
 
+	// Windows will not remove a folder while the handler holds it open.
+	t.Cleanup(func() { _ = handler.Close() })
+
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(method, path, nil))
 
@@ -133,5 +136,30 @@ func TestFileURL(t *testing.T) {
 
 	if StampURL("app-test", 42) != RoutePrefix+"app-test.png?v=42" {
 		t.Errorf("StampURL = %q", StampURL("app-test", 42))
+	}
+}
+
+// Once the handler is closed the folder can be removed, which is what
+// Windows refuses while the handle is open, and closing again is harmless.
+func TestHandlerCloseReleasesTheFolder(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "icons")
+
+	handler, err := NewHandler(dir, func(string) (string, bool) {
+		return "", false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := handler.Close(); err != nil {
+		t.Fatalf("first Close: %v", err)
+	}
+
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("removing the folder after Close: %v", err)
+	}
+
+	if err := handler.Close(); err != nil {
+		t.Fatalf("second Close: %v", err)
 	}
 }
