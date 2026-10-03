@@ -502,6 +502,8 @@ func checkText(
 
 // checkAppPath returns why a path is not acceptable, or "" when it is.
 func checkAppPath(path, home string) string {
+	path = rules.normalisePath(path)
+
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return "path must be absolute and clean"
 	}
@@ -520,12 +522,11 @@ func checkAppPath(path, home string) string {
 }
 
 // hasAppExtension says whether the path ends like an app of this
-// platform, without case: Windows does not care and macOS bundles are
-// always lower case anyway.
+// platform, compared the way the platform's rules say.
 func hasAppExtension(path string) bool {
 	ext := filepath.Ext(path)
 	for _, allowed := range rules.appExtensions {
-		if strings.EqualFold(ext, allowed) {
+		if rules.extensionMatches(ext, allowed) {
 			return true
 		}
 	}

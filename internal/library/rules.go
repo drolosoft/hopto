@@ -6,8 +6,18 @@ package library
 // value lives in rules_unix.go and rules_windows.go; Validate and
 // CheckApp keep their signatures.
 type platformRules struct {
-	// appExtensions are the file name endings an app path may have.
-	appExtensions []string
+	// appExtensions are the file name endings an app path may have, and
+	// extensionMatches compares one with the ending of a path: exactly
+	// on macOS, where a bundle is always .app, and without case on
+	// Windows, whose file system ignores it.
+	appExtensions    []string
+	extensionMatches func(ext, allowed string) bool
+
+	// normalisePath turns a path as written in library.toml into the
+	// form the clean check expects: on Windows a hand-written
+	// c:/Program Files/... becomes c:\Program Files\..., on macOS it
+	// stays as it is.
+	normalisePath func(path string) string
 
 	// appRoots lists the folders an app path must be under.
 	appRoots func(home string) []string

@@ -52,10 +52,13 @@ func windowsAppRoots(home string) []string {
 }
 
 // rules on Windows: an .exe or a .lnk under the program folders, compared
-// without case and with either slash; a browser is the path of an exe.
+// without case and with either slash (forward slashes are turned into
+// backslashes before any check); a browser is the path of an exe.
 var rules = platformRules{
-	appExtensions: []string{".exe", ".lnk"},
-	appRoots:      windowsAppRoots,
+	appExtensions:    []string{".exe", ".lnk"},
+	extensionMatches: strings.EqualFold,
+	normalisePath:    filepath.FromSlash,
+	appRoots:         windowsAppRoots,
 	appPathHint: "path must be under Program Files, the Start Menu " +
 		"or AppData\\Local\\Programs",
 	underRoot: func(path, root string) bool {

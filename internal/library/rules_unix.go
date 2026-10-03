@@ -15,6 +15,12 @@ var bundlePattern = regexp.MustCompile(`^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$`)
 // bundle id for the browser, Command-based shortcuts.
 var rules = platformRules{
 	appExtensions: []string{".app"},
+	extensionMatches: func(ext, allowed string) bool {
+		return ext == allowed
+	},
+	normalisePath: func(path string) string {
+		return path
+	},
 	appRoots: func(home string) []string {
 		return []string{
 			"/Applications",

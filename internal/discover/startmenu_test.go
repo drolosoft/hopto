@@ -126,3 +126,35 @@ func TestEdgeAppDoesNotHideEdge(t *testing.T) {
 		t.Errorf("edge apps: %+v", edgeApps)
 	}
 }
+
+// The System32 tools are listed under the names Windows shows for them,
+// only when their exe is there, and explorer.exe is not looked for: it
+// lives in the Windows folder, not in System32.
+func TestSystemToolsUseDisplayNames(t *testing.T) {
+	system32 := t.TempDir()
+	files := []string{"calc.exe", "SnippingTool.exe", "explorer.exe"}
+	for _, file := range files {
+		writeFile(t, filepath.Join(system32, file), "MZ")
+	}
+
+	tools := systemToolsIn(system32)
+
+	names := map[string]string{}
+	for _, tool := range tools {
+		names[tool.Name] = filepath.Base(tool.Path)
+	}
+
+	want := map[string]string{
+		"Calculator":    "calc.exe",
+		"Snipping Tool": "SnippingTool.exe",
+	}
+	if len(names) != len(want) {
+		t.Fatalf("tools = %v, want %v", names, want)
+	}
+
+	for name, file := range want {
+		if names[name] != file {
+			t.Errorf("%s = %q, want %q", name, names[name], file)
+		}
+	}
+}

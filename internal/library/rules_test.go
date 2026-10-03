@@ -6,7 +6,8 @@ import (
 )
 
 // Review Focus 5: on Windows the root check ignores case and accepts
-// both slashes, and the extension is .exe or .lnk.
+// both slashes, and the extension is .exe or .lnk in any case. A
+// forward-slash path is what a hand edit of library.toml often holds.
 func TestWindowsAppPathRule(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows rules")
@@ -18,6 +19,8 @@ func TestWindowsAppPathRule(t *testing.T) {
 	for _, path := range []string{
 		`C:\Program Files\Foo\foo.exe`,
 		`C:\PROGRAM FILES\Foo\foo.exe`,
+		`C:\Program Files\Foo\FOO.EXE`,
+		`c:/Program Files/Foo/foo.exe`,
 		`C:\Users\someone\AppData\Local\Programs\Foo\foo.lnk`,
 	} {
 		if detail := checkAppPath(path, home); detail != "" {

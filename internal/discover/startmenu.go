@@ -29,11 +29,25 @@ var uninstallerPattern = regexp.MustCompile(
 // edgeAppURL pulls the start page out of an Edge web app's arguments.
 var edgeAppURL = regexp.MustCompile(`--app-url=(\S+)`)
 
+// systemTool is one stock program of System32: its file and the name
+// Windows shows for it, since the file name ("calc", "mspaint") is not
+// what anyone types to find it.
+type systemTool struct {
+	file string
+	name string
+}
+
 // systemTools are the stock programs of System32 worth listing by
-// typing, the Windows counterpart of /System/Applications.
-var systemTools = []string{
-	"notepad.exe", "calc.exe", "mspaint.exe", "cmd.exe",
-	"explorer.exe", "control.exe", "SnippingTool.exe", "charmap.exe",
+// typing, the Windows counterpart of /System/Applications. explorer.exe
+// is not one of them: it lives in the Windows folder, not in System32.
+var systemTools = []systemTool{
+	{file: "notepad.exe", name: "Notepad"},
+	{file: "calc.exe", name: "Calculator"},
+	{file: "mspaint.exe", name: "Paint"},
+	{file: "cmd.exe", name: "Command Prompt"},
+	{file: "control.exe", name: "Control Panel"},
+	{file: "SnippingTool.exe", name: "Snipping Tool"},
+	{file: "charmap.exe", name: "Character Map"},
 }
 
 // targetBase is the last element of a shortcut target. Targets are
@@ -202,8 +216,9 @@ func ScanStartMenu(roots []string, systemRoot string) []App {
 	return apps
 }
 
-// systemToolsIn lists the stock tools that exist under systemRoot; an
-// empty root, as on a test machine, lists none.
+// systemToolsIn lists the stock tools that exist under systemRoot, under
+// their display names (InspectShortcut names a plain exe after its
+// file); an empty root, as on a test machine, lists none.
 func systemToolsIn(systemRoot string) []App {
 	tools := []App{}
 	if systemRoot == "" {
@@ -211,9 +226,10 @@ func systemToolsIn(systemRoot string) []App {
 	}
 
 	for _, tool := range systemTools {
-		path := filepath.Join(systemRoot, tool)
+		path := filepath.Join(systemRoot, tool.file)
 		if _, err := os.Stat(path); err == nil {
 			app, _ := InspectShortcut(path)
+			app.Name = tool.name
 			tools = append(tools, app)
 		}
 	}
