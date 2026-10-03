@@ -99,6 +99,16 @@ jobs:
           # of ours. Bump this by hand when we're ready to test the new
           # version, not because a runner picked it for us.
           version: v2.14
+      # The Windows-only files are never compiled on the macOS runner, so
+      # the linter needs a second run with GOOS set; cgo is not involved
+      # on Windows, so cross-linting works.
+      - name: golangci-lint (windows build)
+        uses: golangci/golangci-lint-action@v8
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        with:
+          version: v2.14
 
   windows-build:
     # Cross-compiled from macOS: Wails is pure Go on Windows. A compile
