@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package app
 
 import (
 	"errors"
@@ -35,7 +35,7 @@ func fakeBundle(t *testing.T, app *App, name, bundleID string) string {
 		t.Fatal(err)
 	}
 
-	icns, err := os.ReadFile("internal/icons/testdata/edge-app.icns")
+	icns, err := os.ReadFile("../icons/testdata/edge-app.icns")
 	if err != nil {
 		t.Fatal(err)
 	}

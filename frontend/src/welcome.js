@@ -4,7 +4,7 @@
  * (Enter and Esc close it, Tab walks its buttons), through a listener in
  * the capture phase, so keys.js never needs to know it exists.
  */
-import {Welcome, PresentWelcome, DismissWelcome, OpenKeyboardSettings, Debug} from '../wailsjs/go/main/App';
+import {Welcome, PresentWelcome, DismissWelcome, OpenKeyboardSettings, Debug} from '../wailsjs/go/app/App';
 import {prettyHotkey} from './hotkeys.js';
 import {TABS} from './tabs.js';
 

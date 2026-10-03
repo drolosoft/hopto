@@ -4,7 +4,7 @@
  * lives in the page state, so `shown` wipes it along with everything
  * else; this module only keeps a timer and a counter of inspections.
  */
-import {InspectURL, AddLink, UpdateLink, AddCategory, PickApp, AddApp, UpdateApp, Debug} from '../wailsjs/go/main/App';
+import {InspectURL, AddLink, UpdateLink, AddCategory, PickApp, AddApp, UpdateApp, Debug} from '../wailsjs/go/app/App';
 import {looksLikeURL, withScheme, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withPick, appInput, withSaveResult} from './draft.js';
 import {mountEditor, refreshEditor, hideEditor, focusField, focusedField} from './editor.js';
 import {renderEditingFooter} from './render.js';

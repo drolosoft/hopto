@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"runtime"
@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// The build stamps, set by `make build` through -ldflags "-X main.…". A
-// plain `go build` or `wails dev` leaves them empty and the help panel
-// says "dev".
+// The build stamps, set by `make build` through -ldflags
+// "-X github.com/drolosoft/hopto/internal/app.…". A plain `go build` or
+// `wails dev` leaves them empty and the help panel says "dev".
 var (
 	version = ""
 	commit  = ""

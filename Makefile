@@ -11,7 +11,10 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.builtAt=$(BUILT)
+
+# The package that holds the stamps, the App's help panel.
+STAMP := github.com/drolosoft/hopto/internal/app
+LDFLAGS := -X $(STAMP).version=$(VERSION) -X $(STAMP).commit=$(COMMIT) -X $(STAMP).builtAt=$(BUILT)
 
 # wails build -clean empties frontend/dist, the tracked gitkeep included;
 # the touch puts that empty file back so the tree stays clean.

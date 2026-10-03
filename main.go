@@ -4,15 +4,20 @@ import (
 	"context"
 	"embed"
 
-	"github.com/drolosoft/hopto/internal/native"
-	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+
+	"github.com/drolosoft/hopto/internal/app"
+	"github.com/drolosoft/hopto/internal/native"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
+// The page, built by Vite into frontend/dist and embedded here, the only
+// place that needs it: the packages under internal test without it.
+//
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -20,17 +25,20 @@ var assets embed.FS
 // owns the main thread from here on.
 func main() {
 	platform.OpenLog()
-	app := NewApp()
+	launcher, wiring := app.New()
 
 	// An overlay, not a document window: no frame, always on top, hidden
 	// until the shortcut, and closing only hides it. The Dock icon goes away
-	// with the accessory activation policy set from hotkey_darwin.go (the
+	// with the accessory activation policy set from internal/native (the
 	// plist's LSUIElement alone is overridden by Wails). The window itself is
 	// fully transparent: the page paints the rounded panel, so the corners
 	// are round. WindowIsTranslucent is off on purpose, its vibrancy view is
 	// rectangular and showed as square corners. No fixed appearance either:
 	// the page follows the system's light or dark mode.
-	assetOptions := &assetserver.Options{Assets: assets, Handler: app.assets()}
+	assetOptions := &assetserver.Options{
+		Assets:  assets,
+		Handler: wiring.Assets,
+	}
 
 	err := wails.Run(&options.App{
 		Title:             "hopto",
@@ -43,8 +51,8 @@ func main() {
 		HideWindowOnClose: true,
 		AssetServer:       assetOptions,
 		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
-		OnStartup:         app.startup,
-		Bind:              []any{app},
+		OnStartup:         wiring.Startup,
+		Bind:              []any{launcher},
 
 		// Wails ends with a WM_QUIT that never reaches the tray window, so
 		// the Windows tray icon is taken away here or it would stay in the
@@ -55,7 +63,7 @@ func main() {
 		// copy) quits at once and shows this copy's panel instead.
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               "com.drolosoft.hopto",
-			OnSecondInstanceLaunch: app.secondInstance,
+			OnSecondInstanceLaunch: wiring.SecondInstance,
 		},
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
@@ -66,7 +74,7 @@ func main() {
 		// rounded panel on, without a backdrop effect (it would be a
 		// rectangle behind the panel), without the window icon (there is
 		// no title bar) and with a class name of our own, so the native
-		// side of hotkey_windows.go can find this window by name.
+		// side in internal/native can find this window by name.
 		Windows: &windows.Options{
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,

@@ -19,7 +19,7 @@ make lint     # gofmt and golangci-lint
 
 ## The page without Wails
 
-`frontend/test/harness/serve.js` serves `frontend/dist` with `fake-bridge.js` injected before the page's own module, on a free port for Playwright, or on http://localhost:8765 when run directly (`node frontend/test/harness/serve.js`). The bridge is a `window.go.main.App` with fixed data:
+`frontend/test/harness/serve.js` serves `frontend/dist` with `fake-bridge.js` injected before the page's own module, on a free port for Playwright, or on http://localhost:8765 when run directly (`node frontend/test/harness/serve.js`). The bridge is a `window.go.app.App` with fixed data:
 
 - every Go call the page makes is appended to `window.calls` (`OpenLink:mdn`, `AddLink:{…}`);
 - `window.emit('links')` plays the `shown` event, `window.listeners.help(true)` the menu bar's Help;

@@ -3,7 +3,7 @@
  */
 import './style.css';
 import {EventsOn} from '../wailsjs/runtime/runtime';
-import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite, DeleteLink, DeleteApp, HideApp, UnhideApp, RenameCategory, DeleteCategory} from '../wailsjs/go/main/App';
+import {Items, Categories, Usage, Settings, LibraryStatus, About, Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder, EditLibrary, Hide, TabChanged, Debug, ToggleFavorite, DeleteLink, DeleteApp, HideApp, UnhideApp, RenameCategory, DeleteCategory} from '../wailsjs/go/app/App';
 import {decorate, visibleUnder, sections, unifiedSearch, FAVORITES, HIDDEN} from './filter.js';
 import {nextIndex} from './keys.js';
 import {initialState, chipItems, removalOf} from './state.js';

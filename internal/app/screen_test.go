@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"os"
@@ -48,7 +48,7 @@ func TestScreenChoice(t *testing.T) {
 	// Short names keep the table rows within the line limit.
 	last := library.ScreenLast
 	mouse := library.ScreenMouse
-	main := library.ScreenMain
+	mainScreen := library.ScreenMain
 
 	cases := []struct {
 		name        string
@@ -58,10 +58,10 @@ func TestScreenChoice(t *testing.T) {
 		wantDisplay uint32
 	}{
 		{"last, still attached", last, 7, last, 7},
-		{"last, unplugged", last, 9, main, 0},
-		{"last, never shown", last, 0, main, 0},
+		{"last, unplugged", last, 9, mainScreen, 0},
+		{"last, never shown", last, 0, mainScreen, 0},
 		{"mouse ignores the memory", mouse, 7, mouse, 0},
-		{"main ignores the memory", main, 7, main, 0},
+		{"main ignores the memory", mainScreen, 7, mainScreen, 0},
 	}
 
 	for _, tc := range cases {

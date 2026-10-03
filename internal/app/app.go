@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/drolosoft/hopto/internal/discover"
@@ -182,18 +183,41 @@ type App struct {
 	symbolicHotkeys  string
 }
 
-// NewApp builds the launcher for the real Mac: the user's home, the system
-// language and the real window and `open`.
-func NewApp() *App {
+// Wiring is what main hands to Wails besides the App itself: the
+// lifecycle hooks and the asset handler. They are not page API, and an
+// exported method on App would be bound to the page, so they travel
+// here instead.
+type Wiring struct {
+	// Startup is the OnStartup hook.
+	Startup func(ctx context.Context)
+
+	// SecondInstance answers a second launch of the single-instance app.
+	SecondInstance func(data options.SecondInstanceData)
+
+	// Assets serves the page's icons and files to the webview.
+	Assets http.Handler
+}
+
+// New builds the launcher for the real Mac: the user's home, the system
+// language and the real window and `open`, plus the wiring main needs
+// for it. The asset handler is built here, once: newApp has already
+// opened the icons, so it does not wait for startup.
+func New() (*App, Wiring) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Printf("home folder: %v", err)
 	}
 
-	return newApp(
+	launcher := newApp(
 		home, platform.DataDir(home), nil, platform.RunOpen,
 		platform.SystemLanguage(),
 	)
+
+	return launcher, Wiring{
+		Startup:        launcher.startup,
+		SecondInstance: launcher.secondInstance,
+		Assets:         launcher.assets(),
+	}
 }
 
 // newApp wires the stores and the icon handler. A broken usage or library

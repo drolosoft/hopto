@@ -104,7 +104,7 @@ const call = (name) => async (...args) => {
     window.calls.push([name, ...args].join(':'));
 };
 
-window.go = {main: {App: {
+window.go = {app: {App: {
     Items: async (tab) => (tab === 'links' ? (window.noLinks ? [] : links) : apps),
 
     // Like Go, the hidden chip closes the apps row only while an app is
