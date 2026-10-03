@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/drolosoft/hopto/internal/library"
 )
 
 // fakeWindow records what App asks of the window.
@@ -90,42 +88,6 @@ func (w *fakeWindow) PickFile(directory string) (string, error) {
 // Quit records "quit".
 func (w *fakeWindow) Quit() { w.record("quit") }
 
-// fakeMenu records what App puts in the menu bar item.
-type fakeMenu struct {
-	mu      sync.Mutex
-	items   []menuItem
-	checked map[int]bool
-}
-
-// Install keeps the entries and their ticks, as the real item draws them.
-func (m *fakeMenu) Install(items []menuItem) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.items = items
-	m.checked = map[int]bool{}
-
-	for _, item := range items {
-		m.checked[item.Tag] = item.Checked
-	}
-}
-
-// SetChecked changes one tick.
-func (m *fakeMenu) SetChecked(tag int, on bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.checked[tag] = on
-}
-
-// isChecked reads one tick under the lock.
-func (m *fakeMenu) isChecked(tag int) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.checked[tag]
-}
-
 // joined returns the calls as one string for assertions.
 func (w *fakeWindow) joined() string {
 	w.mu.Lock()
@@ -169,19 +131,6 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	t.Cleanup(app.background.Wait)
 
 	return app, win, open
-}
-
-// addApp puts a hand-added app in the library.
-func addApp(t *testing.T, app *App, entry library.AppEntry) {
-	t.Helper()
-
-	err := app.library.Apply(func(lib *library.Library) error {
-		lib.Apps = append(lib.Apps, entry)
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 // The five cases of the two shortcuts.

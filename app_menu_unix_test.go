@@ -5,6 +5,7 @@ package main
 import (
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -130,4 +131,40 @@ func TestMenuHelpWaitsForTheDialog(t *testing.T) {
 	if strings.Contains(win.joined(), "emit:help") {
 		t.Errorf("help under a dialog: %q", win.joined())
 	}
+}
+
+// fakeMenu records what App puts in the menu bar item.
+type fakeMenu struct {
+	mu      sync.Mutex
+	items   []menuItem
+	checked map[int]bool
+}
+
+// Install keeps the entries and their ticks, as the real item draws them.
+func (m *fakeMenu) Install(items []menuItem) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.items = items
+	m.checked = map[int]bool{}
+
+	for _, item := range items {
+		m.checked[item.Tag] = item.Checked
+	}
+}
+
+// SetChecked changes one tick.
+func (m *fakeMenu) SetChecked(tag int, on bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.checked[tag] = on
+}
+
+// isChecked reads one tick under the lock.
+func (m *fakeMenu) isChecked(tag int) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.checked[tag]
 }

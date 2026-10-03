@@ -423,3 +423,16 @@ func TestAHandAddedAppHidesItsDiscoveredTwin(t *testing.T) {
 		t.Errorf("ids = %v", ids)
 	}
 }
+
+// addApp puts a hand-added app in the library.
+func addApp(t *testing.T, app *App, entry library.AppEntry) {
+	t.Helper()
+
+	err := app.library.Apply(func(lib *library.Library) error {
+		lib.Apps = append(lib.Apps, entry)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
