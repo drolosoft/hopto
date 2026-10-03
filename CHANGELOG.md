@@ -10,12 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [v0.2.0] - 2026-10-03
+
+### Added
 - hopto runs on Windows: tray icon with the same menu, Ctrl+Shift+Space and Ctrl+Alt+Space, the programs of the Start Menu with their icons, links in the default browser, the library under `%AppData%\hopto`, open at login, the system language, and `amd64` and `arm64` zips in every release.
+- `scripts/verify-hopto-windows.ps1` drives the Windows build the way `verify-hopto.sh` drives the Mac one: a first run on a profile of its own, the welcome, both shortcuts, the keyboard in the page, the taskbar and the seed.
 
 ### Changed
 - `cmd` in a shortcut means the Win key on Windows; the page prints Ctrl, Alt and Enter there.
-
-### Fixed
 
 ## [v0.1.1] - 2026-09-28
 
