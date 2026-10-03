@@ -57,3 +57,23 @@ test('two words change meaning on Windows: the Explorer and the program picker',
     assert.ok(translator('en', 'windows')('editor.hintsApp').includes('Choose a program'));
     assert.ok(!translator('en', 'windows')('editor.hintsApp').includes('{'));
 });
+
+test('no macOS folder or .app reaches a Windows user, and Return is Enter there', () => {
+    const keys = ['problem.app.path', 'problem.app.target', 'pick.hint', 'empty.apps', 'key.return'];
+
+    for (const language of ['en', 'es']) {
+        const t = translator(language, 'windows');
+
+        for (const key of keys) {
+            const text = t(key);
+            assert.ok(!text.includes('{'), `${language} ${key}: ${text}`);
+            assert.ok(!text.includes('/Applications'), `${language} ${key}: ${text}`);
+            assert.ok(!text.includes('.app'), `${language} ${key}: ${text}`);
+        }
+    }
+
+    assert.equal(translator('en', 'windows')('key.return'), 'Enter');
+    assert.equal(translator('es', 'windows')('key.return'), 'Intro');
+    assert.equal(translator('en')('key.return'), 'Return');
+    assert.equal(translator('es')('key.return'), 'Retorno');
+});

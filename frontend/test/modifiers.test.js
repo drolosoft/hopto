@@ -19,3 +19,10 @@ test('glyphs are symbols on macOS and words with a plus on Windows', () => {
     assert.equal(glyphsFor('windows').enter, 'Enter');
     assert.equal(glyphsFor('linux').cmd, '⌘', 'unknown platforms read as macOS');
 });
+
+test('AltGr on Windows is not a chord: it arrives as Ctrl+Alt', () => {
+    const altGr = {metaKey: false, ctrlKey: true, altKey: true};
+
+    assert.equal(primaryKey(altGr, 'windows'), false, 'Ctrl+Alt+e types €, it is not Ctrl+E');
+    assert.equal(primaryKey({...altGr, metaKey: true}, 'darwin'), true, 'macOS still reads Command');
+});

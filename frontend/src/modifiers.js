@@ -24,11 +24,18 @@ export function glyphsFor(platform) {
 
 /**
  * Whether the event carries the primary chord key: Command on macOS,
- * Control on Windows.
- * @param {{metaKey: boolean, ctrlKey: boolean}} event
+ * Control on Windows. On Windows, AltGr (the key that types €, @ or [
+ * on most European layouts) reaches the page as Ctrl+Alt, so Control
+ * only counts when Alt is not down with it; otherwise typing € in the
+ * search field would fire Ctrl+E.
+ * @param {{metaKey: boolean, ctrlKey: boolean, altKey?: boolean}} event
  * @param {string|undefined} platform
  * @returns {boolean}
  */
 export function primaryKey(event, platform) {
-    return platform === 'windows' ? Boolean(event.ctrlKey) : Boolean(event.metaKey);
+    if (platform === 'windows') {
+        return Boolean(event.ctrlKey) && !event.altKey;
+    }
+
+    return Boolean(event.metaKey);
 }

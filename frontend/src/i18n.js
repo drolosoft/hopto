@@ -24,7 +24,7 @@ export const MESSAGES = {
         'empty.none': 'Nothing matches',
         'empty.elsewhere': 'Nothing here · {count} in {tab} (⇥)',
         'empty.links': 'No links yet · {cmd}N adds one',
-        'empty.apps': 'No apps in /Applications',
+        'empty.apps': 'No apps in {appsFolder}',
         'apps.one': '1 app',
         'apps.other': '{count} apps',
         'links.one': '1 link',
@@ -54,7 +54,7 @@ export const MESSAGES = {
         'welcome.settings': 'Open Keyboard Settings',
         'welcome.start': 'Start {enter}',
         'key.space': 'Space',
-        'key.return': 'Return',
+        'key.return': '{return}',
         'key.tab': 'Tab',
         'key.escape': 'Esc',
         'app.missing': 'Not found',
@@ -129,7 +129,7 @@ export const MESSAGES = {
 
         // The apps editor and the native dialog.
         'pick.row': 'Search Applications…',
-        'pick.hint': 'Pick a .app to add it by hand',
+        'pick.hint': 'Pick {anAppToAdd} by hand',
         'footer.pick': '{enter} Choose',
         'editor.labelApp': 'App editor',
         'editor.title.addApp': 'New app',
@@ -139,8 +139,8 @@ export const MESSAGES = {
         'editor.hintsApp': '{enter} Save · Esc Cancel · {cmd}O {choose} · {cmd}1-9 Category',
         'editor.twin': 'Found on disk as {name}: once added it shows once, under the category you pick',
         'toast.pickFailed': 'Could not open the dialog: {error}',
-        'problem.app.target': 'Choose the .app',
-        'problem.app.path': 'Only apps in /Applications, /System/Applications or ~/Applications',
+        'problem.app.target': 'Choose {theApp}',
+        'problem.app.path': 'Only apps in {appRoots}',
         'problem.app.bundle': 'The bundle id is not valid',
     },
     es: {
@@ -159,7 +159,7 @@ export const MESSAGES = {
         'empty.none': 'Nada que coincida',
         'empty.elsewhere': 'Nada aquí · {count} en {tab} (⇥)',
         'empty.links': 'Aún no hay links · {cmd}N para añadir uno',
-        'empty.apps': 'No hay apps en /Applications',
+        'empty.apps': 'No hay apps en {appsFolder}',
         'apps.one': '1 app',
         'apps.other': '{count} apps',
         'links.one': '1 link',
@@ -189,7 +189,7 @@ export const MESSAGES = {
         'welcome.settings': 'Abrir Ajustes de Teclado',
         'welcome.start': 'Empezar {enter}',
         'key.space': 'Espacio',
-        'key.return': 'Retorno',
+        'key.return': '{return}',
         'key.tab': 'Tab',
         'key.escape': 'Esc',
         'app.missing': 'No encontrada',
@@ -264,7 +264,7 @@ export const MESSAGES = {
 
         // The apps editor and the native dialog.
         'pick.row': 'Buscar en Aplicaciones…',
-        'pick.hint': 'Elige una .app para añadirla a mano',
+        'pick.hint': 'Elige {anAppToAdd} a mano',
         'footer.pick': '{enter} Elegir',
         'editor.labelApp': 'Editor de apps',
         'editor.title.addApp': 'App nueva',
@@ -274,8 +274,8 @@ export const MESSAGES = {
         'editor.hintsApp': '{enter} Guardar · Esc Cancelar · {cmd}O {choose} · {cmd}1-9 Categoría',
         'editor.twin': 'Encontrada en el disco como {name}: al añadirla sale una vez, en la categoría que elijas',
         'toast.pickFailed': 'No se pudo abrir el diálogo: {error}',
-        'problem.app.target': 'Elige la .app',
-        'problem.app.path': 'Solo apps de /Applications, /System/Applications o ~/Applications',
+        'problem.app.target': 'Elige {theApp}',
+        'problem.app.path': 'Solo apps de {appRoots}',
         'problem.app.bundle': 'El bundle id no es válido',
     },
 };
@@ -284,17 +284,55 @@ export const MESSAGES = {
 const FALLBACK = 'en';
 
 // The words that change meaning, not glyph, between systems; the
-// translator fills {reveal}, {pick} and {choose} from here like the
-// modifiers. {choose} is {pick} without the ellipsis, for the editor
-// hint line, where the text is not a button label.
+// translator fills them from here like the modifiers. {choose} is {pick}
+// without the ellipsis, for the editor hint line, where the text is not a
+// button label. {theApp} and {anAppToAdd} carry their article (and, in
+// Spanish, the pronoun after it), because "la .app" and "el programa"
+// differ in gender. {return} names the key Windows calls Enter.
 const WORDS = {
     en: {
-        darwin: {reveal: 'reveal in Finder', pick: 'Choose .app…', choose: 'Choose .app'},
-        windows: {reveal: 'show in Explorer', pick: 'Choose a program…', choose: 'Choose a program'},
+        darwin: {
+            reveal: 'reveal in Finder',
+            pick: 'Choose .app…',
+            choose: 'Choose .app',
+            theApp: 'the .app',
+            anAppToAdd: 'a .app to add it',
+            appsFolder: '/Applications',
+            appRoots: '/Applications, /System/Applications or ~/Applications',
+            return: 'Return',
+        },
+        windows: {
+            reveal: 'show in Explorer',
+            pick: 'Choose a program…',
+            choose: 'Choose a program',
+            theApp: 'the program',
+            anAppToAdd: 'a program to add it',
+            appsFolder: 'the Start Menu',
+            appRoots: 'Program Files, the Start Menu or AppData\\Local\\Programs',
+            return: 'Enter',
+        },
     },
     es: {
-        darwin: {reveal: 'mostrar en el Finder', pick: 'Elegir .app…', choose: 'Elegir .app'},
-        windows: {reveal: 'mostrar en el Explorador', pick: 'Elegir un programa…', choose: 'Elegir un programa'},
+        darwin: {
+            reveal: 'mostrar en el Finder',
+            pick: 'Elegir .app…',
+            choose: 'Elegir .app',
+            theApp: 'la .app',
+            anAppToAdd: 'una .app para añadirla',
+            appsFolder: '/Applications',
+            appRoots: '/Applications, /System/Applications o ~/Applications',
+            return: 'Retorno',
+        },
+        windows: {
+            reveal: 'mostrar en el Explorador',
+            pick: 'Elegir un programa…',
+            choose: 'Elegir un programa',
+            theApp: 'el programa',
+            anAppToAdd: 'un programa para añadirlo',
+            appsFolder: 'el menú Inicio',
+            appRoots: 'Program Files, el menú Inicio o AppData\\Local\\Programs',
+            return: 'Intro',
+        },
     },
 };
 
