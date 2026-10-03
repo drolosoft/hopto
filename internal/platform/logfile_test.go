@@ -1,4 +1,4 @@
-package main
+package platform
 
 import (
 	"log"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// A brand-new home has no logs folder yet; openLog must create
+// A brand-new home has no logs folder yet; OpenLog must create
 // it rather than give up silently, or the app leaves no trace to read.
 func TestOpenLogCreatesTheFolder(t *testing.T) {
 	home := t.TempDir()
@@ -15,7 +15,7 @@ func TestOpenLogCreatesTheFolder(t *testing.T) {
 	t.Setenv("USERPROFILE", home)
 	t.Cleanup(restoreLogOutput)
 
-	openLog()
+	OpenLog()
 	log.Printf("hello from the test")
 
 	path := logPath(home)
@@ -30,7 +30,7 @@ func TestOpenLogCreatesTheFolder(t *testing.T) {
 	}
 }
 
-// restoreLogOutput closes the file openLog opened and sends the log back
+// restoreLogOutput closes the file OpenLog opened and sends the log back
 // to stderr. Closing matters on Windows, where a file still open cannot
 // be deleted and the cleanup of the test's home would fail.
 func restoreLogOutput() {

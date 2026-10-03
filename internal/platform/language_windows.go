@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package platform
 
 import (
 	"strings"
@@ -20,19 +20,19 @@ var (
 // localeNameMaxLength is LOCALE_NAME_MAX_LENGTH (winnls.h).
 const localeNameMaxLength = 85
 
-// systemLanguage reads the user's locale name ("es-ES") and reduces it
+// SystemLanguage reads the user's locale name ("es-ES") and reduces it
 // to a language hopto speaks.
-func systemLanguage() string {
+func SystemLanguage() string {
 	var name [localeNameMaxLength]uint16
 
 	length, _, _ := procGetUserDefaultLocaleName.Call(
 		uintptr(unsafe.Pointer(&name[0])), localeNameMaxLength,
 	)
 	if length == 0 {
-		return languageEnglish
+		return LanguageEnglish
 	}
 
 	tag := strings.ToLower(windows.UTF16ToString(name[:]))
 
-	return languageFor("auto", tag)
+	return LanguageFor("auto", tag)
 }

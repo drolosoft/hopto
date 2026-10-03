@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // window.json: a missing file and a broken one both read as "no display",
 // and what is written reads back. Its mode is checked in
 // screen_unix_test.go.
 func TestWindowState(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "hopto", windowFile)
+	path := filepath.Join(t.TempDir(), "hopto", platform.WindowFile)
 
 	if got := readWindowState(path); got != 0 {
 		t.Errorf("missing file = %d, want 0", got)
@@ -78,7 +79,7 @@ func TestScreenChoice(t *testing.T) {
 func TestPanelReturnsToItsDisplay(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	app.attachedDisplays = func() []uint32 { return []uint32{1, 7, 9} }
-	path := filepath.Join(app.dataDir, windowFile)
+	path := filepath.Join(app.dataDir, platform.WindowFile)
 
 	app.windowDisplay = func() uint32 { return 7 }
 	app.toggle(tabApps)
@@ -109,7 +110,7 @@ func TestPanelReturnsToItsDisplay(t *testing.T) {
 	}
 
 	again := newApp(
-		app.home, app.dataDir, &fakeWindow{}, nil, languageEnglish,
+		app.home, app.dataDir, &fakeWindow{}, nil, platform.LanguageEnglish,
 	)
 
 	// A second App on the same home holds the icons folder too, and Windows

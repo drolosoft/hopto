@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/seed"
 )
 
@@ -43,7 +44,7 @@ func TestWindowsDefaultsParse(t *testing.T) {
 
 // The seed and the parser agree on the Windows defaults.
 func TestWindowsSeedUsesTheDefaults(t *testing.T) {
-	data := string(seed.For(languageEnglish))
+	data := string(seed.For(platform.LanguageEnglish))
 	for _, spec := range []string{defaultAppsHotkey, defaultLinksHotkey} {
 		if !strings.Contains(data, `"`+spec+`"`) {
 			t.Errorf("seed lacks %q", spec)

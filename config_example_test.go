@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/seed"
 )
 
@@ -37,7 +38,7 @@ func TestConfigExampleIsTheSeed(t *testing.T) {
 		t.Errorf("keys hopto does not read: %v", unknown)
 	}
 
-	first, err := library.Decode(seed.For(languageEnglish))
+	first, err := library.Decode(seed.For(platform.LanguageEnglish))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/internal/usage"
 )
 
@@ -174,7 +175,7 @@ func (a *App) Settings() SettingsView {
 
 	return SettingsView{
 		Platform:              platformName,
-		Language:              languageFor(settings.Language, a.language),
+		Language:              platform.LanguageFor(settings.Language, a.language),
 		HotkeyApps:            settings.HotkeyApps,
 		HotkeyLinks:           settings.HotkeyLinks,
 		SecondaryBrowser:      settings.SecondaryBrowser,
@@ -344,6 +345,11 @@ func (a *App) iconURL(id string) string {
 
 	// Nanoseconds, not seconds: see the comment on icons.FileURL.
 	return icons.StampURL(id, info.ModTime().UnixNano())
+}
+
+// iconsDir is the folder of icons/<id>.png.
+func (a *App) iconsDir() string {
+	return filepath.Join(a.dataDir, platform.IconsFolder)
 }
 
 // iconSource is the handler's resolver: the .icns behind an app id, from

@@ -1,4 +1,4 @@
-package main
+package platform
 
 import (
 	"path/filepath"
@@ -11,7 +11,7 @@ import (
 // app on every system.
 func TestDataDirIsUnderHome(t *testing.T) {
 	home := t.TempDir()
-	dir := dataDir(home)
+	dir := DataDir(home)
 
 	if !strings.HasPrefix(dir, home+string(filepath.Separator)) {
 		t.Errorf("%s is not under %s", dir, home)
@@ -35,8 +35,8 @@ func TestMacPathsAreExact(t *testing.T) {
 	home := "/Users/someone"
 
 	wantData := "/Users/someone/Library/Application Support/hopto"
-	if got := dataDir(home); got != wantData {
-		t.Errorf("dataDir = %q, want %q", got, wantData)
+	if got := DataDir(home); got != wantData {
+		t.Errorf("DataDir = %q, want %q", got, wantData)
 	}
 
 	wantLog := "/Users/someone/Library/Logs/hopto.log"

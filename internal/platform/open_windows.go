@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package platform
 
 import (
 	"errors"
@@ -10,6 +10,11 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+// shell32 is the library ShellExecute lives in. The root package loads
+// its own handle for the tray; a lazy handle is cheap, so each package
+// keeps the one it needs rather than sharing a global.
+var shell32 = windows.NewLazySystemDLL("shell32.dll")
 
 // procShellExecuteW is shell32's ShellExecuteW, which starts a file, a
 // URL or a program the way a double click would.
@@ -24,10 +29,10 @@ const swShowNormal = 1
 // above it.
 const shellExecuteFailure = 32
 
-// runOpen is the Windows side of /usr/bin/open: ShellExecute, the only
+// RunOpen is the Windows side of /usr/bin/open: ShellExecute, the only
 // way hopto starts anything, so a .lnk, an .exe and a URL all open the
 // way a double click opens them.
-func runOpen(args ...string) error {
+func RunOpen(args ...string) error {
 	verb, file, params, err := openArguments(args)
 	if err != nil {
 		return err

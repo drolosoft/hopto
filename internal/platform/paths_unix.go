@@ -1,12 +1,12 @@
 //go:build !windows
 
-package main
+package platform
 
 import "path/filepath"
 
-// dataDir is where hopto keeps the user's files: the library, the usage
+// DataDir is where hopto keeps the user's files: the library, the usage
 // counts and the icons, private to the user.
-func dataDir(home string) string {
+func DataDir(home string) string {
 	return filepath.Join(home, "Library", "Application Support", "hopto")
 }
 

@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // What the help panel shows for the ways a binary gets built.
@@ -66,7 +68,7 @@ func TestAbout(t *testing.T) {
 	}
 
 	// The path uses the separator of the OS the test runs on.
-	wantSuffix := filepath.Join("hopto", libraryFile)
+	wantSuffix := filepath.Join("hopto", platform.LibraryFile)
 	if !strings.HasSuffix(about.LibraryPath, wantSuffix) {
 		t.Errorf("library = %q", about.LibraryPath)
 	}

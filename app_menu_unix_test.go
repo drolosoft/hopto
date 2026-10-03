@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // These tests run hopto as hopto.app and toggle its LaunchAgent, a
@@ -34,7 +36,7 @@ func withMenu(t *testing.T, app *App) *fakeMenu {
 // settings, with the login tick read from the disk.
 func TestMenuItems(t *testing.T) {
 	app, _, _ := newTestApp(t)
-	app.language = languageSpanish
+	app.language = platform.LanguageSpanish
 	menu := withMenu(t, app)
 
 	titles := []string{}
@@ -52,7 +54,8 @@ func TestMenuItems(t *testing.T) {
 		t.Error("login ticked with no agent on disk")
 	}
 
-	if labels := menuLabelsFor(languageEnglish); labels.Quit != "Quit hopto" {
+	labels := menuLabelsFor(platform.LanguageEnglish)
+	if labels.Quit != "Quit hopto" {
 		t.Errorf("english = %+v", labels)
 	}
 }

@@ -2,7 +2,11 @@
 
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/drolosoft/hopto/internal/platform"
+)
 
 // These tests expect the Command shortcuts of the macOS seed and the
 // Finder's own Option-Command-Space, so they run everywhere but Windows.
@@ -30,7 +34,7 @@ func TestWelcomeOnTheFirstRunOnly(t *testing.T) {
 	}
 
 	again := newApp(
-		app.home, app.dataDir, &fakeWindow{}, app.open, languageEnglish,
+		app.home, app.dataDir, &fakeWindow{}, app.open, platform.LanguageEnglish,
 	)
 	closeIcons(t, again)
 
@@ -44,7 +48,8 @@ func TestWelcomeOnTheFirstRunOnly(t *testing.T) {
 func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 	first, _, _ := newTestApp(t)
 	app := newApp(
-		first.home, first.dataDir, &fakeWindow{}, first.open, languageEnglish,
+		first.home, first.dataDir, &fakeWindow{}, first.open,
+		platform.LanguageEnglish,
 	)
 	closeIcons(t, app)
 
@@ -80,7 +85,9 @@ func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 func TestPresentWelcomeStaysQuietAfterTheFirstRun(t *testing.T) {
 	first, _, _ := newTestApp(t)
 	win := &fakeWindow{}
-	app := newApp(first.home, first.dataDir, win, first.open, languageEnglish)
+	app := newApp(
+		first.home, first.dataDir, win, first.open, platform.LanguageEnglish,
+	)
 	closeIcons(t, app)
 
 	withHotkeys(t, 0, hotkeyExistsStatus)

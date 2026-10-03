@@ -1,13 +1,13 @@
 //go:build windows
 
-package main
+package platform
 
 import "path/filepath"
 
-// dataDir is %AppData%\hopto, derived from the profile folder rather
+// DataDir is %AppData%\hopto, derived from the profile folder rather
 // than from the APPDATA variable so a test home holds everything; a
 // redirected APPDATA is not followed (ARCHITECTURE.md lists it).
-func dataDir(home string) string {
+func DataDir(home string) string {
 	return filepath.Join(home, "AppData", "Roaming", "hopto")
 }
 

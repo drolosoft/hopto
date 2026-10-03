@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // window.json is private to the user. A POSIX mode says so; on Windows a
 // mode is a single read-only bit, so this check runs everywhere else.
 func TestWindowStateIsPrivate(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "hopto", windowFile)
+	path := filepath.Join(t.TempDir(), "hopto", platform.WindowFile)
 
 	if err := writeWindowState(path, 69733378); err != nil {
 		t.Fatal(err)

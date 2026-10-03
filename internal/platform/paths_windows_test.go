@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package platform
 
 import "testing"
 
@@ -10,8 +10,8 @@ func TestWindowsPathsAreExact(t *testing.T) {
 	home := `C:\Users\someone`
 
 	wantData := `C:\Users\someone\AppData\Roaming\hopto`
-	if got := dataDir(home); got != wantData {
-		t.Errorf("dataDir = %q, want %q", got, wantData)
+	if got := DataDir(home); got != wantData {
+		t.Errorf("DataDir = %q, want %q", got, wantData)
 	}
 
 	wantLog := `C:\Users\someone\AppData\Local\hopto\hopto.log`

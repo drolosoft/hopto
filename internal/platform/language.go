@@ -1,11 +1,11 @@
-package main
+package platform
 
 import "strings"
 
 // The languages the page speaks; anything else falls back to English.
 const (
-	languageSpanish = "es"
-	languageEnglish = "en"
+	LanguageSpanish = "es"
+	LanguageEnglish = "en"
 )
 
 // parseAppleLanguages reads the first tag out of what `defaults read -g
@@ -18,28 +18,28 @@ func parseAppleLanguages(output string) string {
 			continue
 		}
 
-		return languageFor("auto", strings.ToLower(tag))
+		return LanguageFor("auto", strings.ToLower(tag))
 	}
 
-	return languageEnglish
+	return LanguageEnglish
 }
 
-// languageFor picks the page language: an explicit setting wins, "auto"
+// LanguageFor picks the page language: an explicit setting wins, "auto"
 // (or nothing) follows the system, and only es and en exist.
-func languageFor(setting, system string) string {
-	if setting == languageSpanish || setting == languageEnglish {
+func LanguageFor(setting, system string) string {
+	if setting == LanguageSpanish || setting == LanguageEnglish {
 		return setting
 	}
 
 	if setting != "auto" && setting != "" {
-		return languageEnglish
+		return LanguageEnglish
 	}
 
-	spanish := system == languageSpanish ||
-		strings.HasPrefix(system, languageSpanish+"-")
+	spanish := system == LanguageSpanish ||
+		strings.HasPrefix(system, LanguageSpanish+"-")
 	if spanish {
-		return languageSpanish
+		return LanguageSpanish
 	}
 
-	return languageEnglish
+	return LanguageEnglish
 }

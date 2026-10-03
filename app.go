@@ -16,6 +16,7 @@ import (
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/internal/usage"
 	"github.com/drolosoft/hopto/seed"
 )
@@ -174,7 +175,10 @@ func NewApp() *App {
 		log.Printf("home folder: %v", err)
 	}
 
-	return newApp(home, dataDir(home), nil, runOpen, systemLanguage())
+	return newApp(
+		home, platform.DataDir(home), nil, platform.RunOpen,
+		platform.SystemLanguage(),
+	)
 }
 
 // newApp wires the stores and the icon handler. A broken usage or library
@@ -203,11 +207,11 @@ func newApp(
 	}
 
 	// Where the panel was last shown, and how to read the real screens.
-	app.display = readWindowState(filepath.Join(dataDir, windowFile))
+	app.display = readWindowState(filepath.Join(dataDir, platform.WindowFile))
 	app.windowDisplay = currentDisplay
 	app.attachedDisplays = activeDisplays
 
-	usageStore, err := usage.Open(filepath.Join(dataDir, usageFile))
+	usageStore, err := usage.Open(filepath.Join(dataDir, platform.UsageFile))
 	if err != nil {
 		log.Printf(
 			"usage: %v (favourites and counts are read only until the file is fixed)",
@@ -218,7 +222,7 @@ func newApp(
 
 	// No library file yet means hopto never ran for this user; Open is
 	// about to write the seed, so the question is asked first.
-	libraryPath := filepath.Join(dataDir, libraryFile)
+	libraryPath := filepath.Join(dataDir, platform.LibraryFile)
 	_, statErr := os.Stat(libraryPath)
 	app.firstRun = errors.Is(statErr, os.ErrNotExist)
 

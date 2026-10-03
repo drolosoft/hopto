@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // fakeWindow records what App asks of the window.
@@ -174,7 +176,9 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	win := &fakeWindow{}
 	open := &fakeOpen{}
 
-	app := newApp(home, dataDir(home), win, open.run, languageEnglish)
+	app := newApp(
+		home, platform.DataDir(home), win, open.run, platform.LanguageEnglish,
+	)
 	app.appRoots = []string{filepath.Join(home, "Applications")}
 	app.edgeDir = filepath.Join(home, "Applications", "Edge Apps.localized")
 	app.offline = true
@@ -326,10 +330,10 @@ func TestToggleFavoriteRequiresAnExistingKey(t *testing.T) {
 // with its line while the seed stays on screen.
 func TestSettingsAndStatus(t *testing.T) {
 	app, _, _ := newTestApp(t)
-	app.language = languageSpanish
+	app.language = platform.LanguageSpanish
 
 	settings := app.Settings()
-	wrongSettings := settings.Language != languageSpanish ||
+	wrongSettings := settings.Language != platform.LanguageSpanish ||
 		settings.HotkeyApps != defaultAppsHotkey ||
 		settings.IconServices == nil
 	if wrongSettings {

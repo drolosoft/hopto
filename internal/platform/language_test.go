@@ -1,4 +1,4 @@
-package main
+package platform
 
 import "testing"
 
@@ -34,10 +34,10 @@ func TestLanguageFor(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		got := languageFor(tc.setting, tc.system)
+		got := LanguageFor(tc.setting, tc.system)
 		if got != tc.want {
 			t.Errorf(
-				"languageFor(%q, %q) = %q, want %q",
+				"LanguageFor(%q, %q) = %q, want %q",
 				tc.setting, tc.system, got, tc.want,
 			)
 		}

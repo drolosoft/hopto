@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/drolosoft/hopto/internal/platform"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -53,7 +54,7 @@ func (l loginAgent) Enable() error {
 		return err
 	}
 
-	if temporaryExecutable(exe) {
+	if platform.TemporaryExecutable(exe) {
 		return fmt.Errorf("%w: %s", errTemporary, exe)
 	}
 
@@ -63,7 +64,7 @@ func (l loginAgent) Enable() error {
 	}
 	defer func() { _ = key.Close() }()
 
-	return key.SetStringValue(runValue, quotedCommand(exe))
+	return key.SetStringValue(runValue, platform.QuotedCommand(exe))
 }
 
 // Disable removes the value; a value that is not there is fine.

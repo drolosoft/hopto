@@ -10,6 +10,7 @@ import (
 
 	"github.com/drolosoft/hopto/internal/atomicfile"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // windowPerm keeps window.json private, like every other file in the
@@ -100,7 +101,7 @@ func (a *App) rememberDisplay() {
 	a.display = display
 	log.Printf("window: display %d remembered", display)
 
-	path := filepath.Join(a.dataDir, windowFile)
+	path := filepath.Join(a.dataDir, platform.WindowFile)
 	if err := writeWindowState(path, display); err != nil {
 		log.Printf("window state: %v", err)
 	}

@@ -1,6 +1,10 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/drolosoft/hopto/internal/platform"
+)
 
 // The tags of the menu entries; the native side hands them back on a
 // click. menuSeparator is a rule, not an entry.
@@ -40,7 +44,7 @@ type menuLabels struct {
 
 // menuLabelsFor picks the texts for a resolved language.
 func menuLabelsFor(language string) menuLabels {
-	if language == languageSpanish {
+	if language == platform.LanguageSpanish {
 		return menuLabels{
 			Open:  "Abrir hopto",
 			Help:  "Ayuda",
@@ -63,7 +67,7 @@ func menuLabelsFor(language string) menuLabels {
 // after a rule as every macOS menu has it.
 func (a *App) menuItems() []menuItem {
 	setting := a.library.Snapshot().Settings.Language
-	labels := menuLabelsFor(languageFor(setting, a.language))
+	labels := menuLabelsFor(platform.LanguageFor(setting, a.language))
 
 	return []menuItem{
 		{Title: labels.Open, Tag: menuOpen},

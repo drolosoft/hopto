@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 
+	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -17,7 +18,7 @@ var assets embed.FS
 // main opens the log, builds the App and hands both to Wails, which
 // owns the main thread from here on.
 func main() {
-	openLog()
+	platform.OpenLog()
 	app := NewApp()
 
 	// An overlay, not a document window: no frame, always on top, hidden

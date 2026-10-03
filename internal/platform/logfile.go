@@ -1,4 +1,4 @@
-package main
+package platform
 
 import (
 	"log"
@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 )
 
-// openLog sends the standard logger to the platform's log file (logPath).
+// OpenLog sends the standard logger to the platform's log file (logPath).
 // An app opened from the Finder or the Start menu has no terminal, so this
 // file is the only place to see what happened (for instance whether a
 // shortcut could be registered).
-func openLog() {
+func OpenLog() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
