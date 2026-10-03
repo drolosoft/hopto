@@ -7,24 +7,29 @@ const frontend = fileURLToPath(new URL('../../', import.meta.url));
 const builtPage = join(frontend, 'dist', 'index.html');
 
 /**
- * Every file under a folder, its subfolders included.
+ * Every file under a folder, its subfolders included. Dotfiles such as
+ * .DS_Store are left out: the build does not read them.
  * @param {string} dir
  * @returns {string[]} absolute paths
  */
 function filesUnder(dir) {
     return readdirSync(dir, {withFileTypes: true, recursive: true})
-        .filter((entry) => entry.isFile())
+        .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
         .map((entry) => join(entry.parentPath, entry.name));
 }
 
 /**
- * The sources the build reads that changed after the build was made.
+ * The sources and the build configuration that changed after the build was made.
  * Vite writes dist/index.html on every build, so its time is the build's.
  * @returns {string[]} paths relative to frontend/
  */
 function sourcesNewerThanBuild() {
     const built = statSync(builtPage).mtimeMs;
-    const sources = [...filesUnder(join(frontend, 'src')), join(frontend, 'index.html')];
+    const sources = [
+        ...filesUnder(join(frontend, 'src')),
+        join(frontend, 'index.html'),
+        join(frontend, 'vite.config.js'),
+    ];
 
     return sources
         .filter((file) => statSync(file).mtimeMs > built)

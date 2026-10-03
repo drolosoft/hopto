@@ -7,7 +7,7 @@ import {actionFor} from './keys.js';
 
 /**
  * Installs the document-wide key handler.
- * @param {() => {query: string, editing: boolean, helpOpen: boolean, columns: number}} contextOf
+ * @param {() => {query: string, editing: boolean, helpOpen: boolean, columns: number, field: string, confirming: boolean, renaming: boolean, platform: string}} contextOf
  * @param {(action: {type: string, delta?: number, index?: number}) => void} dispatch
  */
 export function installKeyboard(contextOf, dispatch) {

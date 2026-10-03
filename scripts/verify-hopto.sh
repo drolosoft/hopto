@@ -11,7 +11,8 @@
 #
 # Usage: make build && bash scripts/verify-hopto.sh
 # Exit status: 0 every check passed, 1 a check failed, 2 the Mac is in
-# use, 3 something it needs is missing.
+# use or its screen is locked (try again later), 3 something it needs is
+# missing.
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,6 +32,12 @@ fi
 idle="$(idle_seconds)"
 if [ "$idle" -lt "$min_idle" ]; then
     echo "the Mac is in use (idle ${idle} s, needs ${min_idle}): try again when it is free" >&2
+    exit 2
+fi
+
+# A locked screen puts loginwindow in front, and no key would reach hopto.
+if [ "$(front)" = "loginwindow" ]; then
+    echo "the screen is locked: try again when it is unlocked" >&2
     exit 2
 fi
 

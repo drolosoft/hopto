@@ -54,7 +54,7 @@ test('pickEntry is the apps tab row that opens the native dialog', () => {
     assert.equal(entry.kind, 'pick');
     assert.equal(entry.id, '');
     assert.equal(entry.name, 'Search Applications…');
-    assert.equal(entry.description, t('pick.hint'));
+    assert.equal(entry.description, 'Pick a .app to add it by hand');
 });
 
 test('layoutOf searches both tabs while typing, without sections or hidden apps', () => {

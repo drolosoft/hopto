@@ -49,10 +49,11 @@ function sourceLinesMatching(pattern) {
 // The style card's inline-code rules. The CSP of the build blocks inline
 // scripts and styles, so a break here would be a page that works under
 // Vite's dev server and fails in the app.
-test('index.html has no inline script, style attribute or event handler', () => {
+test('index.html has no inline script, style element, style attribute or event handler', () => {
     const inlineScripts = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>/g)].map((match) => match[0]);
 
     assert.deepEqual(inlineScripts, []);
+    assert.doesNotMatch(indexHtml, /<style\b/i);
     assert.doesNotMatch(indexHtml, /\sstyle\s*=/);
     assert.doesNotMatch(indexHtml, /\son[a-z]+\s*=/i);
 });
@@ -65,10 +66,14 @@ test('colours are tokens: no hex colour outside the :root blocks', () => {
     const css = readFileSync(join(sourceDir, 'style.css'), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/:root\s*\{[^}]*\}/g, '');
-    // A hex colour can only sit in a declaration's value, after a colon;
-    // an id such as #fade in a selector is not a colour.
-    const strays = css.split('\n').filter((line) => /:[^;{]*#[0-9a-fA-F]{3,8}\b/.test(line));
+    // A hex colour can only sit in a declaration's value, after a colon and
+    // before the semicolon that ends it; a value may run over several
+    // lines, so the match is made on the whole text. An id such as #fade
+    // in a selector is not a colour.
+    const strays = [...css.matchAll(/:[^;{}]*#[0-9a-fA-F]{3,8}\b/g)].map((match) => match[0].trim());
 
     assert.deepEqual(strays, []);
-    assert.deepEqual(sourceLinesMatching(/['"`]#[0-9a-fA-F]{3,8}['"`]/), []);
+    // In the modules a colour can also sit inside a longer string, such as
+    // '1px solid #fff'.
+    assert.deepEqual(sourceLinesMatching(/(['"`])[^'"`\n]*#[0-9a-fA-F]{3,8}\b[^'"`\n]*\1/), []);
 });

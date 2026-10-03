@@ -12,7 +12,7 @@ make lint     # gofmt and golangci-lint
 ```
 
 - **Go**: table tests for validation, ids, duplicates, shortcuts and the store (a missing, empty, broken, huge, future or unreadable file), the atomic writes (a failure at every step leaves the previous file and no temporary one), usage, icons against `httptest` servers (redirect loops, huge bodies, HTML served as PNG, private addresses), `.icns` parsing, discovery over fake bundles in a temp folder, and the App with a fake window and a fake `open` (every case of the shortcuts, of opening, of the dialog, of the menu). CI runs them with `-race`.
-- **Page units**: `node --test` over `state.js`, `filter.js`, `layout.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js`, which touch neither the DOM nor Wails, plus a check that no module writes HTML strings and one that the fake bridge has every method Go binds (read from `internal/app/*.go`, so it runs before any build).
+- **Page units**: `node --test` over `state.js`, `filter.js`, `layout.js`, `keys.js`, `draft.js`, `hotkeys.js`, `i18n.js`, `tabs.js` and `modifiers.js`, which touch neither the DOM nor Wails, plus the page rules in `dom-rules.test.js` (no module writes HTML strings, no inline script, `style=` or `on*=` handler in `index.html` or set from a module, and no hex colour outside `:root`; the `no-drag` check is in the browser specs) and one that the fake bridge has every method Go binds (read from `internal/app/*.go`, so it runs before any build).
 - **Browser**: Playwright drives the built page in WebKit, the engine of the WKWebView, with a fake Go bridge, and fails any test that raised a page error or a Content Security Policy violation. The specs run in dark mode except `light.spec.js`, which checks the light tokens; `a11y.spec.js` checks the help's name and focus, the tab panel, and that every control on screen is `no-drag`. The run uses two workers: Playwright's WebKit stops loading pages after 63 in one browser, and each worker has its own.
 
 `make e2e` needs `frontend/dist` from a build, and refuses one older than any file in `frontend/src` or `frontend/index.html`: the tests would pass on the page as it was. `wails build` removes `frontend/dist/gitkeep`, which `make build` puts back.
@@ -97,7 +97,7 @@ The whole sequence as one script: it sets your data folder aside, starts the bui
 make build && bash scripts/verify-hopto.sh
 ```
 
-Exit status: 0 every check passed, 1 a check failed (the log of the run follows), 2 the Mac is in use, 3 there is no build.
+Exit status: 0 every check passed, 1 a check failed (the log of the run follows), 2 the Mac is in use or its screen is locked (try again later), 3 there is no build.
 
 ## The real app on Windows
 

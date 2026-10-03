@@ -138,7 +138,7 @@ The imports go one way: `main` to `app`, `app` to `native`, `platform`, `library
 
 ## Style card
 
-What the code does, measured, so a change can read like the code around it. Measured on 2026-10-03, after the move to `internal/`.
+What the code does, measured, so a change can read like the code around it. Measured on 2026-10-03, after the cleanup.
 
 | Go | |
 |---|---|
@@ -149,13 +149,13 @@ What the code does, measured, so a change can read like the code around it. Meas
 
 | Page (JavaScript) | |
 |---|---|
-| `var` / `let` / `const` | 0 / 17 / 258 |
-| Function declarations / arrow functions kept in a constant | 154 / 4 |
+| `var` / `let` / `const` | 0 / 21 / 300 |
+| Function declarations / arrow functions kept in a constant | 161 / 4 |
 | One-letter names | 3, all `t`, the translator |
 | Lines with two statements | 0 |
-| JSDoc before internal functions | 64 of 64 |
-| Comments above the line / at the end of a line | 155 / 0 |
-| Median comment width | 62 characters |
+| JSDoc before internal functions | 72 of 72 |
+| Comments above the line / at the end of a line | 188 / 0 |
+| Median comment width | 66 characters |
 | `innerHTML`, `outerHTML`, `insertAdjacentHTML` | 0 (`frontend/test/dom-rules.test.js`) |
 | Inline scripts, `style=`, `on*=` handlers, inline styles set from JS, hex colours outside `:root` | 0 (`frontend/test/dom-rules.test.js`) |
 | Controls without `--wails-draggable: no-drag` | 0 (`frontend/test/e2e/a11y.spec.js`) |
