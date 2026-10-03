@@ -67,6 +67,22 @@ test('the welcome keeps the keyboard; Enter closes it and gives the search box b
     await expect(page.locator('#welcome')).toBeHidden();
 });
 
+test('Tab and Shift+Tab go round the welcome buttons and never leave it', async ({page}) => {
+    await showWith(page, firstRun);
+    await expect(page.locator('#welcome-start')).toBeFocused();
+
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#welcome-settings')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#welcome-start')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#welcome-settings')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#welcome-start')).toBeFocused();
+
+    expect(await calls(page)).not.toContain('TabChanged:links');
+});
+
 test('Esc closes it too, and a later run with a problem uses the other title', async ({page}) => {
     await showWith(page, {...firstRun, firstRun: false, finderConflict: false});
 

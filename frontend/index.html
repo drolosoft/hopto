@@ -9,14 +9,14 @@
 <main id="launcher" role="dialog" aria-modal="true">
     <header>
         <nav id="tabs" role="tablist">
-            <button type="button" role="tab" id="tab-apps" data-tab="apps" aria-selected="true" aria-controls="grid"><span class="icon" aria-hidden="true"></span><span class="label"></span><span class="count"></span></button>
-            <button type="button" role="tab" id="tab-links" data-tab="links" aria-selected="false" aria-controls="grid"><span class="icon" aria-hidden="true"></span><span class="label"></span><span class="count"></span></button>
+            <button type="button" role="tab" id="tab-apps" data-tab="apps" aria-selected="true" aria-controls="content"><span class="icon" aria-hidden="true"></span><span class="label"></span><span class="count"></span></button>
+            <button type="button" role="tab" id="tab-links" data-tab="links" aria-selected="false" aria-controls="content"><span class="icon" aria-hidden="true"></span><span class="label"></span><span class="count"></span></button>
         </nav>
         <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-controls="grid" aria-expanded="true" autocomplete="off" spellcheck="false"/>
     </header>
     <nav id="categories"></nav>
     <div id="status" hidden><p class="text"></p><button type="button" class="fix"></button></div>
-    <section id="content">
+    <section id="content" role="tabpanel" aria-labelledby="tab-apps">
         <ul id="grid" role="listbox"></ul>
         <p id="empty" hidden></p>
     </section>
@@ -27,8 +27,8 @@
         <p id="hints"></p>
     </footer>
     <div id="toast" role="status" aria-live="polite" hidden></div>
-    <section id="help" role="dialog" aria-modal="true" hidden>
-        <h2></h2>
+    <section id="help" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1" hidden>
+        <h2 id="help-title"></h2>
         <ul></ul>
         <p class="close"></p>
     </section>

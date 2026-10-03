@@ -157,6 +157,8 @@ What the code does, measured, so a change can read like the code around it. Meas
 | Comments above the line / at the end of a line | 155 / 0 |
 | Median comment width | 62 characters |
 | `innerHTML`, `outerHTML`, `insertAdjacentHTML` | 0 (`frontend/test/dom-rules.test.js`) |
+| Inline scripts, `style=`, `on*=` handlers, inline styles set from JS, hex colours outside `:root` | 0 (`frontend/test/dom-rules.test.js`) |
+| Controls without `--wails-draggable: no-drag` | 0 (`frontend/test/e2e/a11y.spec.js`) |
 
 The checks, from the repository root:
 

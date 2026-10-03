@@ -64,8 +64,12 @@ async function handle(request, response) {
             return;
         }
 
+        // Read before the head is written: a missing file (/favicon.ico,
+        // say) has to reach the 404 below with no head sent, or writing
+        // that 404 throws and takes the harness down.
+        const body = await readFile(file);
         response.writeHead(200, {'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream'});
-        response.end(await readFile(file));
+        response.end(body);
     } catch {
         response.writeHead(404);
         response.end();

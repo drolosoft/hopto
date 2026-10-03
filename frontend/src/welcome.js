@@ -34,9 +34,10 @@ export function installWelcome(pageHost) {
 }
 
 /**
- * The keys while the welcome is open: Tab moves between its buttons,
- * Enter presses the focused one (Start unless Settings has the focus),
- * Esc is Start; nothing reaches the search box or the list.
+ * The keys while the welcome is open: Tab moves between its buttons and
+ * never out of them, Enter presses the focused one (Start unless
+ * Settings has the focus), Esc is Start; nothing reaches the search box
+ * or the list.
  * @param {KeyboardEvent} event
  */
 function takeKey(event) {
@@ -45,12 +46,12 @@ function takeKey(event) {
     }
 
     event.stopImmediatePropagation();
+    event.preventDefault();
 
     if (event.key === 'Tab') {
+        cycleFocus(event.shiftKey ? -1 : 1);
         return;
     }
-
-    event.preventDefault();
 
     if (event.isComposing) {
         return;
@@ -64,6 +65,30 @@ function takeKey(event) {
     if (event.key === 'Enter' || event.key === 'Escape') {
         dismiss();
     }
+}
+
+/**
+ * Moves the focus to the next or previous button of the welcome, round
+ * from the last to the first: left to the browser, Tab would walk out
+ * of a modal panel into the search box and the tabs behind it.
+ * @param {number} step 1 forwards, -1 backwards
+ */
+function cycleFocus(step) {
+    const buttons = [...panel.querySelectorAll('button')];
+    if (buttons.length === 0) {
+        return;
+    }
+
+    let current = buttons.indexOf(document.activeElement);
+    // From outside the panel, Tab lands on the first button and Shift+Tab
+    // on the last, as a browser would.
+    if (current < 0) {
+        current = step > 0 ? -1 : 0;
+    }
+
+    const next = (current + step + buttons.length) % buttons.length;
+
+    buttons[next].focus();
 }
 
 /**

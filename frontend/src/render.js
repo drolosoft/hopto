@@ -34,6 +34,9 @@ let toastTimer = 0;
 // null until the first answer arrives.
 let about = null;
 
+// What had the focus when the help opened, to hand it back on close.
+let focusBeforeHelp = null;
+
 /**
  * Keeps what About() said, for the next paint of the help panel.
  * @param {{version: string, commit: string, builtAt: string, goVersion: string, libraryPath: string}} view
@@ -69,6 +72,10 @@ function renderTabs(state, t) {
         button.querySelector('.label').textContent = t(TABS[tab].label);
         button.querySelector('.count').textContent = String(totals[tab]);
     });
+
+    // The list is the panel of whichever tab is selected, and is named
+    // after it.
+    elements.content.setAttribute('aria-labelledby', `tab-${state.tab}`);
 }
 
 /**
@@ -295,12 +302,36 @@ function renderChrome(t) {
 }
 
 /**
+ * Moves the focus into the help as it opens, so a screen reader starts
+ * reading it, and back to where it was as it closes. Only on those two
+ * changes: the help is repainted on every key. On close the focus only
+ * goes back if it is still on the help; whatever closed it may have
+ * moved it already.
+ * @param {boolean} wasOpen
+ * @param {boolean} isOpen
+ */
+function moveHelpFocus(wasOpen, isOpen) {
+    if (isOpen && !wasOpen) {
+        focusBeforeHelp = document.activeElement;
+        elements.help.focus();
+        return;
+    }
+
+    if (!isOpen && wasOpen && elements.help.contains(document.activeElement)) {
+        const back = focusBeforeHelp?.isConnected ? focusBeforeHelp : elements.search;
+        back.focus();
+    }
+}
+
+/**
  * The help panel: every shortcut, and the two global ones from settings.
  * @param {object} state
  * @param {Function} t
  */
 export function renderHelp(state, t) {
+    const wasOpen = !elements.help.hidden;
     elements.help.hidden = !state.helpOpen;
+    moveHelpFocus(wasOpen, state.helpOpen);
     elements.help.querySelector('h2').textContent = t('help.title');
     elements.help.querySelector('.close').textContent = t('help.close');
 

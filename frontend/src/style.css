@@ -543,6 +543,12 @@ footer p {
     --wails-draggable: no-drag;
 }
 
+/* The help takes the focus so a screen reader reads it; the panel is
+   plain to see, so it draws no focus ring around itself. */
+#help:focus {
+    outline: none;
+}
+
 #help h2 {
     margin: 0 0 8px;
     font-size: 16px;
