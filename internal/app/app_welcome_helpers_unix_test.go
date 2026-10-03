@@ -21,12 +21,12 @@ func finderOff(t *testing.T, app *App) {
 		`<dict><key>65</key><dict><key>enabled</key><false/></dict>` +
 		`</dict></dict></plist>`
 
-	err := os.MkdirAll(filepath.Dir(app.symbolicHotkeys), 0o700)
+	err := os.MkdirAll(filepath.Dir(app.symbolicHotkeysPath), 0o700)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = os.WriteFile(app.symbolicHotkeys, []byte(plist), 0o600)
+	err = os.WriteFile(app.symbolicHotkeysPath, []byte(plist), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}

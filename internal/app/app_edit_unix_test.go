@@ -24,8 +24,8 @@ func TestAppCRUDAndHiding(t *testing.T) {
 
 	// A second, unrelated bundle: hiding must be exercised on an app that
 	// stays discovered, not on "app-alpha", which TestAHandAddedAppHides
-	// ItsDiscoveredTwin covers as the hand-added "alpha"'s twin (Task 10
-	// leaves a twin out of Items entirely, so it cannot be hidden there).
+	// ItsDiscoveredTwin covers as the hand-added "alpha"'s twin (Items
+	// leaves a twin out entirely, so it cannot be hidden there).
 	fakeBundle(t, app, "Beta", "com.example.beta")
 
 	result, err := app.AddApp(AppInput{Path: bundle, Category: "tools"})
@@ -160,11 +160,11 @@ func TestAddAppAvoidsALinkID(t *testing.T) {
 	}
 }
 
-// Plan 3 minor (a): AddApp refuses an app that an entry added by hand
-// already opens, by path or by bundle id, even when the page's snapshot
-// said nothing (a second editor or a hand edit got there first). A
-// found app is still adopted: that is how it gets a category, and the
-// other tests of this file pin it.
+// AddApp refuses an app that an entry added by hand already opens, by
+// path or by bundle id, even when the page's snapshot said nothing (a
+// second editor or a hand edit got there first). A found app is still
+// adopted: that is how it gets a category, and the other tests of this
+// file pin it.
 func TestAddAppRefusesAHandAddedTwin(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	bundle := fakeBundle(t, app, "Alpha", "com.example.alpha")

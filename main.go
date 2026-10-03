@@ -1,3 +1,6 @@
+// Command hopto is a keyboard launcher for macOS and Windows: two global
+// shortcuts bring up a panel of apps and links kept in library.toml. main
+// only hands the App of internal/app to Wails.
 package main
 
 import (
@@ -27,19 +30,16 @@ func main() {
 	platform.OpenLog()
 	launcher, wiring := app.New()
 
-	// An overlay, not a document window: no frame, always on top, hidden
-	// until the shortcut, and closing only hides it. The Dock icon goes away
-	// with the accessory activation policy set from internal/native (the
-	// plist's LSUIElement alone is overridden by Wails). The window itself is
-	// fully transparent: the page paints the rounded panel, so the corners
-	// are round. WindowIsTranslucent is off on purpose, its vibrancy view is
-	// rectangular and showed as square corners. No fixed appearance either:
-	// the page follows the system's light or dark mode.
 	assetOptions := &assetserver.Options{
 		Assets:  assets,
 		Handler: wiring.Assets,
 	}
 
+	// An overlay, not a document window: no frame, always on top, hidden
+	// until the shortcut, and closing only hides it. The window itself is
+	// fully transparent: the page paints the rounded panel, so the corners
+	// are round. No fixed appearance either: the page follows the system's
+	// light or dark mode.
 	err := wails.Run(&options.App{
 		Title:             "hopto",
 		Width:             760,
@@ -65,6 +65,11 @@ func main() {
 			UniqueId:               "com.drolosoft.hopto",
 			OnSecondInstanceLaunch: wiring.SecondInstance,
 		},
+
+		// macOS: the Dock icon goes away with the accessory activation
+		// policy set from internal/native (the plist's LSUIElement alone
+		// is overridden by Wails). WindowIsTranslucent is off on purpose:
+		// its vibrancy view is rectangular and showed as square corners.
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,

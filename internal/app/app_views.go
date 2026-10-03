@@ -26,8 +26,9 @@ const hiddenChip = "hidden"
 
 // ItemView is one row or card of the page: a link, a hand-added app or a
 // discovered one, flattened so the page never branches on where it came
-// from. Every slice is non-nil. SearchOnly marks an app of
-// /System/Applications: the page lists it only while typing.
+// from. Every slice is non-nil. SearchOnly marks an app of the system's
+// own folder (platform.SystemAppsRoot): the page lists it only while
+// typing.
 type ItemView struct {
 	ID          string   `json:"id"`
 	Key         string   `json:"key"`
@@ -119,15 +120,11 @@ func (a *App) Categories(tab string) []CategoryView {
 		return views
 	}
 
-	hidden := map[string]bool{}
-	for _, entry := range lib.Hidden {
-		hidden[entry.ID] = true
-	}
+	hidden := hiddenIDs(lib)
 
 	// A discovered app already adopted by a hand-added entry never
 	// reaches the grid (appViews skips it), so it must not count towards
-	// either chip: counting it here is what left a "Hidden" chip open on
-	// an empty list once its only hidden app had been adopted by hand.
+	// either chip, or a "Hidden" chip could open on an empty list.
 	twins := adoptedTwins(lib.Apps)
 
 	present := map[string]bool{}
@@ -240,11 +237,7 @@ func (a *App) linkViews(lib library.Library) []ItemView {
 // to unhide. A discovered app that a hand-added one already opens is left
 // out.
 func (a *App) appViews(lib library.Library) []ItemView {
-	hidden := map[string]bool{}
-	for _, entry := range lib.Hidden {
-		hidden[entry.ID] = true
-	}
-
+	hidden := hiddenIDs(lib)
 	views := []ItemView{}
 
 	for _, app := range lib.Apps {
@@ -327,7 +320,7 @@ func (a *App) discover(settings library.Settings) []discover.App {
 }
 
 // iconURL is the page URL of an item's icon: the user's own file when
-// there is one, else the bundle's .icns through the handler, else "".
+// there is one, else the app's own icon through the handler, else "".
 func (a *App) iconURL(id string) string {
 	if url := icons.FileURL(a.iconsDir(), id); url != "" {
 		return url
@@ -352,8 +345,8 @@ func (a *App) iconsDir() string {
 	return filepath.Join(a.dataDir, platform.IconsFolder)
 }
 
-// iconSource is the handler's resolver: the .icns behind an app id, from
-// the last discovery or from a hand-added app's bundle.
+// iconSource is the handler's resolver: the icon file behind an app id,
+// from the last discovery or from a hand-added app's bundle.
 func (a *App) iconSource(id string) (string, bool) {
 	a.mu.Lock()
 	found, ok := a.discovered[id]
@@ -363,17 +356,14 @@ func (a *App) iconSource(id string) (string, bool) {
 		return found.IconPath, found.IconPath != ""
 	}
 
-	for _, app := range a.library.Snapshot().Apps {
-		if app.ID != id || app.Path == "" {
-			continue
-		}
-
-		bundle, _ := discover.Inspect(app.Path)
-
-		return bundle.IconPath, bundle.IconPath != ""
+	app, ok := a.libraryApp(id)
+	if !ok || app.Path == "" {
+		return "", false
 	}
 
-	return "", false
+	bundle, _ := discover.Inspect(app.Path)
+
+	return bundle.IconPath, bundle.IconPath != ""
 }
 
 // searchOnly reports whether a discovered app lives under the system's
@@ -381,6 +371,18 @@ func (a *App) iconSource(id string) (string, bool) {
 func (a *App) searchOnly(path string) bool {
 	return a.systemApps != "" &&
 		strings.HasPrefix(path, a.systemApps+string(filepath.Separator))
+}
+
+// hiddenIDs is the set of the ids the [[hidden]] rows name, which
+// Categories and appViews both look apps up in.
+func hiddenIDs(lib library.Library) map[string]bool {
+	hidden := map[string]bool{}
+
+	for _, entry := range lib.Hidden {
+		hidden[entry.ID] = true
+	}
+
+	return hidden
 }
 
 // adoptedTwins is the set of hand-added apps' paths and bundle ids, keyed

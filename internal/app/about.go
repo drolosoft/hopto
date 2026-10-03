@@ -42,10 +42,10 @@ func (a *App) About() AboutView {
 // commit is cut to the length git shows, and the date keeps only the day
 // of an RFC 3339 stamp; anything else is dropped rather than shown half
 // understood.
-func describeBuild(version, commit, builtAt string) AboutView {
+func describeBuild(rawVersion, rawCommit, rawBuiltAt string) AboutView {
 	view := AboutView{
-		Version: strings.TrimSpace(version),
-		Commit:  strings.TrimSpace(commit),
+		Version: strings.TrimSpace(rawVersion),
+		Commit:  strings.TrimSpace(rawCommit),
 	}
 
 	if view.Version == "" {
@@ -56,7 +56,7 @@ func describeBuild(version, commit, builtAt string) AboutView {
 		view.Commit = view.Commit[:shortCommit]
 	}
 
-	stamp, err := time.Parse(time.RFC3339, strings.TrimSpace(builtAt))
+	stamp, err := time.Parse(time.RFC3339, strings.TrimSpace(rawBuiltAt))
 	if err == nil {
 		view.BuiltAt = stamp.Format(time.DateOnly)
 	}

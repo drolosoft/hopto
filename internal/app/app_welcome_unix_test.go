@@ -80,8 +80,8 @@ func TestWelcomeReportsHotkeyProblems(t *testing.T) {
 // open the panel by itself: with the stock ⌥⌘Space still bound to "Show
 // Finder search window" and hopto's own default links shortcut of
 // cmd+option+space, that would pop the panel up on every launch for any
-// user who never touched either setting. The spec's ruling is that the
-// welcome shows once; a later problem waits for the user's own `shown`.
+// user who never touched either setting. The welcome shows by itself
+// once; a later problem waits for the user's own `shown`.
 func TestPresentWelcomeStaysQuietAfterTheFirstRun(t *testing.T) {
 	first, _, _ := newTestApp(t)
 	win := &fakeWindow{}

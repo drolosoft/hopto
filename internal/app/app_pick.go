@@ -16,12 +16,12 @@ import (
 var errDialogBusy = errors.New("a file dialog is already open")
 
 // errPanelHidden answers PickApp when a hotkey hid the panel just before
-// the sheet could attach: a sheet on a hidden window never gets an
+// the dialog could attach: a dialog on a hidden window never gets an
 // answer, which would leave dialogOpen stuck refusing toggle, Hide and
 // reopen until Quit.
 var errPanelHidden = errors.New("the panel is hidden")
 
-// AppDraft is what the editor pre-fills after the user picks a .app: the
+// AppDraft is what the editor pre-fills after the user picks an app: the
 // bundle's name, id and icon, the problem with its path (outside the app
 // roots) and the entry that already lists the same app, if any.
 type AppDraft struct {
@@ -34,10 +34,10 @@ type AppDraft struct {
 	Duplicate   *Ref   `json:"duplicate"`
 }
 
-// PickApp opens the native panel on /Applications and reads the bundle
-// the user picks. A cancel is an empty draft, not an error. While the
-// panel is up the window stays shown and leaves the floating level, so
-// the panel is never under it; both come back when it closes.
+// PickApp opens the system's file dialog in platform.PickFolder and
+// reads the app the user picks. A cancel is an empty draft, not an
+// error. While the dialog is up the window stays shown and leaves always
+// on top, so the dialog is never under it; both come back when it closes.
 func (a *App) PickApp() (AppDraft, error) {
 	if err := a.beginDialog(); err != nil {
 		return AppDraft{}, err
@@ -57,11 +57,9 @@ func (a *App) PickApp() (AppDraft, error) {
 	return a.appDraft(path), nil
 }
 
-// beginDialog marks a dialog as open and takes the window off the
-// floating level. It refuses a second dialog while one is already open,
-// and refuses one on a hidden panel: a hotkey hide landing between the
-// page asking for the dialog and the sheet attaching would otherwise
-// leave a sheet nobody can answer, and dialogOpen stuck until Quit.
+// beginDialog marks a dialog as open and takes the window out of always
+// on top. It refuses a second dialog while one is already open, and one
+// on a hidden panel (errPanelHidden says why).
 func (a *App) beginDialog() error {
 	a.mu.Lock()
 	if a.dialogOpen {
@@ -82,8 +80,8 @@ func (a *App) beginDialog() error {
 	return nil
 }
 
-// endDialog puts the window back on the floating level and gives it the
-// keyboard again: the sheet held it, and without this the next key goes
+// endDialog puts the window back on top and gives it the keyboard
+// again: the dialog held it, and without this the next key goes
 // nowhere until the user clicks.
 func (a *App) endDialog() {
 	a.mu.Lock()
@@ -94,7 +92,7 @@ func (a *App) endDialog() {
 	a.window.Activate()
 }
 
-// appDraft reads a picked bundle. The path is cleaned (the panel may end
+// appDraft reads a picked app. The path is cleaned (the dialog may end
 // it with a slash), an invalid bundle id is dropped rather than refused
 // (the path still opens the app), and a path outside the app roots is
 // reported for the editor to show under the field.
@@ -129,7 +127,7 @@ func (a *App) appDraft(path string) AppDraft {
 
 // bundleIconDataURL is the bundle's icon as a data URL for the editor's
 // preview (the draft has no id yet, so no /user-icons/ URL), or "" when
-// the bundle has no readable .icns.
+// the app has no readable icon.
 func bundleIconDataURL(iconPath string) string {
 	if iconPath == "" {
 		return ""

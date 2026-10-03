@@ -17,9 +17,11 @@ import (
 // data folder.
 const windowPerm = 0o600
 
-// windowState is window.json: the CGDirectDisplayID of the screen the
-// panel was on when it last hid. The id survives a restart and a replug
-// of the same monitor, which is what lets a new run put the panel back.
+// windowState is window.json: the native package's id of the screen the
+// panel was on when it last hid (the CGDirectDisplayID on macOS, a hash
+// of the monitor's device name on Windows). The id survives a restart
+// and a replug of the same monitor, which is what lets a new run put the
+// panel back.
 type windowState struct {
 	Display uint32 `json:"display"`
 }

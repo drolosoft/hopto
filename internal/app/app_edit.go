@@ -100,20 +100,11 @@ func (a *App) AddLink(in LinkInput) (SaveResult, error) {
 
 	err := a.library.Apply(func(draft *library.Library) error {
 		if duplicate, ok := library.FindDuplicateLink(draft.Links, in.URL); ok {
-			result = SaveResult{
-				Problems:  map[string]string{},
-				Duplicate: linkRef(duplicate),
-			}
-
+			result = duplicateOf(linkRef(duplicate))
 			return errAnswered
 		}
 
-		// An id is taken by either tab: a link and an app sharing one would
-		// collide on icons/<id>.png and confuse CopyTarget, RevealInFinder
-		// and iconURL.
-		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-			return hasLinkID(*draft, candidate) || hasAppID(*draft, candidate)
-		})
+		id := freeID(*draft, in.Name)
 
 		link = linkFromInput(id, in)
 		if problems := linkProblems(*draft, link); len(problems) > 0 {
@@ -122,15 +113,12 @@ func (a *App) AddLink(in LinkInput) (SaveResult, error) {
 		}
 
 		draft.Links = append(draft.Links, link)
-		result = SaveResult{ID: id, Problems: map[string]string{}}
+		result = savedAs(id)
 
 		return nil
 	})
-	if errors.Is(err, errAnswered) {
-		return result, nil
-	}
 	if err != nil {
-		return SaveResult{Problems: map[string]string{}}, err
+		return saveOutcome(result, err)
 	}
 
 	a.fetchIconLater(result.ID, link.Icon, link.URL)
@@ -165,11 +153,7 @@ func (a *App) UpdateLink(id string, in LinkInput) (SaveResult, error) {
 
 		others := slices.Delete(slices.Clone(draft.Links), index, index+1)
 		if duplicate, ok := library.FindDuplicateLink(others, in.URL); ok {
-			result = SaveResult{
-				Problems:  map[string]string{},
-				Duplicate: linkRef(duplicate),
-			}
-
+			result = duplicateOf(linkRef(duplicate))
 			return errAnswered
 		}
 
@@ -180,15 +164,12 @@ func (a *App) UpdateLink(id string, in LinkInput) (SaveResult, error) {
 		}
 
 		draft.Links[index] = link
-		result = SaveResult{ID: id, Problems: map[string]string{}}
+		result = savedAs(id)
 
 		return nil
 	})
-	if errors.Is(err, errAnswered) {
-		return result, nil
-	}
 	if err != nil {
-		return SaveResult{Problems: map[string]string{}}, err
+		return saveOutcome(result, err)
 	}
 
 	if link.URL != previous.URL || link.Icon != previous.Icon {
@@ -233,14 +214,11 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 		// an entry added by hand blocks; a found app is adopted.
 		twin := handAddedDuplicate(*draft, in.Path, in.BundleID)
 		if twin != nil {
-			result = SaveResult{Problems: map[string]string{}, Duplicate: twin}
+			result = duplicateOf(twin)
 			return errAnswered
 		}
 
-		// Same reasoning as AddLink: an id must not be taken on either tab.
-		id := library.UniqueID(library.Slug(in.Name), func(candidate string) bool {
-			return hasLinkID(*draft, candidate) || hasAppID(*draft, candidate)
-		})
+		id := freeID(*draft, in.Name)
 
 		app := appFromInput(id, in)
 		if problems := a.appProblems(*draft, app); len(problems) > 0 {
@@ -252,22 +230,15 @@ func (a *App) AddApp(in AppInput) (SaveResult, error) {
 
 		// The app just adopted by hand may be the one a [[hidden]] row
 		// still names by its discovered id; appViews will never show
-		// that id again, so the row would be a dead one otherwise, the
-		// "Hidden" chip on an empty list the final review found.
+		// that id again, so the row would be a dead one otherwise.
 		dropTwinHidden(draft, a.discover(draft.Settings), app)
 
-		result = SaveResult{ID: id, Problems: map[string]string{}}
+		result = savedAs(id)
 
 		return nil
 	})
-	if errors.Is(err, errAnswered) {
-		return result, nil
-	}
-	if err != nil {
-		return SaveResult{Problems: map[string]string{}}, err
-	}
 
-	return result, nil
+	return saveOutcome(result, err)
 }
 
 // dropTwinHidden removes the [[hidden]] row of a discovered app once the
@@ -296,11 +267,10 @@ func (a *App) UpdateApp(id string, in AppInput) (SaveResult, error) {
 	var result SaveResult
 
 	err := a.library.Apply(func(draft *library.Library) error {
-		position := slices.IndexFunc(
-			draft.Apps,
-			func(entry library.AppEntry) bool { return entry.ID == id },
-		)
-		if position < 0 {
+		index := slices.IndexFunc(draft.Apps, func(entry library.AppEntry) bool {
+			return entry.ID == id
+		})
+		if index < 0 {
 			return fmt.Errorf("%w: %s", errUnknownItem, id)
 		}
 
@@ -310,19 +280,13 @@ func (a *App) UpdateApp(id string, in AppInput) (SaveResult, error) {
 			return errAnswered
 		}
 
-		draft.Apps[position] = app
-		result = SaveResult{ID: id, Problems: map[string]string{}}
+		draft.Apps[index] = app
+		result = savedAs(id)
 
 		return nil
 	})
-	if errors.Is(err, errAnswered) {
-		return result, nil
-	}
-	if err != nil {
-		return SaveResult{Problems: map[string]string{}}, err
-	}
 
-	return result, nil
+	return saveOutcome(result, err)
 }
 
 // DeleteApp removes a hand-added app, its usage and its icon file.
@@ -497,6 +461,20 @@ func (a *App) InspectURL(raw string) (LinkDraft, error) {
 		draft.SameHost = append(draft.SameHost, *linkRef(neighbour))
 	}
 
+	page, ok := fetchPageInfo(raw, lib.Settings.AllowPrivateIconHosts)
+	if ok {
+		draft.Name = page.SuggestedName()
+		draft.Description = page.Description
+	}
+
+	draft.IconDataURL = a.fetchIconDataURL(raw)
+
+	return draft, nil
+}
+
+// fetchPageInfo reads what the page at raw says about itself, within
+// inspect.Timeout; ok is false when it could not be reached or read.
+func fetchPageInfo(raw string, allowPrivate bool) (inspect.Page, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), inspect.Timeout)
 	defer cancel()
 
@@ -504,26 +482,33 @@ func (a *App) InspectURL(raw string) (LinkDraft, error) {
 	// URL was already http://; an https:// URL must never be downgraded
 	// while inspecting it.
 	client := safehttp.NewClient(safehttp.Options{
-		AllowPrivate: lib.Settings.AllowPrivateIconHosts,
+		AllowPrivate: allowPrivate,
 		AllowHTTP:    strings.HasPrefix(raw, "http://"),
 		Timeout:      inspect.Timeout,
 	})
-	if page, err := inspect.Fetch(ctx, client, raw); err == nil {
-		draft.Name = page.SuggestedName()
-		draft.Description = page.Description
-	}
 
-	iconCtx, cancelIcon := context.WithTimeout(
+	page, err := inspect.Fetch(ctx, client, raw)
+
+	return page, err == nil
+}
+
+// fetchIconDataURL is the site's icon as a data URL for the editor's
+// preview (the draft has no id yet, so no icon file), or "" when none
+// came within icons.FetchTimeout.
+func (a *App) fetchIconDataURL(raw string) string {
+	ctx, cancel := context.WithTimeout(
 		context.Background(), icons.FetchTimeout,
 	)
-	defer cancelIcon()
+	defer cancel()
 
-	if png, err := a.newFetcher().Fetch(iconCtx, "", raw); err == nil {
-		encoded := base64.StdEncoding.EncodeToString(png)
-		draft.IconDataURL = "data:image/png;base64," + encoded
+	png, err := a.newFetcher().Fetch(ctx, "", raw)
+	if err != nil {
+		return ""
 	}
 
-	return draft, nil
+	encoded := base64.StdEncoding.EncodeToString(png)
+
+	return "data:image/png;base64," + encoded
 }
 
 // RefetchIcon downloads a link's icon again, or re-reads a hand-added
@@ -533,45 +518,11 @@ func (a *App) RefetchIcon(tab, id string) (string, error) {
 	a.reload()
 
 	if tab == tabLinks {
-		link, ok := a.findLink(id)
-		if !ok {
-			return "", fmt.Errorf("%w: %s", errUnknownItem, id)
-		}
-
-		ctx, cancel := context.WithTimeout(
-			context.Background(), icons.FetchTimeout,
-		)
-		defer cancel()
-
-		png, err := a.newFetcher().Fetch(ctx, link.Icon, link.URL)
-		if err != nil {
-			return "", err
-		}
-
-		return a.writeIcon(id, png)
+		return a.refetchLinkIcon(id)
 	}
 
-	for _, app := range a.library.Snapshot().Apps {
-		if app.ID != id {
-			continue
-		}
-
-		bundle, err := discover.Inspect(app.Path)
-		if err != nil || bundle.IconPath == "" {
-			return "", fmt.Errorf("%w: %s", errNoIconFound, app.Path)
-		}
-
-		raw, ok := icons.SourcePNG(bundle.IconPath)
-		if !ok {
-			return "", fmt.Errorf("%w: %s", errNoIconFound, bundle.IconPath)
-		}
-
-		png, err := icons.Normalize(raw, icons.AppSide)
-		if err != nil {
-			return "", err
-		}
-
-		return a.writeIcon(id, png)
+	if app, ok := a.libraryApp(id); ok {
+		return a.refetchAppIcon(app)
 	}
 
 	if _, ok := a.findDiscovered(id); ok {
@@ -579,6 +530,47 @@ func (a *App) RefetchIcon(tab, id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("%w: %s", errUnknownItem, id)
+}
+
+// refetchLinkIcon downloads the icon of the link id again and writes it.
+func (a *App) refetchLinkIcon(id string) (string, error) {
+	link, ok := a.findLink(id)
+	if !ok {
+		return "", fmt.Errorf("%w: %s", errUnknownItem, id)
+	}
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(), icons.FetchTimeout,
+	)
+	defer cancel()
+
+	png, err := a.newFetcher().Fetch(ctx, link.Icon, link.URL)
+	if err != nil {
+		return "", err
+	}
+
+	return a.writeIcon(id, png)
+}
+
+// refetchAppIcon re-reads the icon of a hand-added app's bundle and
+// writes it as the app's own.
+func (a *App) refetchAppIcon(app library.AppEntry) (string, error) {
+	bundle, err := discover.Inspect(app.Path)
+	if err != nil || bundle.IconPath == "" {
+		return "", fmt.Errorf("%w: %s", errNoIconFound, app.Path)
+	}
+
+	raw, ok := icons.SourcePNG(bundle.IconPath)
+	if !ok {
+		return "", fmt.Errorf("%w: %s", errNoIconFound, bundle.IconPath)
+	}
+
+	png, err := icons.Normalize(raw, icons.AppSide)
+	if err != nil {
+		return "", err
+	}
+
+	return a.writeIcon(app.ID, png)
 }
 
 // fetchMissingIcons starts a background download for every link without
@@ -871,6 +863,44 @@ func hasAppID(lib library.Library, id string) bool {
 	return slices.ContainsFunc(lib.Apps, func(app library.AppEntry) bool {
 		return app.ID == id
 	})
+}
+
+// freeID is the id a new entry called name gets: its slug, stepped aside
+// from every id on either tab. A link and an app sharing one would
+// collide on icons/<id>.png and confuse CopyTarget, RevealInFinder and
+// iconURL. AddLink and AddApp call it inside Apply, on the draft.
+func freeID(lib library.Library, name string) string {
+	return library.UniqueID(library.Slug(name), func(candidate string) bool {
+		return hasLinkID(lib, candidate) || hasAppID(lib, candidate)
+	})
+}
+
+// savedAs is the answer to a save that went through under id.
+func savedAs(id string) SaveResult {
+	return SaveResult{ID: id, Problems: map[string]string{}}
+}
+
+// duplicateOf is the answer to a save refused because ref already is
+// the same item.
+func duplicateOf(ref *Ref) SaveResult {
+	return SaveResult{Problems: map[string]string{}, Duplicate: ref}
+}
+
+// saveOutcome turns what Apply returned into what the four saves return,
+// so the rule is written once: errAnswered means the closure already
+// answered in result (problems or a duplicate) and is no error to the
+// page; any other error is a real one, with an empty answer; nil is the
+// saved result.
+func saveOutcome(result SaveResult, err error) (SaveResult, error) {
+	if errors.Is(err, errAnswered) {
+		return result, nil
+	}
+
+	if err != nil {
+		return SaveResult{Problems: map[string]string{}}, err
+	}
+
+	return result, nil
 }
 
 // linkRef points the page at an existing link.

@@ -14,9 +14,10 @@ const (
 	hotkeyPending    = "pending"
 )
 
-// HotkeyView is one global shortcut and what Carbon said about it. The
-// spec is the one in the settings; a spec that did not parse was
-// replaced by its default at registration and says so in the log.
+// HotkeyView is one global shortcut and what the system said when hopto
+// registered it. Spec is the shortcut as the settings write it; one that
+// did not parse was replaced by its default at registration and says so
+// in the log.
 type HotkeyView struct {
 	Tab    string `json:"tab"`
 	Spec   string `json:"spec"`
@@ -45,7 +46,7 @@ func (a *App) Welcome() WelcomeView {
 			hotkeyView(tabApps, settings.HotkeyApps, platform.HotkeyApps),
 			hotkeyView(tabLinks, settings.HotkeyLinks, platform.HotkeyLinks),
 		},
-		FinderConflict: platform.FinderConflict(a.symbolicHotkeys, settings),
+		FinderConflict: platform.FinderConflict(a.symbolicHotkeysPath, settings),
 	}
 
 	problem := view.FinderConflict
@@ -64,7 +65,7 @@ func (a *App) Welcome() WelcomeView {
 	return view
 }
 
-// hotkeyView turns Carbon's answer for one shortcut into its state.
+// hotkeyView turns the system's answer for one shortcut into its state.
 func hotkeyView(tab, spec string, id uint32) HotkeyView {
 	view := HotkeyView{Tab: tab, Spec: spec, State: hotkeyPending}
 
@@ -76,7 +77,7 @@ func hotkeyView(tab, spec string, id uint32) HotkeyView {
 	view.Status = status
 
 	switch status {
-	case 0:
+	case hotkeyStatusOK:
 		view.State = hotkeyRegistered
 	case platform.HotkeyExistsStatus:
 		view.State = hotkeyTaken
@@ -91,12 +92,11 @@ func hotkeyView(tab, spec string, id uint32) HotkeyView {
 // first run does it show the panel by itself, whose `shown` then finds
 // the welcome; a later run's problem (a taken shortcut, or the Finder's
 // own ⌥⌘Space) is shown once the user opens the panel themselves,
-// through checkWelcome on that `shown`. Popping the panel up unasked on
-// every later launch is exactly what "Show Finder search window" already
-// does with the default links shortcut on a stock Mac, which is the
-// spec's ruling over the plan's own wider wording. Asking from the page,
-// instead of from startup, means the event never arrives before anyone
-// listens.
+// through checkWelcome on that `shown`: on a stock Mac "Show Finder
+// search window" keeps the default links shortcut, so that problem would
+// otherwise raise the panel unasked on every launch. Asking from the
+// page, instead of from startup, means the event never arrives before
+// anyone listens.
 func (a *App) PresentWelcome() {
 	view := a.Welcome()
 	if !view.Show || !view.FirstRun {

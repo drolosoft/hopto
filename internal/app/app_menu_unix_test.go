@@ -127,9 +127,9 @@ func TestMenuOpenHelpEditQuit(t *testing.T) {
 	}
 }
 
-// Plan 3 minor (b): with the open panel up, Help from the menu must not
-// reach the page either: the help would paint over a window the user
-// cannot reach while the sheet is on it.
+// With the open panel up, Help from the menu must not reach the page
+// either: the help would paint over a window the user cannot reach while
+// the sheet is on it.
 func TestMenuHelpWaitsForTheDialog(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	withMenu(t, app)

@@ -21,9 +21,10 @@ var (
 	errNoPath             = errors.New("the item has no path to reveal")
 )
 
-// Launch opens an app through `open`, counts the opening and hides the
-// panel. A hand-added app with a bundle id opens with -b, which survives
-// the .app being moved; anything else opens by path.
+// Launch opens an app with `open`'s arguments (platform.RunOpen takes
+// them on both systems), counts the opening and hides the panel. A
+// hand-added app with a bundle id opens with -b, which survives the .app
+// being moved; anything else opens by path.
 func (a *App) Launch(id string) error {
 	target, err := a.appTarget(id)
 	if err != nil {
@@ -99,7 +100,8 @@ func (a *App) CopyTarget(id string) error {
 	return a.window.SetClipboard(target[len(target)-1])
 }
 
-// RevealInFinder shows an app's bundle in the Finder.
+// RevealInFinder shows an app's bundle in the Finder, or its file in
+// the Explorer on Windows.
 func (a *App) RevealInFinder(id string) error {
 	if _, ok := a.findLink(id); ok {
 		return errNoPath
@@ -113,7 +115,7 @@ func (a *App) RevealInFinder(id string) error {
 	return a.open("-R", path)
 }
 
-// RevealLibrary shows library.toml in the Finder.
+// RevealLibrary shows library.toml in the Finder or the Explorer.
 func (a *App) RevealLibrary() error {
 	return a.open("-R", a.library.Path())
 }
@@ -182,13 +184,23 @@ func (a *App) findDiscovered(id string) (discover.App, bool) {
 	return discover.App{}, false
 }
 
+// libraryApp looks a hand-added app up by id in the current snapshot.
+// Every lookup of an app id tries the library first and the discovery
+// second, because an entry added by hand is the one the user chose; this
+// is the first half, written once.
+func (a *App) libraryApp(id string) (library.AppEntry, bool) {
+	for _, app := range a.library.Snapshot().Apps {
+		if app.ID == id {
+			return app, true
+		}
+	}
+
+	return library.AppEntry{}, false
+}
+
 // appTarget is the argument list `open` needs for an app id.
 func (a *App) appTarget(id string) ([]string, error) {
-	for _, app := range a.library.Snapshot().Apps {
-		if app.ID != id {
-			continue
-		}
-
+	if app, ok := a.libraryApp(id); ok {
 		if app.BundleID != "" {
 			return []string{"-b", app.BundleID}, nil
 		}
@@ -207,16 +219,14 @@ func (a *App) appTarget(id string) ([]string, error) {
 	return nil, fmt.Errorf("%w: %s", errUnknownItem, id)
 }
 
-// appPath is the bundle path of an app id, for the Finder.
+// appPath is the path of an app id, for the Finder or the Explorer.
 func (a *App) appPath(id string) (string, error) {
-	for _, app := range a.library.Snapshot().Apps {
-		if app.ID == id {
-			if app.Path == "" {
-				return "", errNoPath
-			}
-
-			return app.Path, nil
+	if app, ok := a.libraryApp(id); ok {
+		if app.Path == "" {
+			return "", errNoPath
 		}
+
+		return app.Path, nil
 	}
 
 	if found, ok := a.findDiscovered(id); ok {
@@ -235,10 +245,8 @@ func (a *App) exists(key string) bool {
 		return ok
 	}
 
-	for _, app := range a.library.Snapshot().Apps {
-		if app.ID == id {
-			return true
-		}
+	if _, ok := a.libraryApp(id); ok {
+		return true
 	}
 
 	_, ok := a.findDiscovered(id)

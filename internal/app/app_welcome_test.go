@@ -7,8 +7,8 @@ import (
 	"github.com/drolosoft/hopto/internal/platform"
 )
 
-// withHotkeys records the two registrations as Carbon would, and forgets
-// them after the test: the table is global, like the C callback.
+// withHotkeys records the two registrations as the native side would,
+// and forgets them after the test: the table is global.
 func withHotkeys(t *testing.T, apps, links int32) {
 	t.Helper()
 
@@ -22,7 +22,7 @@ func withHotkeys(t *testing.T, apps, links int32) {
 	})
 }
 
-// Before Carbon answers, a shortcut is pending, which is no problem.
+// Before the system answers, a shortcut is pending, which is no problem.
 func TestWelcomeWhileRegistering(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	finderOff(t, app)

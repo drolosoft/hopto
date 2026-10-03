@@ -2,15 +2,22 @@ package app
 
 import "sync"
 
-// hotkeyStatuses keeps what RegisterEventHotKey answered for each id.
-// It is global because the answer arrives through a C callback that
-// knows nothing of the App; the welcome reads it from here.
+// hotkeyStatusOK is what the system answers for a shortcut that is now
+// hopto's, on both systems; any other status is a refusal.
+const hotkeyStatusOK int32 = 0
+
+// hotkeyStatuses keeps what the system answered when each shortcut was
+// registered (RegisterEventHotKey on macOS, RegisterHotKey on Windows).
+// The native side reports it through Hooks.HotkeyRegistered, a plain
+// function that knows nothing of the App, so the table lives here, and
+// the welcome reads it from here.
 var hotkeyStatuses = struct {
 	sync.Mutex
 	byID map[uint32]int32
 }{byID: map[uint32]int32{}}
 
-// recordHotkeyStatus stores the answer for one shortcut (0 is success).
+// recordHotkeyStatus stores the answer for one shortcut; startup hands
+// it to native.Start as Hooks.HotkeyRegistered.
 func recordHotkeyStatus(id uint32, status int32) {
 	hotkeyStatuses.Lock()
 	defer hotkeyStatuses.Unlock()
@@ -19,7 +26,7 @@ func recordHotkeyStatus(id uint32, status int32) {
 }
 
 // hotkeyStatus reads the answer for one shortcut; known is false until
-// Carbon has answered.
+// the system has answered.
 func hotkeyStatus(id uint32) (status int32, known bool) {
 	hotkeyStatuses.Lock()
 	defer hotkeyStatuses.Unlock()

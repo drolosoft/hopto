@@ -355,8 +355,8 @@ func TestInspectURL(t *testing.T) {
 	}
 }
 
-// Review Focus 4: an icon lands in the background while the file is edited
-// by hand; the hand edit survives, the icon is written, the page is told.
+// An icon lands in the background while the file is edited by hand; the
+// hand edit survives, the icon is written, the page is told.
 func TestBackgroundIconFetchNeverTouchesTheLibrary(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	allowPrivate(t, app)
@@ -444,12 +444,12 @@ func TestNoIconFetchWhileReadOnly(t *testing.T) {
 	}
 }
 
-// Review finding 1: a fetch started by an edit that is itself overtaken
-// by a second edit must not win the race to disk. AddLink starts a fetch
-// against a slow server; UpdateLink immediately points the same link at
-// a fast one. Whichever answers last, the fast server's icon (a different
-// size, so the test can tell) must be the one that survives on disk, and
-// the page must hear about it exactly once.
+// A fetch started by an edit that is itself overtaken by a second edit
+// must not win the race to disk. AddLink starts a fetch against a slow
+// server; UpdateLink immediately points the same link at a fast one.
+// Whichever answers last, the fast server's icon (a different size, so
+// the test can tell) must be the one that survives on disk, and the page
+// must hear about it exactly once.
 func TestUpdateLinkDropsAStaleInFlightFetch(t *testing.T) {
 	app, win, _ := newTestApp(t)
 	allowPrivate(t, app)
@@ -497,9 +497,9 @@ func TestUpdateLinkDropsAStaleInFlightFetch(t *testing.T) {
 	}
 }
 
-// Review finding 2: two adds racing on the same name must not compute the
-// same id. Ten concurrent AddLink calls with the same name must all
-// succeed with ten distinct ids and ten links on disk.
+// Two adds racing on the same name must not compute the same id. Ten
+// concurrent AddLink calls with the same name must all succeed with ten
+// distinct ids and ten links on disk.
 func TestConcurrentAddLinkGetsDistinctIDs(t *testing.T) {
 	app, _, _ := newTestApp(t)
 

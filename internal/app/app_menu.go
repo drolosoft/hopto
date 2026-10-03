@@ -17,8 +17,8 @@ const (
 	menuQuit  = 5
 )
 
-// menuBar is the status item, behind an interface so the tests can
-// check the menu without AppKit.
+// menuBar is the menu bar item (the tray icon on Windows), behind an
+// interface so the tests can check the menu without the native one.
 type menuBar interface {
 	Install(items []native.MenuItem)
 	SetChecked(tag int, on bool)
@@ -51,8 +51,8 @@ func menuLabelsFor(language string) menuLabels {
 	}
 }
 
-// menuItems is the menu in the order the spec lists it, with Quit
-// after a rule as every macOS menu has it.
+// menuItems is the menu: Open, Help, Edit and Login, then a rule and
+// Quit, which the system's own menus also keep apart.
 func (a *App) menuItems() []native.MenuItem {
 	setting := a.library.Snapshot().Settings.Language
 	labels := menuLabelsFor(platform.LanguageFor(setting, a.language))
@@ -122,9 +122,10 @@ func (a *App) showPanel(tab string) bool {
 	return true
 }
 
-// toggleLoginItem flips the LaunchAgent and ticks the entry from what is
-// on disk afterwards, so a refusal (outside a bundle, a full disk)
-// leaves the tick telling the truth.
+// toggleLoginItem flips the login switch (a LaunchAgent on macOS, the Run
+// key on Windows) and ticks the entry from what is there afterwards, so a
+// refusal (outside a bundle, a full disk) leaves the tick telling the
+// truth.
 func (a *App) toggleLoginItem() {
 	var err error
 	if a.login.Enabled() {

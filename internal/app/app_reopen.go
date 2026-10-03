@@ -7,8 +7,9 @@ import (
 )
 
 // showFromOutside is what a launch of the running hopto ends in: a
-// reopen (Alfred, `open -a`, a double click in the Finder or the Dock)
-// or a second process that Wails' single instance lock sends back here.
+// reopen on macOS (Alfred, `open -a`, a double click in the Finder or
+// the Dock) or a second process that Wails' single instance lock sends
+// back here.
 // It shows the panel like the apps shortcut but never hides it: with the
 // panel up it only brings it forward, on the tab it is on, as launching
 // an app that is already open does. With the file dialog up it does
@@ -33,10 +34,11 @@ func (a *App) showFromOutside() {
 	a.showLocked(tabApps)
 }
 
-// secondInstance is Wails' OnSecondInstanceLaunch: `open -n`, or a
-// launcher set up to start a new copy, ran hopto again, and that copy
-// has already quit. Wails calls it on a goroutine of its own. The
-// arguments are counted, not logged: they could be anything.
+// secondInstance is Wails' OnSecondInstanceLaunch: `open -n`, a second
+// start from the Start menu, or a launcher set up to start a new copy,
+// ran hopto again, and that copy has already quit. Wails calls it on a
+// goroutine of its own. The arguments are counted, not logged: they
+// could be anything.
 func (a *App) secondInstance(data options.SecondInstanceData) {
 	log.Printf("second instance launched (%d arguments)", len(data.Args))
 	a.showFromOutside()

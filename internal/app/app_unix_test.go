@@ -332,9 +332,9 @@ func systemBundle(t *testing.T, app *App, name, bundleID string) {
 	}
 }
 
-// Supuesto 1: the system's apps come out of the same scan, marked search
-// only, once even when a copy also sits in ~/Applications, and they do
-// not make the "applications" chip appear on their own.
+// The system's apps come out of the same scan, marked search only, once
+// even when a copy also sits in ~/Applications, and they do not make the
+// "applications" chip appear on their own.
 func TestSystemAppsAreSearchOnly(t *testing.T) {
 	app, _, _ := newTestApp(t)
 	app.systemApps = filepath.Join(app.home, "System", "Applications")
