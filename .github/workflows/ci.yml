@@ -57,34 +57,27 @@ jobs:
       - name: Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
-      # Runs before the build: it only needs the sources already in the
-      # checkout, not the generated frontend/wailsjs bindings.
-      - name: Frontend tests
-        run: cd frontend && npm ci && npm test
-
-      # make build stamps the version, commit and date into the binary;
-      # it writes frontend/wailsjs and frontend/dist. The root package
-      # (main) embeds the page, so go vet and go test cannot compile it
-      # before the build; the packages under internal do not need it.
-      - name: Build
-        run: make build
-
-      - name: Go tests
-        run: go vet ./... && go test -race -count=1 -cover ./...
+      - name: Frontend dependencies
+        run: cd frontend && npm ci
 
       # WebKit is what the WKWebView runs; the harness serves the page that
       # wails build just produced, with the fake bridge in place of Go.
       - name: Playwright WebKit
-        run: cd frontend && npx playwright install webkit && npm run test:e2e
+        run: cd frontend && npx playwright install webkit
+
+      # The same target a developer runs: gofmt, then make build (stamps
+      # the version, commit and date, and writes frontend/wailsjs and
+      # frontend/dist), then the frontend and Go tests and the browser
+      # tests. The root package (main) embeds the page, so go vet and go
+      # test cannot compile it before the build.
+      - name: Check
+        run: make ci
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: frontend/test-results
-
-      - name: Fmt check
-        run: test -z "$(gofmt -l .)"
 
       - uses: actions/upload-artifact@v4
         with:
