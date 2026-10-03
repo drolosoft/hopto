@@ -137,40 +137,59 @@ func Validate(lib Library, home string) error {
 		return err
 	}
 
-	tabs := make(map[string]string, len(lib.Categories))
-	for _, category := range lib.Categories {
+	tabs, err := checkCategories(lib.Categories)
+	if err != nil {
+		return err
+	}
+
+	linkIDs, err := checkLinks(lib.Links, tabs)
+	if err != nil {
+		return err
+	}
+
+	if err := checkApps(lib.Apps, home, linkIDs, tabs); err != nil {
+		return err
+	}
+
+	return checkHidden(lib.Hidden)
+}
+
+// checkCategories checks every chip and returns the tab of each id, which
+// the links and the apps are then checked against.
+func checkCategories(categories []Category) (map[string]string, error) {
+	tabs := make(map[string]string, len(categories))
+
+	for _, category := range categories {
 		if problems := CheckCategory(category); len(problems) > 0 {
-			return &problems[0]
+			return nil, &problems[0]
 		}
 
 		if _, seen := tabs[category.ID]; seen {
-			return &Problem{
-				Field:  "id",
-				ID:     category.ID,
-				Key:    "id.duplicate",
-				Detail: "duplicate category id",
-			}
+			return nil, duplicateID(category.ID, "duplicate category id")
 		}
 
 		tabs[category.ID] = category.Tab
 	}
 
-	// Link ids are kept around past their own loop: an app sharing one
-	// would collide on icons/<id>.png and confuse CopyTarget, RevealInFinder
-	// and iconURL, so the apps loop below checks against this set too.
-	linkIDs := make(map[string]bool, len(lib.Links))
-	for _, link := range lib.Links {
+	return tabs, nil
+}
+
+// checkLinks checks every link and its category, and returns the set of
+// link ids. The set outlives this check: an app sharing one would collide
+// on icons/<id>.png and confuse CopyTarget, RevealInFinder and iconURL,
+// so checkApps checks against it too.
+func checkLinks(
+	links []Link, tabs map[string]string,
+) (map[string]bool, error) {
+	linkIDs := make(map[string]bool, len(links))
+
+	for _, link := range links {
 		if problems := CheckLink(link); len(problems) > 0 {
-			return &problems[0]
+			return nil, &problems[0]
 		}
 
 		if linkIDs[link.ID] {
-			return &Problem{
-				Field:  "id",
-				ID:     link.ID,
-				Key:    "id.duplicate",
-				Detail: "duplicate link id",
-			}
+			return nil, duplicateID(link.ID, "duplicate link id")
 		}
 
 		linkIDs[link.ID] = true
@@ -178,32 +197,32 @@ func Validate(lib Library, home string) error {
 		if err := checkCategoryRef(
 			link.ID, link.Category, TabLinks, tabs,
 		); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	appIDs := make(map[string]bool, len(lib.Apps))
-	for _, app := range lib.Apps {
+	return linkIDs, nil
+}
+
+// checkApps checks every hand-added app, its category, and that no link
+// already has its id.
+func checkApps(
+	apps []AppEntry, home string,
+	linkIDs map[string]bool, tabs map[string]string,
+) error {
+	appIDs := make(map[string]bool, len(apps))
+
+	for _, app := range apps {
 		if problems := CheckApp(app, home); len(problems) > 0 {
 			return &problems[0]
 		}
 
 		if appIDs[app.ID] {
-			return &Problem{
-				Field:  "id",
-				ID:     app.ID,
-				Key:    "id.duplicate",
-				Detail: "duplicate app id",
-			}
+			return duplicateID(app.ID, "duplicate app id")
 		}
 
 		if linkIDs[app.ID] {
-			return &Problem{
-				Field:  "id",
-				ID:     app.ID,
-				Key:    "id.duplicate",
-				Detail: "id used by both a link and an app",
-			}
+			return duplicateID(app.ID, "id used by both a link and an app")
 		}
 
 		appIDs[app.ID] = true
@@ -215,8 +234,15 @@ func Validate(lib Library, home string) error {
 		}
 	}
 
-	seenHidden := make(map[string]bool, len(lib.Hidden))
-	for _, hidden := range lib.Hidden {
+	return nil
+}
+
+// checkHidden checks the [[hidden]] rows: each one names a discovered app,
+// once.
+func checkHidden(hiddenRows []Hidden) error {
+	seenHidden := make(map[string]bool, len(hiddenRows))
+
+	for _, hidden := range hiddenRows {
 		if !idPattern.MatchString(hidden.ID) {
 			return &Problem{
 				Field:  "id",
@@ -239,18 +265,24 @@ func Validate(lib Library, home string) error {
 		}
 
 		if seenHidden[hidden.ID] {
-			return &Problem{
-				Field:  "id",
-				ID:     hidden.ID,
-				Key:    "id.duplicate",
-				Detail: "duplicate hidden id",
-			}
+			return duplicateID(hidden.ID, "duplicate hidden id")
 		}
 
 		seenHidden[hidden.ID] = true
 	}
 
 	return nil
+}
+
+// duplicateID is the problem of an id that appears twice where it must be
+// unique; detail says which kind of entry, for the log.
+func duplicateID(id, detail string) error {
+	return &Problem{
+		Field:  "id",
+		ID:     id,
+		Key:    "id.duplicate",
+		Detail: detail,
+	}
 }
 
 // CheckID accepts the slug shape and refuses the prefixes of discovered
