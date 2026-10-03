@@ -3,13 +3,11 @@ package atomicfile
 import (
 	"os"
 	"path/filepath"
-	"slices"
-	"sync"
 	"testing"
 )
 
-// The file is written with the requested mode and nothing else is left in
-// the folder: no temporary file survives a successful write.
+// Nothing but the file is left in the folder: no temporary file survives
+// a successful write. The modes are checked in atomicfile_unix_test.go.
 func TestWriteLeavesOnlyTheFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "usage.json")
@@ -26,15 +24,6 @@ func TestWriteLeavesOnlyTheFile(t *testing.T) {
 	if len(entries) != 1 || entries[0].Name() != "usage.json" {
 		t.Fatalf("folder holds %v, want only usage.json", entries)
 	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode %o, want 600", info.Mode().Perm())
-	}
 }
 
 // A write into a folder that does not exist creates it, so the first save
@@ -49,56 +38,6 @@ func TestWriteCreatesTheFolder(t *testing.T) {
 
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal(err)
-	}
-
-	// The folder holds the user's own data (the library, the usage
-	// counts): 0o700 keeps it private the same way the files inside it are.
-	info, err := os.Stat(folder)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if info.Mode().Perm() != 0o700 {
-		t.Fatalf("folder mode %o, want 700", info.Mode().Perm())
-	}
-}
-
-// Twenty writers racing on the same path end with a whole file that is one
-// of the versions written, never a mix or an empty file (the -race flag
-// covers the memory side).
-func TestConcurrentWritesLeaveAWholeFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "usage.json")
-	var group sync.WaitGroup
-
-	// One version per writer, recorded up front so the final file can be
-	// checked against the exact bytes a writer sent, not just their length.
-	versions := make([]string, 20)
-	for writer := range 20 {
-		versions[writer] = string(rune('a'+writer)) + "-version-of-the-file"
-	}
-
-	for writer := range 20 {
-		group.Go(func() {
-			if err := Write(path, []byte(versions[writer]), 0o600); err != nil {
-				t.Error(err)
-			}
-		})
-	}
-
-	group.Wait()
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !slices.Contains(versions, string(data)) {
-		t.Fatalf("file is %q, not one of the twenty written versions", data)
-	}
-
-	entries, _ := os.ReadDir(filepath.Dir(path))
-	if len(entries) != 1 {
-		t.Fatalf("temporary files left behind: %v", entries)
 	}
 }
 

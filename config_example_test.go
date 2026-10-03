@@ -1,4 +1,9 @@
+//go:build !windows
+
 package main
+
+// config.example.toml is the macOS seed with its Command shortcuts, so
+// this test runs everywhere but Windows, whose seed differs in them.
 
 import (
 	"os"

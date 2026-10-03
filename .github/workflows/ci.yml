@@ -132,3 +132,15 @@ jobs:
         with:
           name: hopto-windows-unsigned
           path: build/bin/hopto-windows-*.exe
+
+  windows-test:
+    # The Windows-only tests (tables, paths, rules) run on real Windows
+    # here; the native layer still needs a desktop and is checked by hand.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Go tests on Windows
+        run: go test -count=1 ./...

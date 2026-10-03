@@ -1,4 +1,9 @@
+//go:build !windows
+
 package discover
+
+// These tests build .app bundles with an Info.plist and an .icns, so
+// they run everywhere but Windows; the Start Menu has its own tests.
 
 import (
 	"os"

@@ -13,7 +13,7 @@ func TestOpenLogCreatesTheFolder(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
-	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	t.Cleanup(restoreLogOutput)
 
 	openLog()
 	log.Printf("hello from the test")
@@ -27,5 +27,17 @@ func TestOpenLogCreatesTheFolder(t *testing.T) {
 
 	if !strings.Contains(string(written), "hello from the test") {
 		t.Errorf("log file does not have the line: %q", written)
+	}
+}
+
+// restoreLogOutput closes the file openLog opened and sends the log back
+// to stderr. Closing matters on Windows, where a file still open cannot
+// be deleted and the cleanup of the test's home would fail.
+func restoreLogOutput() {
+	writer := log.Writer()
+	log.SetOutput(os.Stderr)
+
+	if file, ok := writer.(*os.File); ok && file != os.Stderr {
+		_ = file.Close()
 	}
 }

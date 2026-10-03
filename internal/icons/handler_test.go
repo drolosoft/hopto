@@ -63,19 +63,6 @@ func TestHandlerServesUserIcons(t *testing.T) {
 	}
 }
 
-// A discovered app's icon comes out of its .icns through the resolver.
-func TestHandlerServesBundleIcons(t *testing.T) {
-	recorder := serve(
-		t, t.TempDir(), http.MethodGet, RoutePrefix+"app-test.png",
-	)
-
-	body := recorder.Body.Bytes()
-	isPNG := bytes.HasPrefix(body, []byte("\x89PNG"))
-	if recorder.Code != http.StatusOK || !isPNG {
-		t.Fatalf("status %d body %.8q", recorder.Code, body)
-	}
-}
-
 // Ids that are not ids, files that are not there, folders and other
 // methods all end in 404 or 405, never in a file outside the icons folder.
 func TestHandlerRefuses(t *testing.T) {

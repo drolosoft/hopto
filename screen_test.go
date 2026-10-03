@@ -9,7 +9,8 @@ import (
 )
 
 // window.json: a missing file and a broken one both read as "no display",
-// and what is written reads back, private to the user.
+// and what is written reads back. Its mode is checked in
+// screen_unix_test.go.
 func TestWindowState(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "hopto", windowFile)
 
@@ -23,15 +24,6 @@ func TestWindowState(t *testing.T) {
 
 	if got := readWindowState(path); got != 69733378 {
 		t.Errorf("round trip = %d, want 69733378", got)
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if info.Mode().Perm() != 0o600 {
-		t.Errorf("mode %o, want 600", info.Mode().Perm())
 	}
 
 	broken := []string{"{", `{"display":"two"}`, `{"display":-1}`, "[]"}

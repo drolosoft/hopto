@@ -1,4 +1,10 @@
+//go:build !windows
+
 package main
+
+// These tests check Carbon key codes and the Command shortcuts of the
+// macOS seed, so they run everywhere but Windows; the Windows table is
+// checked by keycodes_windows_test.go.
 
 import (
 	"testing"
