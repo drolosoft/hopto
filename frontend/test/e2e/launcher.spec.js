@@ -1,51 +1,7 @@
 import {test, expect} from '@playwright/test';
-import {onWindows} from './helpers.js';
+import {guardEveryTest, shown, calls, onWindows} from './helpers.js';
 
-// Every test starts from a fresh page with the `shown` event fired for a
-// tab, and ends with no page error and no CSP violation at all: either one
-// is a failure whatever else passed, the CSP one because the console is
-// the only place a blocked request shows up (see the "csp" Debug call in
-// main.js).
-const errors = [];
-const cspViolations = [];
-
-test.beforeEach(async ({page}) => {
-    errors.length = 0;
-    cspViolations.length = 0;
-    page.on('pageerror', (error) => errors.push(String(error)));
-    page.on('console', (message) => {
-        if (message.text().includes('Content Security Policy')) {
-            cspViolations.push(message.text());
-        }
-    });
-    await page.goto(process.env.HARNESS_URL + '/');
-    await page.waitForFunction(() => typeof window.emit === 'function');
-});
-
-test.afterEach(() => {
-    expect(errors).toEqual([]);
-    expect(cspViolations).toEqual([]);
-});
-
-/**
- * Fires `shown` for a tab and waits for the list.
- * @param {import('@playwright/test').Page} page
- * @param {string} tab
- */
-async function shown(page, tab) {
-    await page.evaluate((name) => window.emit(name), tab);
-    await expect(page.locator('#grid [role="option"]').first()).toBeVisible();
-    await expect(page.locator('#search')).toBeFocused();
-}
-
-/**
- * The calls the page made to Go.
- * @param {import('@playwright/test').Page} page
- * @returns {Promise<string[]>}
- */
-function calls(page) {
-    return page.evaluate(() => window.calls.filter((call) => !call.startsWith('Debug:')));
-}
+guardEveryTest(test);
 
 test('shown on links lists sections and Enter opens the first favourite-less recent link', async ({page}) => {
     await shown(page, 'links');

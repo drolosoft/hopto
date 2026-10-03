@@ -164,7 +164,9 @@ test('shown closes the editor and a late inspection changes nothing', async ({pa
     await expect(page.locator('#editor')).toBeHidden();
     await expect(page.locator('#search')).toHaveValue('');
 
-    await page.waitForTimeout(800);
+    // The late answer arrives after the editor closed; whatever the page
+    // does with it runs before the next check can.
+    await page.waitForFunction(() => window.inspected === 1);
     await expect(page.locator('#editor')).toBeHidden();
     await expect(page.locator('#grid [role="option"]').first()).toBeVisible();
 });

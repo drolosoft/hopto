@@ -69,10 +69,12 @@ test('Review Focus 1: a blur while the dialog is up does not hide the panel', as
     await expect.poll(() => calls(page)).toContain('PickApp');
 
     await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-    await page.waitForTimeout(300);
-    expect(await calls(page)).not.toContain('Hide');
 
+    // The dialog answers 800 ms after it opened, long after the 150 ms
+    // the blur waits before hiding: once its answer is on screen, that
+    // wait is over and a Hide would already be in the calls.
     await expect(page.locator('#editor-path')).toHaveValue('/Applications/Example.app');
+    expect(await calls(page)).not.toContain('Hide');
 });
 
 test('a bundle outside the app folders is reported and cannot be saved', async ({page}) => {

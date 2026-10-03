@@ -100,6 +100,12 @@ const isDiscoveredTwin = (app, input) => app.source !== 'library'
 const handAddedTwin = (input) => apps.find((app) => app.source === 'library'
     && ((input.path !== '' && app.path === input.path) || (input.bundleId !== '' && app.bundleId === input.bundleId)));
 
+/**
+ * A fake for a Go method whose answer the page ignores: it only records
+ * the call, with its arguments joined by colons.
+ * @param {string} name
+ * @returns {(...args: unknown[]) => Promise<void>}
+ */
 const call = (name) => async (...args) => {
     window.calls.push([name, ...args].join(':'));
 };
@@ -138,6 +144,9 @@ window.go = {app: {App: {
     InspectURL: async (url) => {
         window.calls.push(`InspectURL:${url}`);
         await new Promise((done) => setTimeout(done, window.inspectDelay ?? 0));
+        // Counted so a test can wait for a late answer to arrive instead
+        // of sleeping past inspectDelay.
+        window.inspected = (window.inspected ?? 0) + 1;
         return window.inspectDraft ?? {url, host: new URL(url).hostname, name: 'Example Domain', description: 'Illustrative', iconDataUrl: '', insecure: url.startsWith('http:'), duplicate: null, sameHost: []};
     },
     AddLink: async (input) => {
@@ -249,6 +258,17 @@ window.go = {app: {App: {
         return {id, problems: {}, duplicate: null};
     },
     Hide: call('Hide'),
+    // The shortcuts' own methods. Go binds them so the page could call
+    // them too; the page does not today, but the fake keeps every bound
+    // method so a new call cannot reach an undefined function.
+    Toggle: call('Toggle'),
+    ShowLinks: call('ShowLinks'),
+    // Like Go, a fresh icon comes back as the URL the page shows, with a
+    // version so the WebView does not keep the old one from its cache.
+    RefetchIcon: async (tab, id) => {
+        window.calls.push(`RefetchIcon:${tab}:${id}`);
+        return `/user-icons/${id}.png?v=2`;
+    },
     TabChanged: call('TabChanged'),
     Debug: call('Debug'),
     ToggleFavorite: async (key) => {

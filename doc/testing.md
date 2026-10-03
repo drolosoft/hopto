@@ -12,10 +12,10 @@ make lint     # gofmt and golangci-lint
 ```
 
 - **Go**: table tests for validation, ids, duplicates, shortcuts and the store (a missing, empty, broken, huge, future or unreadable file), the atomic writes (a failure at every step leaves the previous file and no temporary one), usage, icons against `httptest` servers (redirect loops, huge bodies, HTML served as PNG, private addresses), `.icns` parsing, discovery over fake bundles in a temp folder, and the App with a fake window and a fake `open` (every case of the shortcuts, of opening, of the dialog, of the menu). CI runs them with `-race`.
-- **Page units**: `node --test` over `state.js`, `filter.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js`, which touch neither the DOM nor Wails, plus a check that no module writes HTML strings.
+- **Page units**: `node --test` over `state.js`, `filter.js`, `layout.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js`, which touch neither the DOM nor Wails, plus a check that no module writes HTML strings and one that the fake bridge has every method Go binds (read from `internal/app/*.go`, so it runs before any build).
 - **Browser**: Playwright drives the built page in WebKit, the engine of the WKWebView, with a fake Go bridge, and fails any test that raised a page error or a Content Security Policy violation.
 
-`make e2e` needs `frontend/dist` from a build. `wails build` removes `frontend/dist/gitkeep`, which `make build` puts back.
+`make e2e` needs `frontend/dist` from a build, and refuses one older than any file in `frontend/src` or `frontend/index.html`: the tests would pass on the page as it was. `wails build` removes `frontend/dist/gitkeep`, which `make build` puts back.
 
 ## The page without Wails
 
@@ -23,7 +23,10 @@ make lint     # gofmt and golangci-lint
 
 - every Go call the page makes is appended to `window.calls` (`OpenLink:mdn`, `AddLink:{…}`);
 - `window.emit('links')` plays the `shown` event, `window.listeners.help(true)` the menu bar's Help;
-- a test can arm answers before acting: `window.nextSave` (the next save's result), `window.nextPick` and `window.pickDelay` (the file dialog), `window.inspectDraft` and `window.inspectDelay` (reading a page), `window.libraryStatus` (a broken file), `window.welcome`, `window.language`.
+- a test can arm answers before acting: `window.nextSave` (the next save's result), `window.nextPick` and `window.pickDelay` (the file dialog), `window.inspectDraft` and `window.inspectDelay` (reading a page), `window.libraryStatus` (a broken file), `window.welcome`, `window.language`;
+- `window.inspected` counts the page readings answered, so a test waits for a late answer instead of sleeping past `inspectDelay`.
+
+Every exported method of the Go `App` has a fake, even the ones the page does not call yet; `frontend/test/fake-bridge.test.js` fails when one is missing or left over.
 
 It is the way to test the page's logic (order, chips, stars, keys, the editor) when the real app cannot be driven. It does not replace the real app for anything native: the window, focus, the shortcuts, the dialog.
 
