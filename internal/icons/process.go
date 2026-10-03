@@ -40,7 +40,7 @@ const (
 func Normalize(data []byte, maxSide int) ([]byte, error) {
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrNotAnImage, err)
+		return nil, fmt.Errorf("%w: %w", ErrNotAnImage, err)
 	}
 
 	tooBig := config.Width > maxSourceSide || config.Height > maxSourceSide
@@ -50,7 +50,7 @@ func Normalize(data []byte, maxSide int) ([]byte, error) {
 
 	source, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrNotAnImage, err)
+		return nil, fmt.Errorf("%w: %w", ErrNotAnImage, err)
 	}
 
 	var out bytes.Buffer

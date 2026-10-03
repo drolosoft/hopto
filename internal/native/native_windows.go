@@ -3,6 +3,7 @@
 package native
 
 import (
+	"errors"
 	"log"
 	"runtime"
 	"sync"
@@ -558,7 +559,7 @@ func registerHotkey(id uint32, hotkey platform.Hotkey) {
 // Windows error code, or -1 when the call left none. A failure must
 // never read as success, which is what status 0 means to the caller.
 func failureStatus(err error) int32 {
-	errno, isErrno := err.(windows.Errno)
+	errno, isErrno := errors.AsType[windows.Errno](err)
 	if !isErrno || errno == 0 {
 		return -1
 	}

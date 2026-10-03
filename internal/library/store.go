@@ -169,14 +169,14 @@ func (s *Store) Apply(op func(*Library) error) error {
 	// ErrReadOnly with the parse detail behind it, so the page can show the
 	// line while refusing the edit.
 	if reloadErr := s.reloadIfChanged(); reloadErr != nil {
-		return fmt.Errorf("%w: %v", ErrReadOnly, reloadErr)
+		return fmt.Errorf("%w: %w", ErrReadOnly, reloadErr)
 	}
 
 	// Second step: nothing changed since the last read, but the file was
 	// already broken then (its content is byte-identical to a version we
 	// already rejected). The store stays read only until it is fixed.
 	if s.loadErr != nil {
-		return fmt.Errorf("%w: %v", ErrReadOnly, s.loadErr)
+		return fmt.Errorf("%w: %w", ErrReadOnly, s.loadErr)
 	}
 
 	draft := clone(s.lib)

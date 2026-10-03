@@ -4,6 +4,7 @@ package icons
 
 import (
 	"bytes"
+	"errors"
 	"image/png"
 	"runtime"
 	"syscall"
@@ -121,7 +122,7 @@ func shellIconPNG(path string) ([]byte, bool) {
 	// different mode (RPC_E_CHANGED_MODE, 0x80010106) is usable as it
 	// is, but must not be uninitialised by us.
 	err := windows.CoInitializeEx(0, windows.COINIT_APARTMENTTHREADED)
-	if err == nil || err == syscall.Errno(windows.S_FALSE) {
+	if err == nil || errors.Is(err, syscall.Errno(windows.S_FALSE)) {
 		defer windows.CoUninitialize()
 	}
 
