@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeWindow records what App asks of the window.
@@ -109,12 +110,50 @@ func (o *fakeOpen) run(args ...string) error {
 	return o.err
 }
 
+// testHome is a temporary home folder for one test. It is removed with a
+// few retries rather than through t.TempDir: on Windows a folder the
+// test just created can be held open for a moment by the indexer or an
+// antivirus, and the first RemoveAll then fails with "being used by
+// another process". The retries wait for the handle to go.
+func testHome(t *testing.T) string {
+	t.Helper()
+
+	home, err := os.MkdirTemp("", "hopto-test-home-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		removeWithRetries(t, home)
+	})
+
+	return home
+}
+
+// removeWithRetries removes a folder, trying again a few times when
+// Windows reports it as in use; the last error fails the test.
+func removeWithRetries(t *testing.T, path string) {
+	t.Helper()
+
+	var err error
+	for attempt := 0; attempt < 10; attempt++ {
+		err = os.RemoveAll(path)
+		if err == nil {
+			return
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	t.Errorf("remove %s: %v", path, err)
+}
+
 // newTestApp builds an App over a temp home, with discovery pointed at
 // folders inside it and English texts.
 func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	t.Helper()
 
-	home := t.TempDir()
+	home := testHome(t)
 	win := &fakeWindow{}
 	open := &fakeOpen{}
 
@@ -128,8 +167,9 @@ func newTestApp(t *testing.T) (*App, *fakeWindow, *fakeOpen) {
 	app.windowDisplay = func() uint32 { return 0 }
 	app.attachedDisplays = func() []uint32 { return []uint32{1} }
 
-	// The icons folder must be released before t.TempDir removes it, which
-	// Windows refuses while a handle is open. The background work goes
+	// The icons folder must be released before testHome removes it, which
+	// Windows refuses while a handle is open. Cleanups run last in, first
+	// out, so this one runs before the removal registered by testHome. The background work goes
 	// first because it may still be reading an icon.
 	t.Cleanup(func() {
 		app.background.Wait()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -64,7 +65,9 @@ func TestAbout(t *testing.T) {
 		t.Errorf("go = %q", about.GoVersion)
 	}
 
-	if !strings.HasSuffix(about.LibraryPath, "hopto/library.toml") {
+	// The path uses the separator of the OS the test runs on.
+	wantSuffix := filepath.Join("hopto", libraryFile)
+	if !strings.HasSuffix(about.LibraryPath, wantSuffix) {
 		t.Errorf("library = %q", about.LibraryPath)
 	}
 
