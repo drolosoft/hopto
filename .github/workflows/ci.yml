@@ -63,8 +63,9 @@ jobs:
         run: cd frontend && npm ci && npm test
 
       # make build stamps the version, commit and date into the binary;
-      # it writes frontend/wailsjs and frontend/dist, which the Go
-      # package embeds, so the Go tests cannot run before it.
+      # it writes frontend/wailsjs and frontend/dist. The root package
+      # (main) embeds the page, so go vet and go test cannot compile it
+      # before the build; the packages under internal do not need it.
       - name: Build
         run: make build
 

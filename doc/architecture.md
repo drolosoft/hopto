@@ -18,17 +18,17 @@ hopto is an overlay: no Dock icon, hidden until a global shortcut, centred on a 
 | No `Mac.Appearance` | The page follows the system's light or dark mode with `prefers-color-scheme`; a fixed appearance pinned it |
 | `SingleInstanceLock` with id `com.drolosoft.hopto` | A second launch quits at once and shows the first copy's panel |
 
-`LSUIElement` is `true` in `build/darwin/Info.plist`, but it is not enough: Wails v2 sets the "regular" activation policy at start, over the plist, and the app showed in the Dock and in ⌘⇥. `becomeAccessory()` in `hotkey_darwin.go` sets `NSApplicationActivationPolicyAccessory` on the main queue from `startup`, and that is what removes it. (`Mac.ActivationPolicy` appears in the Wails docs but is commented out in v2.16 and does not compile.)
+`LSUIElement` is `true` in `build/darwin/Info.plist`, but it is not enough: Wails v2 sets the "regular" activation policy at start, over the plist, and the app showed in the Dock and in ⌘⇥. `becomeAccessory()` in `internal/native/hotkey_darwin.go` sets `NSApplicationActivationPolicyAccessory` on the main queue from `startup`, and that is what removes it. (`Mac.ActivationPolicy` appears in the Wails docs but is commented out in v2.16 and does not compile.)
 
 ## 2. Global shortcuts with Carbon
 
-`hotkey_darwin.go` registers both shortcuts with Carbon's `RegisterEventHotKey`, which is global, needs no Accessibility permission, and works while the window is hidden.
+`internal/native/hotkey_darwin.go` registers both shortcuts with Carbon's `RegisterEventHotKey`, which is global, needs no Accessibility permission, and works while the window is hidden.
 
 - Registration runs on the main thread: the C code wraps it in `dispatch_async(dispatch_get_main_queue(), …)`. Wails owns that thread, so the block runs once its loop starts. `startup` calls it.
-- The Carbon handler calls the exported Go function `launcherHotkeyPressed`, which runs on the main thread. It only starts a goroutine (`go onHotkey(tab)`); calling the Wails runtime from there would block the thread the runtime needs.
+- The Carbon handler calls the exported Go function `launcherHotkeyPressed`, which runs on the main thread. It only starts a goroutine (`go hooks.Toggle(tab)`); calling the Wails runtime from there would block the thread the runtime needs. The function variables that joined the native layer to the App are now the `native.Hooks` the App hands over at start.
 - Both shortcuts share the handler. The id given at registration (1 apps, 2 links) comes back in the event and becomes the tab.
 - `RegisterEventHotKey`'s answer comes back to Go (`launcherHotkeyRegistered`) and goes to the log (`hotkey 1 registered`, or `hotkey 2: RegisterEventHotKey failed with status -9878` when another app has it) and to the welcome panel.
-- The shortcuts come from `library.toml` (`hotkey_apps`, `hotkey_links`), parsed by `hotkeyspec.go` into a key code and Carbon modifier masks. See [configuration.md](configuration.md#shortcuts).
+- The shortcuts come from `library.toml` (`hotkey_apps`, `hotkey_links`), parsed by `internal/platform/hotkeyspec.go` into a key code and Carbon modifier masks. See [configuration.md](configuration.md#shortcuts).
 
 ⌘⌥Space, the default for links, is also macOS's "Show Finder search window". Carbon accepts the registration, but the system keeps the press and opens "Searching This Mac". The welcome panel spots it (it reads `~/Library/Preferences/com.apple.symbolichotkeys.plist`, entry 65, and the combination it is bound to) and has a button to the right settings page. To turn it off: System Settings, Keyboard, Keyboard Shortcuts, Spotlight, and untick "Show Finder search window". From the shell:
 
@@ -99,7 +99,7 @@ The page puts favourites first, then the five items opened most recently, then e
 
 ## 12. The menu bar item, a second launch and login
 
-- `statusbar_darwin.go` puts an `NSStatusItem` in the menu bar with Open hopto, Help, Edit library.toml, Open at login and Quit hopto. A click calls Go on the main thread, which only starts a goroutine, as for the shortcuts.
+- `internal/native/statusbar_darwin.go` puts an `NSStatusItem` in the menu bar with Open hopto, Help, Edit library.toml, Open at login and Quit hopto. A click calls Go on the main thread, which only starts a goroutine, as for the shortcuts.
 - A launch of the running app (Alfred, `open -a hopto`, a double click in the Finder) reaches Go through the reopen method hopto adds to Wails' application delegate; a second process (`open -n`) is stopped by the single-instance lock, which calls back into the first. Both show the panel like the apps shortcut, never hide it, and do nothing while the file dialog is up.
 - Open at login writes `~/Library/LaunchAgents/com.drolosoft.hopto.plist`, which runs `/usr/bin/open <the .app>` at login, and removes it when unticked. It is not loaded with `launchctl`, so ticking it does not start a second copy now.
 
@@ -109,7 +109,7 @@ The known limits and their reasons are in [ARCHITECTURE.md](../ARCHITECTURE.md#k
 
 ## 14. Windows
 
-The engine is the same binary logic; what differs sits in files that end in `_windows.go`. One goroutine locked to its thread (`native_windows.go`) owns a hidden window, the tray icon, the two shortcuts (`RegisterHotKey`) and the one message loop their events arrive in. Registering a shortcut, bringing the launcher to the front and removing the tray icon at Quit post their work to that thread and wait, so the hidden window only ever sees its owner. The tray menu entries are kept under a lock and the menu is built from them at each click, so its ticks are always the latest. Centring the launcher, giving it the tool-window style and reading the monitors run on the caller's goroutine: they are user32 calls on Wails' window that Windows accepts from any thread. No library does this: the two Go tray libraries pump messages from a thread that does not own their window, and the hotkey library polls every 10 ms.
+The engine is the same binary logic; what differs sits in files that end in `_windows.go`, mostly in `internal/native` and `internal/platform`. One goroutine locked to its thread (`internal/native/native_windows.go`) owns a hidden window, the tray icon, the two shortcuts (`RegisterHotKey`) and the one message loop their events arrive in. Registering a shortcut, bringing the launcher to the front and removing the tray icon at Quit post their work to that thread and wait, so the hidden window only ever sees its owner. The tray menu entries are kept under a lock and the menu is built from them at each click, so its ticks are always the latest. Centring the launcher, giving it the tool-window style and reading the monitors run on the caller's goroutine: they are user32 calls on Wails' window that Windows accepts from any thread. No library does this: the two Go tray libraries pump messages from a thread that does not own their window, and the hotkey library polls every 10 ms.
 
 The window is Wails' own, found by the class name `hoptoWindow`; it gets the tool-window style so it has no taskbar button, is centred on a monitor with `SetWindowPos`, and is brought to the front from the native thread, which holds the right to take the foreground after a hotkey press. Monitors are remembered by a hash of their device name.
 

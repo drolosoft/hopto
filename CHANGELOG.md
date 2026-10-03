@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Go code now lives in `internal/app`, `internal/platform` and `internal/native`; the root holds `main.go` alone. Nothing changes for a user.
+
 ### Fixed
 
 ## [v0.2.0] - 2026-10-03

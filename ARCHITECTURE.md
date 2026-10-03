@@ -8,12 +8,12 @@ hopto is a Go program with a Wails v2 window. Go owns the library, the scans, th
 
 ```
  Carbon hotkeys           menu bar item            a second launch
- (hotkey_darwin.go)       (statusbar_darwin.go)    (reopen, single instance)
+ (native/hotkey_*.go)     (native/statusbar_*.go)  (reopen, single instance)
         │                        │                        │
         └───────────┬────────────┴───────────┬────────────┘
                     ▼                        ▼
           ┌──────────────────────────────────────────┐
-          │ App (package main)                       │
+          │ App (internal/app)                       │
           │ show and hide, open, edit, menu, about   │
           └────┬──────────────────▲─────────────┬────┘
    events      │                  │ bound       │ /usr/bin/open
@@ -83,50 +83,15 @@ The next `shown` compares the file's bytes with the last ones read or written. C
 
 ```
 main.go               window options, single-instance lock, asset server with the icons handler
-app.go                App: the window interface, toggle, showLocked, Hide, startup
-app_views.go          Items, Categories, Settings, LibraryStatus: what the page gets (never nil)
-app_open.go           Launch, OpenLink, OpenLinkWith, CopyTarget, RevealInFinder
-app_edit.go           links, apps, hidden apps and categories; InspectURL; icon fetches
-app_pick.go           PickApp: the native open panel; twins of an app
-app_menu.go           the menu bar item's entries and what each one does
-app_welcome.go        the first-run welcome and the state of each shortcut
-app_reopen.go         a launch of the running app shows the panel
-about.go              version, commit and build date stamped by make build
-screen.go             which display the panel appears on; window.json
-launchagent.go        Open at login: ~/Library/LaunchAgents/com.drolosoft.hopto.plist
-hotkeyspec.go         "cmd+shift+space" to a Carbon key code and modifiers
-hotkeystatus.go       what RegisterEventHotKey answered, for the welcome
-symbolichotkeys.go    macOS's own shortcuts, to spot the Finder's ⌘⌥Space
-hotkey_darwin.go      cgo: hotkeys, accessory policy, placing, Spaces, round corners, reopen
-statusbar_darwin.go   cgo: NSStatusItem and its menu
-shutdown_darwin.go    nothing to undo at exit: the status item goes with the process
-keycodes_windows.go   "ctrl+shift+space" to a virtual key code and a MOD_* mask
-native_windows.go     the locked native thread: hidden window, tray icon, RegisterHotKey, message loop
-hotkey_windows.go     finds Wails' window, hides its taskbar button, places and raises it
-statusbar_windows.go  the tray icon's menu, built from the current items at each click
-paths_windows.go      %UserProfile%\AppData\Roaming\hopto and the log under AppData\Local
-language_windows.go   the system language, from the user's locale name
-open_windows.go       ShellExecute, the Windows side of every open
-open_args.go          the small dialect of `open` the engine speaks, as ShellExecute arguments
-login_windows.go      Open at login: the value hopto in HKCU\...\Run
-logincmd.go           the command line of that value, refusing Temp folders and zips
-platform_windows.go   what newApp and the file picker need from Windows
-*_other.go            stubs, so go vet and the pure tests run off macOS
-language*.go          the system language (AppleLanguages)
-logfile.go, paths.go  ~/Library/Logs/hopto.log; the data folder
 internal/
+  app/                App, the type Wails binds: toggle, show and hide, open, edit, menu, welcome, about, screen choice; imports everything below
+  native/             Carbon and Cocoa on macOS, the Win32 window, tray and message loop on Windows, the menu bar item or tray menu; calls back through native.Hooks; imports platform and library, never Wails or app
+  platform/           what differs between macOS and Windows: paths, open, language, log file, login agent, hotkey specs and key codes; imports library, discover and atomicfile, never Wails, native or app
   atomicfile/         write to a temp file, sync, rename; keep a .bak
   library/            types, validation, ids, duplicates, the store; rules_unix.go and rules_windows.go: which app paths are accepted
   usage/              open counts, last opened, favourites
-  discover/           /Applications, ~/Applications, /System/Applications, Edge web apps
-    shelllink.go      a parser of the Shell Link (.lnk) format
-    startmenu.go      the apps of the two Start Menus, from their shortcuts
-    scan_windows.go   walks the Start Menus and treats System32 as a fixed-list root
-    inspect_windows.go  one app read from its shortcut
-  icons/              .icns reading, fetching, normalising to PNG, /user-icons/
-    dib.go            GDI pixels (BGRA, straight alpha) to an image
-    exeicon_windows.go  a program's icon from the shell's 256 px image list
-    source_windows.go   the icon of an installed app as a PNG
+  discover/           /Applications, ~/Applications, /System/Applications, Edge web apps, the Windows Start Menus (a Shell Link parser)
+  icons/              .icns reading, fetching, normalising to PNG, /user-icons/; on Windows, DIB pixels and the shell's image list
   inspect/            a page's title, site name, description and icons
   safehttp/           https, time and size limits, no private addresses
 seed/                 the first library, in English and Spanish
@@ -149,6 +114,8 @@ frontend/test/        node --test for the pure modules, Playwright specs, the fa
 scripts/              verify-hopto-windows.ps1, internal-files guard, real-app helpers, demo recording, release notes, icon drawing
 ```
 
+The imports go one way: `main` to `app`, `app` to `native`, `platform`, `library` and the rest, `native` to `platform` and `library`, `platform` to `library`, `discover` and `atomicfile`. Neither `platform` nor `native` imports Wails or knows the App; `native` reaches the App only through the `native.Hooks` it is given at start.
+
 `state.js`, `filter.js`, `keys.js`, `draft.js`, `hotkeys.js` and `i18n.js` touch neither the DOM nor Wails, so `node --test` covers them without a browser.
 
 ## Key Design Decisions
@@ -169,7 +136,7 @@ scripts/              verify-hopto-windows.ps1, internal-files guard, real-app h
 
 ## Style card
 
-What the code does, measured, so a change can read like the code around it. Measured on commit `0327e6d`.
+What the code does, measured, so a change can read like the code around it. Measured on 2026-10-03, after the move to `internal/`.
 
 | Go | |
 |---|---|
@@ -193,13 +160,13 @@ The checks, from the repository root:
 
 ```bash
 # Go lines over 78 columns, outside the C preamble of the cgo files
-for f in $(git ls-files '*.go'); do
+for f in $(git ls-files '*.go' 'internal/*/*.go'); do
   awk -v file="$f" 'FILENAME ~ /_darwin\.go$/ && !seenC { if ($0 ~ /^import "C"/) seenC = 1; next }
     length > 78 { print file ":" FNR }' "$f"
 done
 
 # Go functions without a comment right above them
-for f in $(git ls-files '*.go'); do
+for f in $(git ls-files '*.go' 'internal/*/*.go'); do
   awk -v file="$f" '/^func / && previous !~ /^\/\// {print file ":" FNR} {previous = $0}' "$f"
 done
 
