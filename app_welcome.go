@@ -111,12 +111,15 @@ func (a *App) PresentWelcome() {
 	a.toggle(tabApps)
 }
 
-// DismissWelcome hides the welcome for the rest of this run.
+// DismissWelcome hides the welcome for the rest of this run. The log
+// line is what the verifiers read: the panel stays on screen either way,
+// so nothing else tells Enter on the welcome apart from Enter lost.
 func (a *App) DismissWelcome() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	a.welcomeDismissed = true
+	log.Printf("welcome: dismissed")
 }
 
 // OpenKeyboardSettings opens the pane where the Finder's shortcut can be

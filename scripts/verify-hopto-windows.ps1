@@ -20,7 +20,9 @@ param([Parameter(Mandatory = $true)][string]$Exe)
 
 # The marks below must survive a redirect to a file: Windows PowerShell 5.1
 # would write them in the console code page and they would come out as "?".
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+# Without a console (a scheduled task, say) the property throws; the marks
+# then come out as the host writes them.
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 if (-not (Test-Path $Exe)) { Write-Error "no exe at $Exe"; exit 3 }
@@ -68,8 +70,9 @@ function Chord([int[]]$keys) {
 
 # 1 with the panel shown, 0 hidden, -1 with no window at all.
 function Visible {
-    # $null becomes an empty title in PowerShell 5.1, which matches only the
-    # hidden tray window, so the title is spelled out.
+    # $null reaches FindWindow as an empty string in PowerShell 5.1, which
+    # asks for a window with an empty title, and the panel is titled
+    # "hopto" (main.go), so the title is spelled out.
     $h = [Native]::FindWindow('hoptoWindow', 'hopto')
     if ($h -eq [IntPtr]::Zero) { return -1 }
     if ([Native]::IsWindowVisible($h)) { return 1 } else { return 0 }
@@ -86,8 +89,10 @@ function WaitVisible([int]$want, [int]$seconds = 3) {
 
 # Waits up to $seconds for the keyboard to reach the page: the panel is the
 # foreground window and the focus sits in one of the Chromium widgets
-# WebView2 keeps under it. The foreground alone is not enough; a key typed
-# while the focus is still on the bare window never reaches the page.
+# WebView2 keeps under it (Chrome_WidgetWin_1 when measured; any of them
+# means Chromium, not the bare window, gets the keys). The foreground alone
+# is not enough; a key typed while the focus is still on the bare window
+# never reaches the page.
 function WaitPageFocus([int]$seconds = 3) {
     for ($i = 0; $i -lt $seconds * 10; $i++) {
         $front = [Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', 'hopto')
@@ -127,11 +132,19 @@ New-Item -ItemType Directory -Force $tempProfile | Out-Null
 $env:USERPROFILE = $tempProfile
 $log = Join-Path $tempProfile 'AppData\Local\hopto\hopto.log'
 
-# The process is named after the file, so a build kept as hopto-new.exe
-# runs as "hopto-new": stopping "hopto" alone leaves it alive, holding
-# the hotkeys and answering the shortcuts instead of the build under test.
-$processName = [IO.Path]::GetFileNameWithoutExtension($Exe)
-Get-Process hopto, $processName -ErrorAction SilentlyContinue | Stop-Process -Force
+# Stops every hopto build and waits until it is gone. The process is named
+# after the file, so a build kept as hopto-new.exe runs as "hopto-new":
+# stopping "hopto" alone leaves it alive, holding the hotkeys and
+# answering the shortcuts instead of the build under test. Stop-Process
+# returns before the process has died, and a new instance that starts
+# first would meet the old single-instance lock.
+function StopHopto {
+    Get-Process -Name hopto* -ErrorAction SilentlyContinue |
+        Stop-Process -Force -PassThru |
+        Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
+}
+
+StopHopto
 Start-Process -FilePath $Exe
 
 if (WaitWindow) {
@@ -142,9 +155,11 @@ if (WaitWindow) {
     # says the welcome is up.
     $welcome = (WaitLog 'welcome: showing the panel' 20) -and (WaitVisible 1)
     Check 'the first run shows the panel with the welcome' $welcome
-    Check 'the page has the keyboard' (WaitPageFocus)
-    if ($welcome) { Chord @($VK.Enter) }
-    Check 'Enter closes the welcome and keeps the panel' ((Visible) -eq 1)
+    if ($welcome) {
+        Check 'the page has the keyboard' (WaitPageFocus)
+        Chord @($VK.Enter)
+        Check 'Enter closes the welcome and keeps the panel' ((WaitLog 'welcome: dismissed') -and ((Visible) -eq 1))
+    }
     Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
 
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
@@ -167,7 +182,7 @@ if (WaitWindow) {
     Check 'hopto did not start within 20 s' $false
 }
 
-Get-Process hopto, $processName -ErrorAction SilentlyContinue | Stop-Process -Force
+StopHopto
 Remove-Item -Recurse -Force $tempProfile -ErrorAction SilentlyContinue
 
 if ($failures -gt 0) { exit 1 } else { exit 0 }

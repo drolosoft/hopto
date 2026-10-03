@@ -29,7 +29,6 @@ var (
 	procGetForegroundWindow = user32.NewProc("GetForegroundWindow")
 	procAttachThreadInput   = user32.NewProc("AttachThreadInput")
 	procBringWindowToTop    = user32.NewProc("BringWindowToTop")
-	procSetFocus            = user32.NewProc("SetFocus")
 
 	procGetWindowThreadProcessId = user32.NewProc(
 		"GetWindowThreadProcessId",
@@ -304,16 +303,15 @@ func activeDisplays() []uint32 {
 // There is no onReopen variable either, as on macOS: nothing would read it.
 func handleReopen(show func()) {}
 
-// activateApp brings the shown window to the front with the keyboard.
-// It runs on the native thread, the one that registered the hotkey and
-// so holds the right to take the foreground after a press. If Windows
-// still refuses (the panel opened from the tray, say), the thread of
-// the window in front lends its input queue to the thread that owns
-// the launcher for the one call, the documented way round the
-// foreground lock. The launcher belongs to Wails' thread, not to this
-// one, so this thread joins that queue too: SetFocus only lands on a
-// window whose input queue the calling thread shares. The keyboard
-// itself is handed to the page by Wails, nudged by nudgeFocus.
+// activateApp brings the window to the front with the keyboard once
+// Wails has queued the show (WindowShow posts the work to Wails' thread
+// and returns at once). It runs on the native thread, the one that
+// registered the hotkey and so holds the right to take the foreground
+// after a press. If Windows still refuses (the panel opened from the
+// tray, say), the thread of the window in front lends its input queue
+// to the thread that owns the launcher for the one call, the documented
+// way round the foreground lock. The keyboard itself is handed to the
+// page by Wails, nudged by nudgeFocus.
 func activateApp() {
 	runNative(func() {
 		window := launcherWindow()
@@ -350,11 +348,16 @@ func bringForward(window windows.Handle) {
 	attachInput(ourThread, windowThread, true)
 
 	_, _, _ = procBringWindowToTop.Call(uintptr(window))
-	_, _, _ = procSetForegroundWindow.Call(uintptr(window))
-	_, _, _ = procSetFocus.Call(uintptr(window))
+	ok, _, _ = procSetForegroundWindow.Call(uintptr(window))
 
 	attachInput(ourThread, windowThread, false)
 	attachInput(frontThread, windowThread, false)
+
+	// Left in the log so a panel that opens behind another window on
+	// some machine can be told from one that never opened.
+	if ok == 0 {
+		log.Println("native: foreground refused")
+	}
 }
 
 // wmSetFocus is the message a window gets when it has just gained the
@@ -373,6 +376,11 @@ const wmSetFocus = 0x0007
 // instead, with SetFocus under an input-queue loan, raced the pending
 // activation and now and then left the desktop with no foreground
 // window at all.
+//
+// The message is posted, never sent, and after the show: both land in
+// the queue of Wails' thread in that order, so the handler always runs
+// on a visible window. That order matters, because go-webview2 exits
+// the process on a MoveFocus error rather than returning it.
 func nudgeFocus(window windows.Handle) {
 	posted, _, _ := procPostMessageW.Call(
 		uintptr(window), wmSetFocus, 0, 0,
