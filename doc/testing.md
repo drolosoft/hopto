@@ -106,7 +106,10 @@ Windows has no `osascript`; the checks use Win32 from PowerShell. The exe cross-
 - **The tray menu**: by hand, right-click the icon → Quit; `Get-Process hopto` empty and `menu 5 picked` in the log.
 - **Open at login**: `Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run | Select-Object hopto`.
 
-`scripts/verify-hopto-windows.ps1 -Exe <path>` runs the shortcut, focus, taskbar and seed checks on a temporary profile and prints one line per check, like `verify-hopto.sh`.
+- **The keyboard**: the foreground window is not proof that a key reaches the page. `GetGUIThreadInfo` on the foreground thread names the window with the focus; it has to be one of the `Chrome_WidgetWin*` children WebView2 keeps under the panel, not the bare `hoptoWindow`.
+- **A stale build**: the process is named after the exe, so a copy kept as `hopto-new.exe` is not stopped by `Stop-Process -Name hopto` and goes on answering the shortcuts. Stop every `hopto*` before a check.
+
+`scripts/verify-hopto-windows.ps1 -Exe <path>` runs on a temporary profile, so every run is a first run: it checks the welcome, the shortcuts, the keyboard in the page, the taskbar and the seed, and prints one line per check, like `verify-hopto.sh`.
 
 ## Before saying "done"
 

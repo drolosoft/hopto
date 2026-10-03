@@ -1,15 +1,17 @@
 ﻿<#
 verify-hopto-windows.ps1: drives hopto.exe on Windows and checks what a
-person would check by hand: both shortcuts register, each one shows the
-panel with the keyboard, the same shortcut hides it, Esc hides it, the
-window has no taskbar button. The tray menu is checked by hand (see
-doc/testing.md).
+person would check by hand on a first run: the panel comes up by itself
+with the welcome and the keyboard, Enter starts, both shortcuts register,
+each one shows the panel with the keyboard in the page, the same shortcut
+hides it, Esc hides it, the window has no taskbar button. The tray menu
+is checked by hand (see doc/testing.md).
 
 It runs on a profile of its own (a temporary USERPROFILE), never on
-yours. Run it inside the Windows session, not over SSH: synthetic keys
+yours, so every run is a first run: the library is seeded and the welcome
+shows. Run it inside the Windows session, not over SSH: synthetic keys
 only reach the desktop they are sent from, and keys from keybd_event do
-reach RegisterHotKey. It stops any hopto that is
-running before it starts and does not start one again afterwards.
+reach RegisterHotKey. It stops any hopto that is running before it starts
+and does not start one again afterwards.
 
 Usage: powershell -ExecutionPolicy Bypass -File scripts\verify-hopto-windows.ps1 -Exe C:\path\hopto.exe
 Exit status: 0 every check passed, 1 a check failed, 3 the exe is missing.
@@ -24,18 +26,34 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 if (-not (Test-Path $Exe)) { Write-Error "no exe at $Exe"; exit 3 }
 
 Add-Type @"
-using System; using System.Runtime.InteropServices;
+using System; using System.Text; using System.Runtime.InteropServices;
 public static class Native {
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] public struct GUITHREADINFO {
+    public int cbSize; public int flags; public IntPtr hwndActive; public IntPtr hwndFocus; public IntPtr hwndCapture;
+    public IntPtr hwndMenuOwner; public IntPtr hwndMoveSize; public IntPtr hwndCaret; public RECT rcCaret; }
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern bool GetGUIThreadInfo(uint tid, ref GUITHREADINFO info);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  // The class of the window that holds the keyboard focus, read from the
+  // thread of the foreground window; empty when nothing has it.
+  public static string FocusClass() {
+    uint pid; uint tid = GetWindowThreadProcessId(GetForegroundWindow(), out pid);
+    var info = new GUITHREADINFO(); info.cbSize = Marshal.SizeOf(info);
+    if (!GetGUIThreadInfo(tid, ref info)) return "";
+    var name = new StringBuilder(256); GetClassName(info.hwndFocus, name, 256);
+    return name.ToString();
+  }
 }
 "@
 
 # Virtual keys (winuser.h).
-$VK = @{Ctrl = 0x11; Shift = 0x10; Alt = 0x12; Space = 0x20; Esc = 0x1B}
+$VK = @{Ctrl = 0x11; Shift = 0x10; Alt = 0x12; Space = 0x20; Esc = 0x1B; Enter = 0x0D}
 
 # WS_EX_TOOLWINDOW, the style that keeps a window off the taskbar.
 $ToolWindow = 0x80
@@ -66,6 +84,28 @@ function WaitVisible([int]$want, [int]$seconds = 3) {
     return $false
 }
 
+# Waits up to $seconds for the keyboard to reach the page: the panel is the
+# foreground window and the focus sits in one of the Chromium widgets
+# WebView2 keeps under it. The foreground alone is not enough; a key typed
+# while the focus is still on the bare window never reaches the page.
+function WaitPageFocus([int]$seconds = 3) {
+    for ($i = 0; $i -lt $seconds * 10; $i++) {
+        $front = [Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', 'hopto')
+        if ($front -and [Native]::FocusClass().StartsWith('Chrome_WidgetWin')) { return $true }
+        Start-Sleep -Milliseconds 100
+    }
+    return $false
+}
+
+# Waits up to $seconds for a line matching $pattern in hopto's log.
+function WaitLog([string]$pattern, [int]$seconds = 3) {
+    for ($i = 0; $i -lt $seconds * 5; $i++) {
+        if ((Test-Path $log) -and ((Get-Content $log -Raw) -match $pattern)) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
 # Waits up to $seconds for the hopto window to exist, hidden or not: a cold
 # WebView2 start on an empty profile can take well over five seconds.
 function WaitWindow([int]$seconds = 20) {
@@ -87,16 +127,32 @@ New-Item -ItemType Directory -Force $tempProfile | Out-Null
 $env:USERPROFILE = $tempProfile
 $log = Join-Path $tempProfile 'AppData\Local\hopto\hopto.log'
 
-Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
+# The process is named after the file, so a build kept as hopto-new.exe
+# runs as "hopto-new": stopping "hopto" alone leaves it alive, holding
+# the hotkeys and answering the shortcuts instead of the build under test.
+$processName = [IO.Path]::GetFileNameWithoutExtension($Exe)
+Get-Process hopto, $processName -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Process -FilePath $Exe
 
 if (WaitWindow) {
-    Check 'the panel starts hidden' ((Visible) -eq 0)
+    # A first run shows the panel by itself, with the welcome over it and
+    # its Start button holding the keyboard; Enter closes the welcome and
+    # leaves the panel on screen. Without the welcome, Enter would open the
+    # first app of the seeded library, so it is only pressed once the log
+    # says the welcome is up.
+    $welcome = (WaitLog 'welcome: showing the panel' 20) -and (WaitVisible 1)
+    Check 'the first run shows the panel with the welcome' $welcome
+    Check 'the page has the keyboard' (WaitPageFocus)
+    if ($welcome) { Chord @($VK.Enter) }
+    Check 'Enter closes the welcome and keeps the panel' ((Visible) -eq 1)
+    Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
+
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
-    Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', 'hopto'))
+    Check 'the page has the keyboard again' (WaitPageFocus)
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
     Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
-    Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
+    Check 'the links page has the keyboard' (WaitPageFocus)
+    Chord @($VK.Esc); Check 'Esc hides the links' (WaitVisible 0)
 
     $h = [Native]::FindWindow('hoptoWindow', 'hopto')
     $style = [Native]::GetWindowLong($h, -20)
@@ -111,7 +167,7 @@ if (WaitWindow) {
     Check 'hopto did not start within 20 s' $false
 }
 
-Get-Process hopto -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process hopto, $processName -ErrorAction SilentlyContinue | Stop-Process -Force
 Remove-Item -Recurse -Force $tempProfile -ErrorAction SilentlyContinue
 
 if ($failures -gt 0) { exit 1 } else { exit 0 }
