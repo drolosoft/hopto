@@ -5,6 +5,7 @@ package main
 import (
 	"hash/fnv"
 	"log"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -30,6 +31,8 @@ var (
 	procAttachThreadInput   = user32.NewProc("AttachThreadInput")
 	procBringWindowToTop    = user32.NewProc("BringWindowToTop")
 	procSetFocus            = user32.NewProc("SetFocus")
+	procEnumChildWindows    = user32.NewProc("EnumChildWindows")
+	procGetClassNameW       = user32.NewProc("GetClassNameW")
 
 	procGetWindowThreadProcessId = user32.NewProc(
 		"GetWindowThreadProcessId",
@@ -320,32 +323,113 @@ func activateApp() {
 			return
 		}
 
-		ok, _, _ := procSetForegroundWindow.Call(uintptr(window))
-		if ok != 0 {
-			return
-		}
-
-		front, _, _ := procGetForegroundWindow.Call()
-		frontThread, _, _ := procGetWindowThreadProcessId.Call(front, 0)
-		windowThread, _, _ := procGetWindowThreadProcessId.Call(
-			uintptr(window), 0,
-		)
-		ourThread := uintptr(windows.GetCurrentThreadId())
-
-		if frontThread == 0 || windowThread == 0 {
-			return
-		}
-
-		attachInput(frontThread, windowThread, true)
-		attachInput(ourThread, windowThread, true)
-
-		_, _, _ = procBringWindowToTop.Call(uintptr(window))
-		_, _, _ = procSetForegroundWindow.Call(uintptr(window))
-		_, _, _ = procSetFocus.Call(uintptr(window))
-
-		attachInput(ourThread, windowThread, false)
-		attachInput(frontThread, windowThread, false)
+		bringForward(window)
+		focusWebview(window)
 	})
+}
+
+// bringForward makes the launcher the foreground window: a plain
+// SetForegroundWindow first, then the input-queue loan described on
+// activateApp when Windows refuses.
+func bringForward(window windows.Handle) {
+	ok, _, _ := procSetForegroundWindow.Call(uintptr(window))
+	if ok != 0 {
+		return
+	}
+
+	front, _, _ := procGetForegroundWindow.Call()
+	frontThread, _, _ := procGetWindowThreadProcessId.Call(front, 0)
+	windowThread, _, _ := procGetWindowThreadProcessId.Call(
+		uintptr(window), 0,
+	)
+	ourThread := uintptr(windows.GetCurrentThreadId())
+
+	if frontThread == 0 || windowThread == 0 {
+		return
+	}
+
+	attachInput(frontThread, windowThread, true)
+	attachInput(ourThread, windowThread, true)
+
+	_, _, _ = procBringWindowToTop.Call(uintptr(window))
+	_, _, _ = procSetForegroundWindow.Call(uintptr(window))
+	_, _, _ = procSetFocus.Call(uintptr(window))
+
+	attachInput(ourThread, windowThread, false)
+	attachInput(frontThread, windowThread, false)
+}
+
+// webviewClassPrefix starts the class name of the Chromium widgets
+// WebView2 creates under the launcher window.
+const webviewClassPrefix = "Chrome_WidgetWin"
+
+// childCallback is the WNDENUMPROC handed to EnumChildWindows. It is
+// made once, for the same reason as monitorCallback: the runtime never
+// frees the callbacks it creates.
+var childCallback = windows.NewCallback(findWebviewChild)
+
+// webviewChild is where findWebviewChild leaves the widget it found,
+// guarded by webviewChildLock for the same reason as enumeration.
+var (
+	webviewChild     uintptr
+	webviewChildLock sync.Mutex
+)
+
+// findWebviewChild stops the enumeration at the first child whose class
+// name starts with webviewClassPrefix and remembers it.
+func findWebviewChild(child, data uintptr) uintptr {
+	// 256 UTF-16 units is the longest class name Windows allows.
+	var name [256]uint16
+
+	length, _, _ := procGetClassNameW.Call(
+		child, uintptr(unsafe.Pointer(&name[0])), uintptr(len(name)),
+	)
+	if length == 0 {
+		return 1
+	}
+
+	class := windows.UTF16ToString(name[:length])
+	if strings.HasPrefix(class, webviewClassPrefix) {
+		webviewChild = child
+
+		// Zero stops the enumeration.
+		return 0
+	}
+
+	return 1
+}
+
+// focusWebview hands the keyboard focus to the WebView2 widget. Wails
+// asks Chromium to take the focus with MoveFocus, but that does not
+// move the HWND focus when another thread brought the window forward,
+// and the page cannot receive a key until the Chromium widget holds
+// it. So this thread joins the input queue of the widget's thread for
+// the one SetFocus call, on every activation because the panel is
+// hidden and shown many times. It logs only when something fails.
+func focusWebview(window windows.Handle) {
+	webviewChildLock.Lock()
+	defer webviewChildLock.Unlock()
+
+	webviewChild = 0
+	_, _, _ = procEnumChildWindows.Call(uintptr(window), childCallback, 0)
+
+	if webviewChild == 0 {
+		log.Println("native: focus: no webview child")
+		return
+	}
+
+	childThread, _, _ := procGetWindowThreadProcessId.Call(
+		webviewChild, 0,
+	)
+	ourThread := uintptr(windows.GetCurrentThreadId())
+
+	attachInput(childThread, ourThread, true)
+	focused, _, _ := procSetFocus.Call(webviewChild)
+	attachInput(childThread, ourThread, false)
+
+	if focused == 0 {
+		log.Println("native: focus: SetFocus failed")
+	}
 }
 
 // attachInput joins the input queue of one thread to the one of
