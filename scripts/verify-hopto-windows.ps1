@@ -7,13 +7,19 @@ doc/testing.md).
 
 It runs on a profile of its own (a temporary USERPROFILE), never on
 yours. Run it inside the Windows session, not over SSH: synthetic keys
-only reach the desktop they are sent from. It stops any hopto that is
+only reach the desktop they are sent from, and keys from keybd_event do
+reach RegisterHotKey. It stops any hopto that is
 running before it starts and does not start one again afterwards.
 
 Usage: powershell -ExecutionPolicy Bypass -File scripts\verify-hopto-windows.ps1 -Exe C:\path\hopto.exe
 Exit status: 0 every check passed, 1 a check failed, 3 the exe is missing.
 #>
 param([Parameter(Mandatory = $true)][string]$Exe)
+
+# The marks below must survive a redirect to a file: Windows PowerShell 5.1
+# would write them in the console code page and they would come out as "?".
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 if (-not (Test-Path $Exe)) { Write-Error "no exe at $Exe"; exit 3 }
 
@@ -44,7 +50,9 @@ function Chord([int[]]$keys) {
 
 # 1 with the panel shown, 0 hidden, -1 with no window at all.
 function Visible {
-    $h = [Native]::FindWindow('hoptoWindow', $null)
+    # $null becomes an empty title in PowerShell 5.1, which matches only the
+    # hidden tray window, so the title is spelled out.
+    $h = [Native]::FindWindow('hoptoWindow', 'hopto')
     if ($h -eq [IntPtr]::Zero) { return -1 }
     if ([Native]::IsWindowVisible($h)) { return 1 } else { return 0 }
 }
@@ -62,7 +70,7 @@ function WaitVisible([int]$want, [int]$seconds = 3) {
 # WebView2 start on an empty profile can take well over five seconds.
 function WaitWindow([int]$seconds = 20) {
     for ($i = 0; $i -lt $seconds * 5; $i++) {
-        if ([Native]::FindWindow('hoptoWindow', $null) -ne [IntPtr]::Zero) { return $true }
+        if ([Native]::FindWindow('hoptoWindow', 'hopto') -ne [IntPtr]::Zero) { return $true }
         Start-Sleep -Milliseconds 200
     }
     return $false
@@ -85,12 +93,12 @@ Start-Process -FilePath $Exe
 if (WaitWindow) {
     Check 'the panel starts hidden' ((Visible) -eq 0)
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
-    Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', $null))
+    Check 'the panel has the keyboard' ([Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', 'hopto'))
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
     Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
     Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
 
-    $h = [Native]::FindWindow('hoptoWindow', $null)
+    $h = [Native]::FindWindow('hoptoWindow', 'hopto')
     $style = [Native]::GetWindowLong($h, -20)
     Check 'no taskbar button (WS_EX_TOOLWINDOW)' (($style -band $ToolWindow) -ne 0)
 
