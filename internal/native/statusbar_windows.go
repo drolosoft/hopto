@@ -11,20 +11,20 @@ type StatusBar struct{}
 func (StatusBar) Install(items []MenuItem) {
 	startNative()
 
-	native.mu.Lock()
-	defer native.mu.Unlock()
+	thread.mu.Lock()
+	defer thread.mu.Unlock()
 
-	native.items = append([]MenuItem{}, items...)
+	thread.items = append([]MenuItem{}, items...)
 }
 
 // SetChecked moves the tick of one entry; the next click shows it.
 func (StatusBar) SetChecked(tag int, on bool) {
-	native.mu.Lock()
-	defer native.mu.Unlock()
+	thread.mu.Lock()
+	defer thread.mu.Unlock()
 
-	for index := range native.items {
-		if native.items[index].Tag == tag {
-			native.items[index].Checked = on
+	for index := range thread.items {
+		if thread.items[index].Tag == tag {
+			thread.items[index].Checked = on
 		}
 	}
 }

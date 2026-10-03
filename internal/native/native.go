@@ -5,6 +5,12 @@
 // neither Wails nor the launcher's own package.
 package native
 
+import (
+	"log"
+
+	"github.com/drolosoft/hopto/internal/platform"
+)
+
 // Hooks is what the native layer calls back into: the launcher hands one
 // to Start once, in startup. Every field may be nil; a nil hook does
 // nothing, because a shortcut can arrive before the launcher is ready to
@@ -36,28 +42,64 @@ var hooks = defaultHooks(Hooks{})
 
 // Start keeps the launcher's hooks for the native side to call. It is
 // called once, in startup, before the shortcuts are registered.
-func Start(h Hooks) {
-	hooks = defaultHooks(h)
+func Start(given Hooks) {
+	hooks = defaultHooks(given)
 }
 
-// defaultHooks returns h with an empty function in place of every nil
-// one, so the callers never have to check.
-func defaultHooks(h Hooks) Hooks {
-	if h.Toggle == nil {
-		h.Toggle = func(tab string) {}
+// defaultHooks returns given with an empty function in place of every
+// nil one, so the callers never have to check.
+func defaultHooks(given Hooks) Hooks {
+	if given.Toggle == nil {
+		given.Toggle = func(string) {}
 	}
 
-	if h.Reopen == nil {
-		h.Reopen = func() {}
+	if given.Reopen == nil {
+		given.Reopen = func() {}
 	}
 
-	if h.MenuPicked == nil {
-		h.MenuPicked = func(tag int) {}
+	if given.MenuPicked == nil {
+		given.MenuPicked = func(int) {}
 	}
 
-	if h.HotkeyRegistered == nil {
-		h.HotkeyRegistered = func(id uint32, status int32) {}
+	if given.HotkeyRegistered == nil {
+		given.HotkeyRegistered = func(uint32, int32) {}
 	}
 
-	return h
+	return given
+}
+
+// hotkeyPressed shows or hides the panel on the tab of the shortcut the
+// system reported. The event arrives on the thread that owns the
+// shortcuts (the main thread on macOS, the native thread on Windows), so
+// the hook runs in a goroutine of its own and that thread never waits
+// on the Wails runtime.
+func hotkeyPressed(id uint32) {
+	tab := platform.TabForHotkey(id)
+
+	log.Printf("hotkey %d pressed: %s", id, tab)
+
+	go hooks.Toggle(tab)
+}
+
+// hotkeyRegistered passes on what the system said to one shortcut and
+// leaves it in the log. call is the system function that answered
+// (RegisterEventHotKey or RegisterHotKey), named when it refused.
+func hotkeyRegistered(id uint32, status int32, call string) {
+	hooks.HotkeyRegistered(id, status)
+
+	if status != 0 {
+		log.Printf("hotkey %d: %s failed with status %d", id, call, status)
+		return
+	}
+
+	log.Printf("hotkey %d registered", id)
+}
+
+// menuPicked hands the tag of the chosen menu entry to the launcher. The
+// click arrives on the thread that drew the menu, which must not wait
+// on the Wails runtime either, so the hook gets a goroutine too.
+func menuPicked(tag int) {
+	log.Printf("menu %d picked", tag)
+
+	go hooks.MenuPicked(tag)
 }

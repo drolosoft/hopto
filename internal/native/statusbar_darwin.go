@@ -98,8 +98,6 @@ static void statusBarCheck(int tag, int checked) {
 */
 import "C"
 
-import "log"
-
 // StatusBar is the real menu bar item.
 type StatusBar struct{}
 
@@ -137,11 +135,10 @@ func boolToInt(on bool) C.int {
 	return 0
 }
 
+// hoptoMenuPicked is called by the click handler of every entry, on the
+// main thread, with the tag of the one chosen.
+//
 //export hoptoMenuPicked
 func hoptoMenuPicked(tag C.int) {
-	log.Printf("menu %d picked", tag)
-
-	// The click arrives on the main thread; the Wails runtime is only
-	// ever called from a goroutine, as for the hotkeys.
-	go hooks.MenuPicked(int(tag))
+	menuPicked(int(tag))
 }

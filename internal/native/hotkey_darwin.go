@@ -255,32 +255,25 @@ import (
 // maxDisplays is more screens than a Mac drives at once.
 const maxDisplays = 16
 
+// launcherHotkeyPressed is called by the C hotkey handler, on the main
+// thread, with the id the shortcut was registered under.
+//
 //export launcherHotkeyPressed
 func launcherHotkeyPressed(id C.UInt32) {
-	tab := platform.TabForHotkey(uint32(id))
-
-	log.Printf("hotkey %d pressed: %s", id, tab)
-
-	// The handler runs on the main thread; the Wails runtime calls are
-	// dispatched from a goroutine so they never block that thread.
-	go hooks.Toggle(tab)
+	hotkeyPressed(uint32(id))
 }
 
+// launcherHotkeyRegistered is called from the block registerHotkey
+// queues, on the main thread, with what Carbon said to the shortcut.
+//
 //export launcherHotkeyRegistered
 func launcherHotkeyRegistered(id C.UInt32, status C.OSStatus) {
-	hooks.HotkeyRegistered(uint32(id), int32(status))
-
-	if status != 0 {
-		log.Printf(
-			"hotkey %d: RegisterEventHotKey failed with status %d",
-			id, status,
-		)
-		return
-	}
-
-	log.Printf("hotkey %d registered", id)
+	hotkeyRegistered(uint32(id), int32(status), "RegisterEventHotKey")
 }
 
+// launcherReopened is called by the reopen handler on the application
+// delegate, on the main thread, when the running app is launched again.
+//
 //export launcherReopened
 func launcherReopened() {
 	log.Printf("reopen: hopto launched again")
@@ -298,7 +291,7 @@ func BecomeAccessory() {
 
 // RegisterHotkeys binds the apps shortcut to the apps tab and the links
 // shortcut to the links tab; a press reaches hooks.Toggle. The specs
-// come from the library; the defaults are in hotkeyspec.go.
+// come from the library; the defaults are in internal/platform.
 func RegisterHotkeys(apps, links platform.Hotkey) {
 	C.registerHotkey(
 		platform.HotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers),
@@ -308,9 +301,9 @@ func RegisterHotkeys(apps, links platform.Hotkey) {
 	)
 }
 
-// CenterWindow moves the hidden window to the middle of the screen
-// screenChoice picked and sets the overlay window behaviour. Call it
-// from a goroutine, never from the main thread.
+// CenterWindow moves the hidden window to the middle of the screen that
+// mode and display choose and sets the overlay window behaviour. Call
+// it from a goroutine, never from the main thread.
 func CenterWindow(mode string, display uint32) {
 	placement := C.placeMain
 	switch mode {
@@ -329,7 +322,7 @@ func CurrentDisplay() uint32 {
 	return uint32(C.windowDisplayNumber())
 }
 
-// ActiveDisplays lists the attached displays, so screenChoice can tell
+// ActiveDisplays lists the attached displays, so the caller can tell
 // whether the remembered one is still there.
 func ActiveDisplays() []uint32 {
 	var ids [maxDisplays]C.uint32_t

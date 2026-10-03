@@ -18,6 +18,8 @@ import (
 // the taskbar, place it on a monitor and bring it to the front. The
 // tray and the hotkeys are in native_windows.go.
 
+// The user32 entry points for Wails' window: finding it, its style, its
+// place on a monitor, and the foreground.
 var (
 	procFindWindowW       = user32.NewProc("FindWindowW")
 	procGetWindowLongPtrW = user32.NewProc("GetWindowLongPtrW")
@@ -33,9 +35,7 @@ var (
 	procAttachThreadInput   = user32.NewProc("AttachThreadInput")
 	procBringWindowToTop    = user32.NewProc("BringWindowToTop")
 
-	procGetWindowThreadProcessId = user32.NewProc(
-		"GetWindowThreadProcessId",
-	)
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 )
 
 // Extended window styles (winuser.h). A tool window has no taskbar
@@ -76,12 +76,11 @@ type monitorInfoEx struct {
 	Device  [32]uint16
 }
 
-// launcherWindow is Wails' window, found by the class name main.go set.
+// launcherWindow is Wails' window, found by its class name,
+// platform.WindowClassName.
 func launcherWindow() windows.Handle {
 	className, _ := windows.UTF16PtrFromString(platform.WindowClassName)
-	window, _, _ := procFindWindowW.Call(
-		uintptr(unsafe.Pointer(className)), 0,
-	)
+	window, _, _ := procFindWindowW.Call(uintptr(unsafe.Pointer(className)), 0)
 
 	return windows.Handle(window)
 }
@@ -96,19 +95,9 @@ func BecomeAccessory() {
 		return
 	}
 
-	style, _, _ := procGetWindowLongPtrW.Call(
-		uintptr(window), gwlExStyle,
-	)
+	style, _, _ := procGetWindowLongPtrW.Call(uintptr(window), gwlExStyle)
 	style = (style &^ wsExAppWindow) | wsExToolWindow
 	_, _, _ = procSetWindowLongPtrW.Call(uintptr(window), gwlExStyle, style)
-}
-
-// RegisterHotkeys binds the apps shortcut to the apps tab and the links
-// shortcut to the links tab, on the native thread; a press reaches
-// hooks.Toggle.
-func RegisterHotkeys(apps, links platform.Hotkey) {
-	registerHotkey(platform.HotkeyApps, apps)
-	registerHotkey(platform.HotkeyLinks, links)
 }
 
 // displayID is the id hopto keeps for a monitor: FNV-32 of its device
@@ -131,9 +120,7 @@ func monitorInfo(monitor uintptr) (monitorInfoEx, bool) {
 	var info monitorInfoEx
 	info.Size = uint32(unsafe.Sizeof(info))
 
-	ok, _, _ := procGetMonitorInfoW.Call(
-		monitor, uintptr(unsafe.Pointer(&info)),
-	)
+	ok, _, _ := procGetMonitorInfoW.Call(monitor, uintptr(unsafe.Pointer(&info)))
 
 	return info, ok != 0
 }
@@ -155,7 +142,7 @@ var (
 )
 
 // collectMonitor appends one monitor to the enumeration in progress.
-func collectMonitor(monitor, dc, area, data uintptr) uintptr {
+func collectMonitor(monitor, _, _, _ uintptr) uintptr {
 	if info, ok := monitorInfo(monitor); ok {
 		enumeration = append(enumeration, info)
 	}
@@ -175,23 +162,9 @@ func monitors() []monitorInfoEx {
 	return enumeration
 }
 
-// Shutdown takes the tray icon away before the process exits:
-// Wails ends with a WM_QUIT to its own thread, so the native window is
-// never destroyed and its WM_DESTROY never arrives. Nothing to do when
-// the native thread never started.
-func Shutdown() {
-	if native.window == 0 {
-		return
-	}
-
-	runNative(func() {
-		removeTrayIcon(native.window)
-	})
-}
-
 // chosenMonitor picks the monitor for this show: under the mouse, the
-// remembered one, or the primary (the one whose work area starts at
-// 0,0; the enumeration lists it first).
+// remembered one, or the primary (the one whose area starts at 0,0;
+// the enumeration lists it first).
 func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
 	if mode == library.ScreenMouse {
 		var cursor point
@@ -202,9 +175,7 @@ func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
 		// half, Y in the high half. Passed as two arguments, Windows
 		// would read (X, 0) and take Y for the flags.
 		packed := uintptr(uint32(cursor.X)) | uintptr(uint32(cursor.Y))<<32
-		monitor, _, _ := procMonitorFromPoint.Call(
-			packed, monitorDefaultToNearest,
-		)
+		monitor, _, _ := procMonitorFromPoint.Call(packed, monitorDefaultToNearest)
 
 		return monitorInfo(monitor)
 	}
@@ -284,7 +255,7 @@ func CurrentDisplay() uint32 {
 	return displayID(info)
 }
 
-// ActiveDisplays lists the attached monitors, so screenChoice can tell
+// ActiveDisplays lists the attached monitors, so the caller can tell
 // whether the remembered one is still there.
 func ActiveDisplays() []uint32 {
 	all := monitors()
@@ -333,9 +304,7 @@ func bringForward(window windows.Handle) {
 
 	front, _, _ := procGetForegroundWindow.Call()
 	frontThread, _, _ := procGetWindowThreadProcessId.Call(front, 0)
-	windowThread, _, _ := procGetWindowThreadProcessId.Call(
-		uintptr(window), 0,
-	)
+	windowThread, _, _ := procGetWindowThreadProcessId.Call(uintptr(window), 0)
 	ourThread := uintptr(windows.GetCurrentThreadId())
 
 	if frontThread == 0 || windowThread == 0 {
@@ -358,10 +327,6 @@ func bringForward(window windows.Handle) {
 	}
 }
 
-// wmSetFocus is the message a window gets when it has just gained the
-// keyboard focus (winuser.h WM_SETFOCUS).
-const wmSetFocus = 0x0007
-
 // nudgeFocus asks Wails to hand the keyboard to the WebView2 widget.
 // Wails does that in its WM_SETFOCUS handler, with Chromium's own
 // MoveFocus on its own thread, and the activation bringForward starts
@@ -380,9 +345,7 @@ const wmSetFocus = 0x0007
 // on a visible window. That order matters, because go-webview2 exits
 // the process on a MoveFocus error rather than returning it.
 func nudgeFocus(window windows.Handle) {
-	posted, _, _ := procPostMessageW.Call(
-		uintptr(window), wmSetFocus, 0, 0,
-	)
+	posted, _, _ := procPostMessageW.Call(uintptr(window), wmSetFocus, 0, 0)
 	if posted == 0 {
 		log.Println("native: focus: nudge not posted")
 	}

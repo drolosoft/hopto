@@ -44,12 +44,15 @@ var (
 	procRegisterWindowMessageW = user32.NewProc("RegisterWindowMessageW")
 )
 
-// Window messages (winuser.h). trayMessage is our own number in the
-// WM_APP range for the icon's clicks; nativeJob is the one runNative
-// posts to run a function on the native thread.
+// Window messages (winuser.h). wmSetFocus is the one a window gets when
+// it has just gained the keyboard, which nudgeFocus posts to Wails'
+// window. trayMessage is our own number in the WM_APP range for the
+// icon's clicks; nativeJob is the one runNative posts to run a function
+// on the native thread.
 const (
 	wmNull      = 0x0000
 	wmDestroy   = 0x0002
+	wmSetFocus  = 0x0007
 	wmHotkey    = 0x0312
 	wmLButtonUp = 0x0202
 	wmRButtonUp = 0x0205
@@ -81,6 +84,14 @@ const (
 
 // modNoRepeat makes a held key fire once (winuser.h MOD_NOREPEAT).
 const modNoRepeat = 0x4000
+
+// trayClassName is the class of the hidden tray window. trayIconID
+// tells the shell which of the window's icons a call means: hopto has
+// one icon, so one id, and adding and deleting it must agree on it.
+const (
+	trayClassName = "hoptoTray"
+	trayIconID    = 1
+)
 
 // appIconResource is the id Wails gives the icon it embeds from
 // build/windows/icon.ico (winc.AppIconID); idiApplication is the stock
@@ -141,11 +152,11 @@ type notifyIconData struct {
 	BalloonIcon     windows.Handle
 }
 
-// native is the state the native thread owns. items is read under mu
+// thread is the state the native thread owns. items is read under mu
 // because Install and SetChecked write it from the engine's goroutines;
 // the menu itself is built from items at every click, so no menu handle
 // outlives a click and the ticks are always the latest.
-var native struct {
+var thread struct {
 	once   sync.Once
 	ready  chan struct{}
 	window windows.Handle
@@ -168,18 +179,15 @@ var taskbarCreated uint32
 // still there, and NIM_ADD of an id that exists fails harmlessly.
 var readdFailureLogged bool
 
-// trayClassName is the class of the hidden tray window.
-const trayClassName = "hoptoTray"
-
 // startNative starts the native thread once; every entry point calls it,
 // so whichever the engine reaches first brings the thread up.
 func startNative() {
-	native.once.Do(func() {
-		native.ready = make(chan struct{})
+	thread.once.Do(func() {
+		thread.ready = make(chan struct{})
 		go nativeLoop()
 	})
 
-	<-native.ready
+	<-thread.ready
 }
 
 // nativeLoop is the whole life of the native thread: the window, the
@@ -192,22 +200,19 @@ func nativeLoop() {
 	window, err := createTrayWindow()
 	if err != nil {
 		log.Printf("native: tray window: %v", err)
-		native.window = 0
-		close(native.ready)
+		close(thread.ready)
 		return
 	}
 
-	native.window = window
+	thread.window = window
 	registerTaskbarCreated()
 	addTrayIcon(window)
-	close(native.ready)
+	close(thread.ready)
 
 	var msg message
 	for {
-		got, _, _ := procGetMessageW.Call(
-			uintptr(unsafe.Pointer(&msg)), 0, 0, 0,
-		)
-		if int32(got) <= 0 {
+		result, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
+		if int32(result) <= 0 {
 			break
 		}
 
@@ -240,9 +245,7 @@ func createTrayWindow() (windows.Handle, error) {
 	}
 	class.Size = uint32(unsafe.Sizeof(class))
 
-	atom, _, err := procRegisterClassExW.Call(
-		uintptr(unsafe.Pointer(&class)),
-	)
+	atom, _, err := procRegisterClassExW.Call(uintptr(unsafe.Pointer(&class)))
 	if atom == 0 {
 		return 0, err
 	}
@@ -262,9 +265,7 @@ func createTrayWindow() (windows.Handle, error) {
 // on the icon, or a job posted by runNative. Each one only starts a
 // goroutine towards the engine, as the Carbon handler does on macOS.
 func trayWindowProc(
-	window windows.Handle,
-	msg uint32,
-	wParam, lParam uintptr,
+	window windows.Handle, msg uint32, wParam, lParam uintptr,
 ) uintptr {
 	// Explorer started again and the icon it drew is gone. The number
 	// is not a constant, so it cannot be a case of the switch below.
@@ -276,16 +277,13 @@ func trayWindowProc(
 
 	switch msg {
 	case wmHotkey:
-		id := uint32(wParam)
-		tab := platform.TabForHotkey(id)
-		log.Printf("hotkey %d pressed: %s", id, tab)
-		go hooks.Toggle(tab)
+		hotkeyPressed(uint32(wParam))
 
 		return 0
 
 	case trayMessage:
-		low := uint32(lParam & 0xFFFF)
-		if low == wmLButtonUp || low == wmRButtonUp {
+		mouse := loWord(lParam)
+		if mouse == wmLButtonUp || mouse == wmRButtonUp {
 			showTrayMenu(window)
 		}
 
@@ -309,26 +307,32 @@ func trayWindowProc(
 	return result
 }
 
+// loWord is the low 16 bits of a message parameter (LOWORD), where the
+// shell puts the mouse message of a click on the tray icon.
+func loWord(value uintptr) uint32 {
+	return uint32(value & 0xFFFF)
+}
+
 // runNative runs fn on the native thread and waits for it. It is what
 // every engine-side entry point uses, so user32 only ever sees the
 // thread that owns the window.
 func runNative(fn func()) {
 	startNative()
 
-	if native.window == 0 {
+	if thread.window == 0 {
 		return
 	}
 
 	done := make(chan struct{})
-	native.mu.Lock()
-	native.jobs = append(native.jobs, func() {
+	thread.mu.Lock()
+	thread.jobs = append(thread.jobs, func() {
 		fn()
 		close(done)
 	})
-	native.mu.Unlock()
+	thread.mu.Unlock()
 
 	posted, _, _ := procPostMessageW.Call(
-		uintptr(native.window), nativeJob, 0, 0,
+		uintptr(thread.window), nativeJob, 0, 0,
 	)
 	if posted == 0 {
 		// Nobody will run the job, so waiting for it would block for good.
@@ -340,10 +344,10 @@ func runNative(fn func()) {
 
 // runPendingJobs drains the queue on the native thread.
 func runPendingJobs() {
-	native.mu.Lock()
-	jobs := native.jobs
-	native.jobs = nil
-	native.mu.Unlock()
+	thread.mu.Lock()
+	jobs := thread.jobs
+	thread.jobs = nil
+	thread.mu.Unlock()
 
 	for _, job := range jobs {
 		job()
@@ -376,8 +380,8 @@ func appIcon() windows.Handle {
 
 // registerTaskbarCreated asks Windows for the number of the message
 // Explorer broadcasts when it starts. A failure leaves taskbarCreated at
-// 0, which matches no message: hopto then works as before, minus the
-// icon coming back after an Explorer restart.
+// 0, which matches no message: hopto then works, minus the icon coming
+// back after an Explorer restart.
 func registerTaskbarCreated() {
 	name, err := windows.UTF16PtrFromString("TaskbarCreated")
 	if err != nil {
@@ -400,7 +404,7 @@ func registerTaskbarCreated() {
 func notifyAdd(window windows.Handle) error {
 	data := notifyIconData{
 		Window:          window,
-		ID:              1,
+		ID:              trayIconID,
 		Flags:           nifMessage | nifIcon | nifTip,
 		CallbackMessage: trayMessage,
 		Icon:            appIcon(),
@@ -446,11 +450,25 @@ func readdTrayIcon(window windows.Handle) {
 
 // removeTrayIcon takes the icon away when the window goes.
 func removeTrayIcon(window windows.Handle) {
-	data := notifyIconData{Window: window, ID: 1}
+	data := notifyIconData{Window: window, ID: trayIconID}
 	data.Size = uint32(unsafe.Sizeof(data))
 	_, _, _ = procShellNotifyIconW.Call(
 		nimDelete, uintptr(unsafe.Pointer(&data)),
 	)
+}
+
+// Shutdown takes the tray icon away before the process exits:
+// Wails ends with a WM_QUIT to its own thread, so the native window is
+// never destroyed and its WM_DESTROY never arrives. Nothing to do when
+// the native thread never started.
+func Shutdown() {
+	if thread.window == 0 {
+		return
+	}
+
+	runNative(func() {
+		removeTrayIcon(thread.window)
+	})
 }
 
 // showTrayMenu builds the menu from the current items, shows it at the
@@ -458,9 +476,9 @@ func removeTrayIcon(window windows.Handle) {
 // before and a WM_NULL after are what TrackPopupMenu's documentation
 // asks for, so the menu closes on a click outside it.
 func showTrayMenu(window windows.Handle) {
-	native.mu.Lock()
-	items := append([]MenuItem{}, native.items...)
-	native.mu.Unlock()
+	thread.mu.Lock()
+	items := append([]MenuItem{}, thread.items...)
+	thread.mu.Unlock()
 
 	menu, _, _ := procCreatePopupMenu.Call()
 	if menu == 0 {
@@ -506,41 +524,44 @@ func showTrayMenu(window windows.Handle) {
 		return
 	}
 
-	log.Printf("menu %d picked", chosen)
-	go hooks.MenuPicked(int(chosen))
+	menuPicked(int(chosen))
+}
+
+// RegisterHotkeys binds the apps shortcut to the apps tab and the links
+// shortcut to the links tab, on the native thread; a press reaches
+// hooks.Toggle.
+func RegisterHotkeys(apps, links platform.Hotkey) {
+	registerHotkey(platform.HotkeyApps, apps)
+	registerHotkey(platform.HotkeyLinks, links)
 }
 
 // registerHotkey registers one shortcut on the native thread and records
-// what Windows said, so the welcome can show a taken combination. A held
-// key fires once.
+// what Windows said, so the launcher can show a taken combination. A
+// held key fires once.
 func registerHotkey(id uint32, hotkey platform.Hotkey) {
 	runNative(func() {
 		ok, _, err := procRegisterHotKey.Call(
-			uintptr(native.window), uintptr(id),
+			uintptr(thread.window), uintptr(id),
 			uintptr(hotkey.Modifiers|modNoRepeat), uintptr(hotkey.KeyCode),
 		)
 
+		status := int32(0)
 		if ok == 0 {
-			status := int32(0)
-			if errno, isErrno := err.(windows.Errno); isErrno {
-				status = int32(errno)
-			}
-
-			// A failure that left no error code must still not read as
-			// success, which is what status 0 means to the welcome.
-			if status == 0 {
-				status = -1
-			}
-
-			hooks.HotkeyRegistered(id, status)
-			log.Printf(
-				"hotkey %d: RegisterHotKey failed with status %d",
-				id, status,
-			)
-			return
+			status = failureStatus(err)
 		}
 
-		hooks.HotkeyRegistered(id, 0)
-		log.Printf("hotkey %d registered", id)
+		hotkeyRegistered(id, status, "RegisterHotKey")
 	})
+}
+
+// failureStatus is the status reported for a refused registration: the
+// Windows error code, or -1 when the call left none. A failure must
+// never read as success, which is what status 0 means to the caller.
+func failureStatus(err error) int32 {
+	errno, isErrno := err.(windows.Errno)
+	if !isErrno || errno == 0 {
+		return -1
+	}
+
+	return int32(errno)
 }
