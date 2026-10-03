@@ -78,6 +78,14 @@ html, body {
     --wails-draggable: drag;
 }
 
+/* The page hides a part by setting `hidden`, but the user agent's
+   [hidden] rule loses to any id rule that sets display (the chips, the
+   status, the editor, the welcome). An id plus the attribute outranks
+   them all, wherever they sit in this file. */
+#launcher [hidden] {
+    display: none;
+}
+
 /* The appearance: a short scale-up, none at all when the user asked the
    system for less motion. */
 @keyframes appear {
@@ -188,13 +196,6 @@ header {
     gap: 8px;
 }
 
-/* The flex rule above outranks the user agent's [hidden] rule (an id
-   selector beats an attribute selector), so the chip bar needs its own
-   display: none to actually disappear when the JS hides it. */
-#categories[hidden] {
-    display: none;
-}
-
 .chip {
     border: 1px solid var(--line);
     background: transparent;
@@ -212,8 +213,13 @@ header {
     border-color: transparent;
 }
 
-/* The broken-file notice sits between the chips and the list. */
+/* The broken-file notice sits between the chips and the list, its text
+   and its button on one line. */
 #status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin: 0;
     padding: 6px 10px;
     border-radius: 8px;
@@ -595,11 +601,6 @@ footer p {
     --wails-draggable: no-drag;
 }
 
-/* The id rule above beats the user agent's [hidden], as with the chips. */
-#editor[hidden] {
-    display: none;
-}
-
 #editor .heading {
     display: flex;
     align-items: center;
@@ -703,19 +704,6 @@ footer p {
     font-size: 18px;
 }
 
-/* The broken-file notice with its button, on one line. */
-#status {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-/* As with the chips, the flex rule would beat [hidden]. */
-#status[hidden] {
-    display: none;
-}
-
 #status .text {
     margin: 0;
 }
@@ -744,10 +732,6 @@ footer p {
     background: var(--panel);
     box-shadow: 0 8px 30px var(--panel-shadow);
     --wails-draggable: no-drag;
-}
-
-#welcome[hidden] {
-    display: none;
 }
 
 #welcome h2 {
