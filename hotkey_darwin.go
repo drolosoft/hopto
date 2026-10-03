@@ -245,7 +245,11 @@ static void activateApp(void) {
 */
 import "C"
 
-import "log"
+import (
+	"log"
+
+	"github.com/drolosoft/hopto/internal/library"
+)
 
 // onHotkey is what the Carbon handler calls, with the tab of the pressed
 // shortcut. It is a variable so the App can install its own toggle without
@@ -319,9 +323,9 @@ func registerToggleHotkeys(toggle func(tab string), apps, links Hotkey) {
 func centerWindow(mode string, display uint32) {
 	placement := C.placeMain
 	switch mode {
-	case screenMouse:
+	case library.ScreenMouse:
 		placement = C.placeMouse
-	case screenLast:
+	case library.ScreenLast:
 		placement = C.placeDisplay
 	}
 

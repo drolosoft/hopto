@@ -9,14 +9,7 @@ import (
 	"slices"
 
 	"github.com/drolosoft/hopto/internal/atomicfile"
-)
-
-// The values of [settings] screen, which are also the modes Center
-// takes; for Center, screenLast means "on the display passed with it".
-const (
-	screenLast  = "last"
-	screenMouse = "mouse"
-	screenMain  = "main"
+	"github.com/drolosoft/hopto/internal/library"
 )
 
 // windowPerm keeps window.json private, like every other file in the
@@ -72,15 +65,15 @@ func writeWindowState(path string, display uint32) error {
 func screenChoice(
 	setting string, remembered uint32, attached []uint32,
 ) (string, uint32) {
-	if setting == screenMouse || setting == screenMain {
+	if setting == library.ScreenMouse || setting == library.ScreenMain {
 		return setting, 0
 	}
 
 	if remembered != 0 && slices.Contains(attached, remembered) {
-		return screenLast, remembered
+		return library.ScreenLast, remembered
 	}
 
-	return screenMain, 0
+	return library.ScreenMain, 0
 }
 
 // placeWindow centres the hidden window where the setting says, just

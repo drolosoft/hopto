@@ -15,3 +15,23 @@ func TestCheckCategoryRefusesVirtualIDs(t *testing.T) {
 		}
 	}
 }
+
+// The screen constants are the words a library.toml carries, and the
+// validator accepts every one of them.
+func TestScreenValuesAreTheTOMLWords(t *testing.T) {
+	want := map[string]string{
+		ScreenLast:  "last",
+		ScreenMouse: "mouse",
+		ScreenMain:  "main",
+	}
+
+	for got, text := range want {
+		if got != text {
+			t.Errorf("screen constant %q, want %q", got, text)
+		}
+
+		if !screens[got] {
+			t.Errorf("validator does not accept %q", got)
+		}
+	}
+}

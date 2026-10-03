@@ -83,13 +83,29 @@ var reservedCategoryIDs = map[string]bool{
 	"hidden":       true,
 }
 
+// The values of [settings] screen. They are also the modes the window
+// is centred with; there, ScreenLast means "on the display passed with
+// it".
+const (
+	// ScreenLast puts the panel on the display it was last shown on.
+	ScreenLast = "last"
+
+	// ScreenMouse puts the panel on the display under the pointer.
+	ScreenMouse = "mouse"
+
+	// ScreenMain puts the panel on the main display.
+	ScreenMain = "main"
+)
+
 // The values settings accept.
 var (
 	languages    = map[string]bool{"auto": true, "es": true, "en": true}
 	iconServices = map[string]bool{
 		"site": true, "duckduckgo": true, "google": true,
 	}
-	screens = map[string]bool{"last": true, "mouse": true, "main": true}
+	screens = map[string]bool{
+		ScreenLast: true, ScreenMouse: true, ScreenMain: true,
+	}
 )
 
 // Validate checks a whole library: the version, the limits, every entry and

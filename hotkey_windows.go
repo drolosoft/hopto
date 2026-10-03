@@ -9,6 +9,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/drolosoft/hopto/internal/library"
 )
 
 // The window side of the native layer: find Wails' window, keep it off
@@ -194,7 +196,7 @@ func shutdownNative() {
 // remembered one, or the primary (the one whose work area starts at
 // 0,0; the enumeration lists it first).
 func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
-	if mode == screenMouse {
+	if mode == library.ScreenMouse {
 		var cursor point
 		_, _, _ = procGetCursorPos.Call(uintptr(unsafe.Pointer(&cursor)))
 
@@ -212,7 +214,7 @@ func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
 
 	all := monitors()
 
-	if mode == screenLast {
+	if mode == library.ScreenLast {
 		for _, info := range all {
 			if displayID(info) == display {
 				return info, true

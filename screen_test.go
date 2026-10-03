@@ -44,6 +44,11 @@ func TestWindowState(t *testing.T) {
 func TestScreenChoice(t *testing.T) {
 	attached := []uint32{1, 7}
 
+	// Short names keep the table rows within the line limit.
+	last := library.ScreenLast
+	mouse := library.ScreenMouse
+	main := library.ScreenMain
+
 	cases := []struct {
 		name        string
 		setting     string
@@ -51,11 +56,11 @@ func TestScreenChoice(t *testing.T) {
 		wantMode    string
 		wantDisplay uint32
 	}{
-		{"last, still attached", screenLast, 7, screenLast, 7},
-		{"last, unplugged", screenLast, 9, screenMain, 0},
-		{"last, never shown", screenLast, 0, screenMain, 0},
-		{"mouse ignores the memory", screenMouse, 7, screenMouse, 0},
-		{"main ignores the memory", screenMain, 7, screenMain, 0},
+		{"last, still attached", last, 7, last, 7},
+		{"last, unplugged", last, 9, main, 0},
+		{"last, never shown", last, 0, main, 0},
+		{"mouse ignores the memory", mouse, 7, mouse, 0},
+		{"main ignores the memory", main, 7, main, 0},
 	}
 
 	for _, tc := range cases {
@@ -84,7 +89,7 @@ func TestPanelReturnsToItsDisplay(t *testing.T) {
 	}
 
 	app.toggle(tabApps)
-	if win.centerMode != screenLast || win.centerDisplay != 7 {
+	if win.centerMode != library.ScreenLast || win.centerDisplay != 7 {
 		t.Errorf("centred by %s on %d", win.centerMode, win.centerDisplay)
 	}
 
@@ -123,14 +128,14 @@ func TestPanelScreenSetting(t *testing.T) {
 	app.display = 9
 
 	app.toggle(tabApps)
-	if win.centerMode != screenMain || win.centerDisplay != 0 {
+	if win.centerMode != library.ScreenMain || win.centerDisplay != 0 {
 		t.Errorf("centred by %s on %d", win.centerMode, win.centerDisplay)
 	}
 
 	app.toggle(tabApps)
 
 	err := app.library.Apply(func(lib *library.Library) error {
-		lib.Settings.Screen = screenMouse
+		lib.Settings.Screen = library.ScreenMouse
 		return nil
 	})
 	if err != nil {
@@ -138,7 +143,7 @@ func TestPanelScreenSetting(t *testing.T) {
 	}
 
 	app.toggle(tabApps)
-	if win.centerMode != screenMouse {
+	if win.centerMode != library.ScreenMouse {
 		t.Errorf("centred by %s, want mouse", win.centerMode)
 	}
 }
