@@ -2,7 +2,7 @@
  * The page state and the texts derived from it, without the DOM.
  */
 import {rankItems, filterByCategory, visibleUnder, FAVORITES, HIDDEN} from './filter.js';
-import {TABS, otherTab} from './tabs.js';
+import {TABS, otherTab, itemsOf, categoriesOf} from './tabs.js';
 
 /**
  * Everything the user can change while the launcher is on screen. `shown`
@@ -69,7 +69,7 @@ export function counts(state, query) {
  * @returns {string}
  */
 export function emptyMessage(state, t) {
-    const items = state.tab === 'links' ? state.links : state.apps;
+    const items = itemsOf(state);
     if (items.length === 0) {
         return t(TABS[state.tab].empty);
     }
@@ -134,8 +134,8 @@ export function footerAction(entry, t, editing = false) {
  * @returns {Object<string, number>}
  */
 export function chipCounts(state) {
-    const categories = state.tab === 'links' ? state.linkCategories : state.appCategories;
-    const everything = state.tab === 'links' ? state.links : state.apps;
+    const categories = categoriesOf(state);
+    const everything = itemsOf(state);
     const items = everything.filter((item) => !item.hidden && !item.searchOnly);
 
     const totals = {'': items.length, [FAVORITES]: items.filter((item) => item.favorite).length};
@@ -162,7 +162,7 @@ export function chipItems(state) {
         return [];
     }
 
-    const items = state.tab === 'links' ? state.links : state.apps;
+    const items = itemsOf(state);
     return visibleUnder(items, state.category);
 }
 

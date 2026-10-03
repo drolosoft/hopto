@@ -92,7 +92,7 @@ test('nothing matching offers to add it instead of an empty list', async ({page}
     await page.keyboard.type('zzz');
     await expect(page.locator('#empty')).toBeHidden();
     await expect(page.locator('#grid [role="option"]')).toHaveCount(1);
-    await expect(page.locator('#grid .row.action .name')).toHaveText('＋ Add “zzz”');
+    await expect(page.locator('#grid .row.action .name')).toHaveText('Add “zzz”');
 
     await page.keyboard.press('Escape');
     await page.keyboard.press('Tab');
@@ -255,4 +255,23 @@ test('on Windows the footer and the help speak Control, and Ctrl+Enter opens els
     await page.keyboard.press('?');
     await expect(page.locator('#help')).toContainText('show in Explorer');
     await expect(page.locator('#help')).not.toContainText('⌘');
+});
+
+test('on Windows the Tab key is written as a word, not the macOS glyph', async ({page}) => {
+    await onWindows(page);
+    await shown(page, 'links');
+
+    await expect(page.locator('#hints')).toHaveText('Ctrl+F ★ · Tab Apps · ? help');
+    await page.keyboard.press('?');
+    await expect(page.locator('#help')).toContainText('Tab other tab');
+    await expect(page.locator('#help')).not.toContainText('⇥');
+});
+
+test('the add row carries its plus once, in the tile', async ({page}) => {
+    await shown(page, 'links');
+    await page.keyboard.type('zzz');
+
+    const row = page.locator('#grid .row.action');
+    await expect(row.locator('.tile')).toHaveText('＋');
+    await expect(row.locator('.name')).toHaveText('Add “zzz”');
 });

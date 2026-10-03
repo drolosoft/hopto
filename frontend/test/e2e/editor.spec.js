@@ -10,7 +10,7 @@ test('a domain with no results offers the add row; Enter, ⌘2 and Enter add the
     const rows = page.locator('#grid [role="option"]');
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
-    await expect(rows.first().locator('.name')).toHaveText('＋ Add “example.org”');
+    await expect(rows.first().locator('.name')).toHaveText('Add “example.org”');
     await expect(page.locator('#action')).toHaveText('↩ Add');
 
     await page.keyboard.press('Enter');
@@ -65,7 +65,7 @@ test('an address with results still offers the add row, last', async ({page}) =>
 
     const rows = page.locator('#grid [role="option"]');
     expect(await rows.count()).toBeGreaterThan(1);
-    await expect(rows.last().locator('.name')).toHaveText('＋ Add “github.com”');
+    await expect(rows.last().locator('.name')).toHaveText('Add “github.com”');
     await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
 });
 

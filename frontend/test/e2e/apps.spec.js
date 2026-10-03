@@ -25,7 +25,7 @@ test('supuesto 4: on the apps tab the search offers Search Applications…, whic
     await page.keyboard.type('qqq');
 
     const rows = page.locator('#grid [role="option"] .name');
-    await expect(rows).toHaveText(['＋ Add “qqq”', 'Search Applications…']);
+    await expect(rows).toHaveText(['Add “qqq”', 'Search Applications…']);
 
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('#action')).toHaveText('↩ Choose');

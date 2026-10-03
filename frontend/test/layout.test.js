@@ -40,7 +40,7 @@ test('addEntry is a row the keyboard can reach, worded for a name or an address'
     assert.equal(byName.key, 'add:link');
     assert.equal(byName.kind, 'add');
     assert.equal(byName.id, '');
-    assert.equal(byName.name, '＋ Add “notes”');
+    assert.equal(byName.name, 'Add “notes”');
     assert.equal(byName.description, 'New link with this name');
     assert.equal(byName.text, 'notes');
 

@@ -269,16 +269,6 @@ export function localProblems(draft) {
 }
 
 /**
- * Whether Enter may save: nothing missing locally, no exact duplicate
- * (that one blocks), and no save already on its way.
- * @param {object} draft
- * @returns {boolean}
- */
-export function canSave(draft) {
-    return !draft.saving && !draft.duplicate && Object.keys(localProblems(draft)).length === 0;
-}
-
-/**
  * What AddLink and UpdateLink receive. A link saved without a name is
  * named after its host, which is what the row would show anyway.
  * @param {object} draft

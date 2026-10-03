@@ -5,6 +5,7 @@
  */
 import {visibleUnder, sections, unifiedSearch} from './filter.js';
 import {addOffer} from './draft.js';
+import {itemsOf, categoriesOf} from './tabs.js';
 
 // How many "Recent" items the empty-query layout shows.
 const RECENT_LIMIT = 5;
@@ -71,8 +72,8 @@ export function layoutOf(current, t) {
         return {entries, groups: [], unified: true};
     }
 
-    const items = current.tab === 'links' ? current.links : current.apps;
-    const categories = current.tab === 'links' ? current.linkCategories : current.appCategories;
+    const items = itemsOf(current);
+    const categories = categoriesOf(current);
 
     if (current.category) {
         return {entries: visibleUnder(items, current.category), groups: [], unified: false};

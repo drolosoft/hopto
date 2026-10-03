@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, editDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, canSave, linkInput, withSaveResult, problemText, withPick, adoptDraft, appInput, isDiscoveredID} from '../src/draft.js';
+import {looksLikeURL, withScheme, hostOf, addOffer, newDraft, editDraft, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withSaveResult, problemText, withPick, adoptDraft, appInput, isDiscoveredID} from '../src/draft.js';
 import {translator} from '../src/i18n.js';
 
 const categories = [{id: 'eco', name: 'Ecosystem'}, {id: 'docs', name: 'Docs'}];
@@ -124,16 +124,12 @@ test('pickCategory picks a chip or opens the new-category field; moveCategory wr
     assert.equal(moveCategory(onNew, categories, 1).category, 'eco', 'right from "new" wraps to the first');
 });
 
-test('localProblems and canSave: an address is needed and a duplicate blocks', () => {
+test('localProblems: an address is needed and a category needs a name', () => {
     const empty = newDraft({text: 'Grafana', categories});
     assert.deepEqual(localProblems(empty), {url: 'url.invalid'});
-    assert.equal(canSave(empty), false);
 
     const ready = withInput(empty, 'url', 'grafana.example.org');
     assert.deepEqual(localProblems(ready), {});
-    assert.equal(canSave(ready), true);
-    assert.equal(canSave({...ready, duplicate: {id: 'x'}}), false);
-    assert.equal(canSave({...ready, saving: true}), false);
 
     const unnamed = {...ready, newCategory: '  '};
     assert.deepEqual(localProblems(unnamed), {category: 'category.name'});
@@ -210,7 +206,6 @@ test('withPick keeps a typed name, and a refused path stays refused', () => {
     assert.equal(next.name, 'Mine');
     assert.deepEqual(next.problems, {path: 'app.path'});
     assert.deepEqual(localProblems(next), {path: 'app.path'});
-    assert.equal(canSave(next), false);
     assert.deepEqual(withPick(next, picked).problems, {}, 'a good pick clears it');
 });
 
@@ -219,12 +214,10 @@ test('a hand-added duplicate blocks, a discovered one is a twin that only warns'
 
     const blocked = withPick(draft, {...picked, duplicate: {tab: 'apps', id: 'example', name: 'Example'}});
     assert.equal(blocked.duplicate.id, 'example');
-    assert.equal(canSave(blocked), false);
 
     const twin = withPick(draft, {...picked, duplicate: {tab: 'apps', id: 'app-example', name: 'Example'}});
     assert.equal(twin.duplicate, null);
     assert.equal(twin.twin.id, 'app-example');
-    assert.equal(canSave(twin), true);
 
     assert.equal(isDiscoveredID('edge-x'), true);
     assert.equal(isDiscoveredID('mine'), false);

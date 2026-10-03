@@ -10,6 +10,7 @@ import {FAVORITES, HIDDEN} from './filter.js';
 import {removalOf} from './state.js';
 import {renameBox} from './render.js';
 import {editableCategories} from './editing.js';
+import {itemsOf} from './tabs.js';
 
 // What the page gives this flow: its state, the translator, a repaint,
 // a full re-read from Go, a toast, and the way back to the search box.
@@ -180,7 +181,7 @@ export function askCategoryDeletion() {
     }
 
     const state = host.state();
-    const items = state.tab === 'links' ? state.links : state.apps;
+    const items = itemsOf(state);
     if (items.some((item) => item.category === category.id && item.source === 'library')) {
         host.toast(host.t()('toast.categoryInUse'));
         return;

@@ -8,6 +8,7 @@ import {InspectURL, AddLink, UpdateLink, AddCategory, PickApp, AddApp, UpdateApp
 import {looksLikeURL, withScheme, withInput, withInspection, pickCategory, moveCategory, localProblems, linkInput, withPick, appInput, withSaveResult} from './draft.js';
 import {mountEditor, refreshEditor, hideEditor, focusField, focusedField} from './editor.js';
 import {renderEditingFooter} from './render.js';
+import {categoriesOf} from './tabs.js';
 
 // How long the URL field has to rest before the page is read: long
 // enough not to fire on every keystroke, short enough to feel immediate.
@@ -46,7 +47,7 @@ export function installEditing(pageHost) {
  */
 export function editableCategories(tab) {
     const state = host.state();
-    const categories = tab === 'links' ? state.linkCategories : state.appCategories;
+    const categories = categoriesOf(state, tab);
 
     return categories.filter((category) => !category.virtual);
 }
@@ -218,7 +219,7 @@ async function withCategory(draft) {
 
     const view = await AddCategory(draft.tab, draft.newCategory.trim());
     const state = host.state();
-    const list = draft.tab === 'links' ? state.linkCategories : state.appCategories;
+    const list = categoriesOf(state, draft.tab);
     list.push(view);
 
     return {...draft, category: view.id, newCategory: null};

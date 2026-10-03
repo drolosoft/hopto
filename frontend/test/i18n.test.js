@@ -19,6 +19,16 @@ test('t substitutes parameters and falls back to English for a missing key', () 
     assert.equal(t('no.such.key'), 'no.such.key');
 });
 
+test('the Tab key prints as a glyph on macOS and as a word on Windows', () => {
+    const mac = translator('en', 'darwin');
+    const windows = translator('en', 'windows');
+
+    assert.equal(mac('footer.hints', {tab: 'Links'}), '⌘F ★ · ⇥ Links · ? help');
+    assert.equal(windows('footer.hints', {tab: 'Links'}), 'Ctrl+F ★ · Tab Links · ? help');
+    assert.equal(windows('empty.elsewhere', {count: 3, tab: 'Apps'}), 'Nothing here · 3 in Apps (Tab)');
+    assert.equal(translator('es', 'windows')('help.navigate'), '↑ ↓ ← → mover · Enter abrir · Tab otra pestaña');
+});
+
 test('plural picks one or other', () => {
     const t = translator('en');
     assert.equal(t.plural('apps', 1), '1 app');

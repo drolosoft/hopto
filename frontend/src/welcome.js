@@ -34,14 +34,6 @@ export function installWelcome(pageHost) {
 }
 
 /**
- * Whether the welcome is showing.
- * @returns {boolean}
- */
-export function isWelcomeOpen() {
-    return open;
-}
-
-/**
  * The keys while the welcome is open: Tab moves between its buttons,
  * Enter presses the focused one (Start unless Settings has the focus),
  * Esc is Start; nothing reaches the search box or the list.

@@ -4,7 +4,7 @@
  */
 import {itemElement, sectionHeader} from './cards.js';
 import {counts, chipCounts, emptyMessage, totalsText, footerAction, confirmQuestion} from './state.js';
-import {TABS, otherTab} from './tabs.js';
+import {TABS, otherTab, categoriesOf} from './tabs.js';
 import {FAVORITES} from './filter.js';
 
 // The pieces of the page the renderer touches.
@@ -79,7 +79,7 @@ function renderTabs(state, t) {
  * @param {{onChip: (id: string) => void}} handlers
  */
 function renderCategories(state, t, handlers) {
-    const categories = state.tab === 'links' ? state.linkCategories : state.appCategories;
+    const categories = categoriesOf(state);
     const chips = [
         {id: '', name: t('chip.all')},
         {id: FAVORITES, name: t('chip.favorites')},

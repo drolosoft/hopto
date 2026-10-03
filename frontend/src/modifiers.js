@@ -7,10 +7,11 @@
 
 // How each modifier and named key prints. On Windows the separator
 // lives in the glyph ("Ctrl+"), so '{cmd}N' reads "Ctrl+N" without the
-// texts knowing which system they are on.
+// texts knowing which system they are on. The Tab key is `tabKey`
+// because `{tab}` is already the texts' name for a tab's label.
 export const GLYPHS = {
-    darwin: {cmd: '⌘', alt: '⌥', shift: '⇧', ctrl: '⌃', enter: '↩', backspace: '⌫'},
-    windows: {cmd: 'Ctrl+', alt: 'Alt+', shift: 'Shift+', ctrl: 'Ctrl+', enter: 'Enter', backspace: 'Backspace'},
+    darwin: {cmd: '⌘', alt: '⌥', shift: '⇧', ctrl: '⌃', enter: '↩', backspace: '⌫', tabKey: '⇥'},
+    windows: {cmd: 'Ctrl+', alt: 'Alt+', shift: 'Shift+', ctrl: 'Ctrl+', enter: 'Enter', backspace: 'Backspace', tabKey: 'Tab'},
 };
 
 /**
