@@ -474,7 +474,7 @@ func (a *App) Hide() {
 
 // emit sends an event to the page when there is a window to send it to
 // (the background fetches may finish before startup, or in a test): a
-// finished icon download tells the page through this, in app_edit.go.
+// finished icon download tells the page through this, in app_icons.go.
 func (a *App) emit(name string, data any) {
 	if a.window != nil {
 		a.window.Emit(name, data)

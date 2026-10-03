@@ -205,7 +205,7 @@ func (a *App) reload() {
 }
 
 // linkViews flattens the links and starts fetching the icons that are
-// missing (once per id per run; see app_edit.go).
+// missing (once per id per run; see app_icons.go).
 func (a *App) linkViews(lib library.Library) []ItemView {
 	views := make([]ItemView, 0, len(lib.Links))
 
