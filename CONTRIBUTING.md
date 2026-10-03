@@ -44,7 +44,7 @@ This is a public repository. Only the product ships here: source, tests, user do
 
 ## Code Style
 
-- Go: `gofmt`, `go vet` and `golangci-lint run` clean (`make lint`), lines up to 78 columns, a doc comment on every function, comments in British English that say why.
+- Go: `gofmt`, `go vet` and `golangci-lint run` clean for both builds (`make lint`), lines up to 78 columns, a doc comment on every function, comments in British English that say why.
 - Page: plain JavaScript modules in `frontend/src`, 4 spaces, single quotes, `const` and `let`, a JSDoc block on every function. No `innerHTML`, `outerHTML` or `insertAdjacentHTML` (`frontend/test/dom-rules.test.js` checks it) and no inline script in `index.html`.
 - Every control that takes a click or a key gets `--wails-draggable: no-drag`. The panel is a drag region; without it a click moves the window instead of reaching the control.
 - Every new piece of page state starts in `initialState`, which the `shown` event calls: the panel must never come back with last time's search, chip or editor.
@@ -58,7 +58,8 @@ This is a public repository. Only the product ships here: source, tests, user do
 make test     # node --test for the pure page modules, go vet, go test -race
 make build    # the .app, and frontend/dist for the browser tests
 make e2e      # Playwright WebKit against the built page and a fake Go bridge
-make lint     # gofmt and golangci-lint
+make lint     # gofmt and golangci-lint, for the macOS and the Windows builds
+make ci       # what the CI test job runs: fmt, build, test, e2e
 ```
 
 The browser tests run the real page in WebKit, the engine of the app's WKWebView, with `frontend/test/harness/fake-bridge.js` in place of Go: each call the page makes lands in `window.calls`, and `window.emit('links')` plays the `shown` event. See [doc/testing.md](doc/testing.md).

@@ -8,7 +8,8 @@ Everything said about hopto is checked by running it. This page covers the three
 make test     # node --test for the pure page modules, go vet, go test -race -cover
 make build    # the .app, and frontend/dist for the browser tests
 make e2e      # Playwright WebKit against the built page
-make lint     # gofmt and golangci-lint
+make lint     # gofmt and golangci-lint, for the macOS and the Windows builds
+make ci       # what the CI test job runs: fmt, build, test, e2e
 ```
 
 - **Go**: table tests for validation, ids, duplicates, shortcuts and the store (a missing, empty, broken, huge, future or unreadable file), the atomic writes (a failure at every step leaves the previous file and no temporary one), usage, icons against `httptest` servers (redirect loops, huge bodies, HTML served as PNG, private addresses), `.icns` parsing, discovery over fake bundles in a temp folder, and the App with a fake window and a fake `open` (every case of the shortcuts, of opening, of the dialog, of the menu). CI runs them with `-race`.

@@ -14,8 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The Go code now lives in `internal/app`, `internal/platform` and `internal/native`; the root holds `main.go` alone. Nothing changes for a user.
+- A cleanup with no change in behaviour: the big files split by what each part does, the page's layout and removal logic in modules of their own with tests, the Windows build linted as well, a hermetic icon test, and a `make ci` the workflow runs.
 
 ### Fixed
+- On Windows the help and the footer write the Tab key as Tab instead of the macOS glyph; the add row shows its plus once.
+- The help has a name for screen readers, takes the keyboard while it is open and gives it back on close; Tab stays inside the welcome; the list is announced as the selected tab's panel.
 
 ## [v0.2.0] - 2026-10-03
 

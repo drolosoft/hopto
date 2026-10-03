@@ -3,7 +3,8 @@
  * Enter, ⌘⇧E renames a chip in place, and every answer goes through Go,
  * re-reads the library and says what happened. The pending question and
  * the chip being renamed live in the page state, so `shown` wipes them
- * along with everything else; this module has no state of its own, only the page's `host`.
+ * along with everything else; this module has no state of its own, only
+ * the page's `host`.
  */
 import {DeleteLink, DeleteApp, HideApp, UnhideApp, RenameCategory, DeleteCategory, Debug} from '../wailsjs/go/app/App';
 import {FAVORITES, HIDDEN} from './filter.js';

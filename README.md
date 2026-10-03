@@ -221,7 +221,7 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make build` | `build/bin/hopto.app`, stamped with the version, the commit and the date |
 | `make test` | Page unit tests, `go vet`, Go tests with the race detector |
 | `make e2e` | Browser tests in WebKit against the built page (after `make build`) |
-| `make lint` | `gofmt` and `golangci-lint` |
+| `make lint` | `gofmt` and `golangci-lint`, once for the macOS build and once for the Windows one |
 | `make build-windows` | `hopto-windows-amd64.exe` and `hopto-windows-arm64.exe` in `build/bin`, cross-compiled on the Mac |
 | `make dist` | The universal macOS zip and the two Windows zips (`hopto-<version>-windows-amd64.zip`, `-arm64.zip`) in `build/dist`, each with its `.sha256` |
 | `make hooks` | Installs the pre-commit guard against internal files |
