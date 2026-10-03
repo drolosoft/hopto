@@ -3,36 +3,24 @@ package main
 import (
 	"log"
 
+	"github.com/drolosoft/hopto/internal/native"
 	"github.com/drolosoft/hopto/internal/platform"
 )
 
 // The tags of the menu entries; the native side hands them back on a
-// click. menuSeparator is a rule, not an entry.
+// click. A rule is a native.MenuItem with Separator set, not a tag.
 const (
-	menuSeparator = 0
-	menuOpen      = 1
-	menuHelp      = 2
-	menuEdit      = 3
-	menuLogin     = 4
-	menuQuit      = 5
+	menuOpen  = 1
+	menuHelp  = 2
+	menuEdit  = 3
+	menuLogin = 4
+	menuQuit  = 5
 )
-
-// onMenu is what a click in the menu ends up in. The native callback
-// runs on the main thread and only starts a goroutine with it, like
-// onHotkey; installMenu points it at the App.
-var onMenu = func(tag int) {}
-
-// menuItem is one line of the menu as the native side draws it.
-type menuItem struct {
-	Title   string
-	Tag     int
-	Checked bool
-}
 
 // menuBar is the status item, behind an interface so the tests can
 // check the menu without AppKit.
 type menuBar interface {
-	Install(items []menuItem)
+	Install(items []native.MenuItem)
 	SetChecked(tag int, on bool)
 }
 
@@ -65,23 +53,23 @@ func menuLabelsFor(language string) menuLabels {
 
 // menuItems is the menu in the order the spec lists it, with Quit
 // after a rule as every macOS menu has it.
-func (a *App) menuItems() []menuItem {
+func (a *App) menuItems() []native.MenuItem {
 	setting := a.library.Snapshot().Settings.Language
 	labels := menuLabelsFor(platform.LanguageFor(setting, a.language))
 
-	return []menuItem{
-		{Title: labels.Open, Tag: menuOpen},
-		{Title: labels.Help, Tag: menuHelp},
-		{Title: labels.Edit, Tag: menuEdit},
-		{Title: labels.Login, Tag: menuLogin, Checked: a.login.Enabled()},
-		{Tag: menuSeparator},
-		{Title: labels.Quit, Tag: menuQuit},
+	return []native.MenuItem{
+		{Label: labels.Open, Tag: menuOpen},
+		{Label: labels.Help, Tag: menuHelp},
+		{Label: labels.Edit, Tag: menuEdit},
+		{Label: labels.Login, Tag: menuLogin, Checked: a.login.Enabled()},
+		{Separator: true},
+		{Label: labels.Quit, Tag: menuQuit},
 	}
 }
 
-// installMenu puts the item in the menu bar and routes its clicks here.
+// installMenu puts the item in the menu bar; its clicks reach menuAction
+// through the hooks startup hands to native.Start.
 func (a *App) installMenu() {
-	onMenu = a.menuAction
 	a.menu.Install(a.menuItems())
 }
 

@@ -1,4 +1,4 @@
-package main
+package native
 
 /*
 #cgo CFLAGS: -x objective-c
@@ -100,24 +100,31 @@ import "C"
 
 import "log"
 
-// statusBar is the real menu bar item.
-type statusBar struct{}
+// StatusBar is the real menu bar item.
+type StatusBar struct{}
 
 // Install creates the item (once) and fills its menu; the blocks run on
 // the main queue in the order they were queued.
-func (statusBar) Install(items []menuItem) {
+func (StatusBar) Install(items []MenuItem) {
 	C.statusBarInstall()
 
 	for _, item := range items {
+		// statusBarAdd draws a rule for tag 0, so a separator goes
+		// over as that whatever its Tag says.
+		tag := item.Tag
+		if item.Separator {
+			tag = 0
+		}
+
 		// statusBarAdd frees this string itself, once it has built the
 		// NSString it needs.
-		title := C.CString(item.Title)
-		C.statusBarAdd(title, C.int(item.Tag), boolToInt(item.Checked))
+		title := C.CString(item.Label)
+		C.statusBarAdd(title, C.int(tag), boolToInt(item.Checked))
 	}
 }
 
 // SetChecked moves the tick of one entry.
-func (statusBar) SetChecked(tag int, on bool) {
+func (StatusBar) SetChecked(tag int, on bool) {
 	C.statusBarCheck(C.int(tag), boolToInt(on))
 }
 
@@ -136,5 +143,5 @@ func hoptoMenuPicked(tag C.int) {
 
 	// The click arrives on the main thread; the Wails runtime is only
 	// ever called from a goroutine, as for the hotkeys.
-	go onMenu(int(tag))
+	go hooks.MenuPicked(int(tag))
 }

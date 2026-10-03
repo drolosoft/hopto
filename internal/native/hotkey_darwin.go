@@ -1,4 +1,4 @@
-package main
+package native
 
 /*
 #cgo CFLAGS: -x objective-c
@@ -252,15 +252,6 @@ import (
 	"github.com/drolosoft/hopto/internal/platform"
 )
 
-// onHotkey is what the Carbon handler calls, with the tab of the pressed
-// shortcut. It is a variable so the App can install its own toggle without
-// the C side knowing about it.
-var onHotkey = func(tab string) {}
-
-// onReopen is what a launch of the running app ends in; startup puts
-// showFromOutside here through handleReopen.
-var onReopen = func() {}
-
 // maxDisplays is more screens than a Mac drives at once.
 const maxDisplays = 16
 
@@ -272,12 +263,12 @@ func launcherHotkeyPressed(id C.UInt32) {
 
 	// The handler runs on the main thread; the Wails runtime calls are
 	// dispatched from a goroutine so they never block that thread.
-	go onHotkey(tab)
+	go hooks.Toggle(tab)
 }
 
 //export launcherHotkeyRegistered
 func launcherHotkeyRegistered(id C.UInt32, status C.OSStatus) {
-	recordHotkeyStatus(uint32(id), int32(status))
+	hooks.HotkeyRegistered(uint32(id), int32(status))
 
 	if status != 0 {
 		log.Printf(
@@ -296,22 +287,19 @@ func launcherReopened() {
 
 	// The delegate calls this on the main thread; the Wails runtime is
 	// only ever used from a goroutine, as for the hotkeys.
-	go onReopen()
+	go hooks.Reopen()
 }
 
-// becomeAccessory removes the launcher from the Dock and from Cmd+Tab once
+// BecomeAccessory removes the launcher from the Dock and from Cmd+Tab once
 // the Wails main loop is up. Called from startup.
-func becomeAccessory() {
+func BecomeAccessory() {
 	C.becomeAccessory()
 }
 
-// registerToggleHotkeys binds the apps shortcut to the apps tab and the
-// links shortcut to the links tab. The specs come from the library; the
-// defaults are in hotkeyspec.go.
-func registerToggleHotkeys(
-	toggle func(tab string), apps, links platform.Hotkey,
-) {
-	onHotkey = toggle
+// RegisterHotkeys binds the apps shortcut to the apps tab and the links
+// shortcut to the links tab; a press reaches hooks.Toggle. The specs
+// come from the library; the defaults are in hotkeyspec.go.
+func RegisterHotkeys(apps, links platform.Hotkey) {
 	C.registerHotkey(
 		platform.HotkeyApps, C.UInt32(apps.KeyCode), C.UInt32(apps.Modifiers),
 	)
@@ -320,10 +308,10 @@ func registerToggleHotkeys(
 	)
 }
 
-// centerWindow moves the hidden window to the middle of the screen
+// CenterWindow moves the hidden window to the middle of the screen
 // screenChoice picked and sets the overlay window behaviour. Call it
 // from a goroutine, never from the main thread.
-func centerWindow(mode string, display uint32) {
+func CenterWindow(mode string, display uint32) {
 	placement := C.placeMain
 	switch mode {
 	case library.ScreenMouse:
@@ -335,15 +323,15 @@ func centerWindow(mode string, display uint32) {
 	C.centerOnScreen(C.int(placement), C.uint32_t(display))
 }
 
-// currentDisplay is the display hopto's window is on, 0 for none. Call
+// CurrentDisplay is the display hopto's window is on, 0 for none. Call
 // it from a goroutine, never from the main thread.
-func currentDisplay() uint32 {
+func CurrentDisplay() uint32 {
 	return uint32(C.windowDisplayNumber())
 }
 
-// activeDisplays lists the attached displays, so screenChoice can tell
+// ActiveDisplays lists the attached displays, so screenChoice can tell
 // whether the remembered one is still there.
-func activeDisplays() []uint32 {
+func ActiveDisplays() []uint32 {
 	var ids [maxDisplays]C.uint32_t
 	count := int(C.listDisplays(&ids[0], maxDisplays))
 
@@ -355,14 +343,13 @@ func activeDisplays() []uint32 {
 	return displays
 }
 
-// handleReopen makes a launch of the running app call show. Called from
-// startup, like registerToggleHotkeys.
-func handleReopen(show func()) {
-	onReopen = show
+// HandleReopen makes a launch of the running app call hooks.Reopen.
+// Called from startup, like RegisterHotkeys.
+func HandleReopen() {
 	C.installReopenHandler()
 }
 
-// activateApp brings the launcher to the front so the shown window has focus.
-func activateApp() {
+// Activate brings the launcher to the front so the shown window has focus.
+func Activate() {
 	C.activateApp()
 }

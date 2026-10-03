@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package native
 
 import (
 	"log"
@@ -151,7 +151,7 @@ var native struct {
 	window windows.Handle
 
 	mu    sync.Mutex
-	items []menuItem
+	items []MenuItem
 	jobs  []func()
 }
 
@@ -184,7 +184,7 @@ func startNative() {
 
 // nativeLoop is the whole life of the native thread: the window, the
 // tray icon, and then messages until the process exits. Nothing destroys
-// the window, so the icon is removed by shutdownNative instead.
+// the window, so the icon is removed by Shutdown instead.
 func nativeLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -279,7 +279,7 @@ func trayWindowProc(
 		id := uint32(wParam)
 		tab := platform.TabForHotkey(id)
 		log.Printf("hotkey %d pressed: %s", id, tab)
-		go onHotkey(tab)
+		go hooks.Toggle(tab)
 
 		return 0
 
@@ -459,7 +459,7 @@ func removeTrayIcon(window windows.Handle) {
 // asks for, so the menu closes on a click outside it.
 func showTrayMenu(window windows.Handle) {
 	native.mu.Lock()
-	items := append([]menuItem{}, native.items...)
+	items := append([]MenuItem{}, native.items...)
 	native.mu.Unlock()
 
 	menu, _, _ := procCreatePopupMenu.Call()
@@ -471,7 +471,7 @@ func showTrayMenu(window windows.Handle) {
 	}()
 
 	for _, item := range items {
-		if item.Tag == menuSeparator {
+		if item.Separator {
 			_, _, _ = procAppendMenuW.Call(menu, mfSeparator, 0, 0)
 			continue
 		}
@@ -481,7 +481,7 @@ func showTrayMenu(window windows.Handle) {
 			flags |= mfChecked
 		}
 
-		title, err := windows.UTF16PtrFromString(item.Title)
+		title, err := windows.UTF16PtrFromString(item.Label)
 		if err != nil {
 			continue
 		}
@@ -507,7 +507,7 @@ func showTrayMenu(window windows.Handle) {
 	}
 
 	log.Printf("menu %d picked", chosen)
-	go onMenu(int(chosen))
+	go hooks.MenuPicked(int(chosen))
 }
 
 // registerHotkey registers one shortcut on the native thread and records
@@ -532,7 +532,7 @@ func registerHotkey(id uint32, hotkey platform.Hotkey) {
 				status = -1
 			}
 
-			recordHotkeyStatus(id, status)
+			hooks.HotkeyRegistered(id, status)
 			log.Printf(
 				"hotkey %d: RegisterHotKey failed with status %d",
 				id, status,
@@ -540,7 +540,7 @@ func registerHotkey(id uint32, hotkey platform.Hotkey) {
 			return
 		}
 
-		recordHotkeyStatus(id, 0)
+		hooks.HotkeyRegistered(id, 0)
 		log.Printf("hotkey %d registered", id)
 	})
 }

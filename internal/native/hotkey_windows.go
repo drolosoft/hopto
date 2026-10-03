@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package native
 
 import (
 	"hash/fnv"
@@ -76,10 +76,6 @@ type monitorInfoEx struct {
 	Device  [32]uint16
 }
 
-// onHotkey is what the native thread calls with the tab of the pressed
-// shortcut; registerToggleHotkeys installs the App's toggle in it.
-var onHotkey = func(tab string) {}
-
 // launcherWindow is Wails' window, found by the class name main.go set.
 func launcherWindow() windows.Handle {
 	className, _ := windows.UTF16PtrFromString(platform.WindowClassName)
@@ -90,10 +86,10 @@ func launcherWindow() windows.Handle {
 	return windows.Handle(window)
 }
 
-// becomeAccessory keeps the launcher off the taskbar and out of
+// BecomeAccessory keeps the launcher off the taskbar and out of
 // Alt+Tab: the Windows side of the accessory activation policy. Done
 // while the window is still hidden, so the style change never flickers.
-func becomeAccessory() {
+func BecomeAccessory() {
 	window := launcherWindow()
 	if window == 0 {
 		log.Printf("native: launcher window not found")
@@ -107,12 +103,10 @@ func becomeAccessory() {
 	_, _, _ = procSetWindowLongPtrW.Call(uintptr(window), gwlExStyle, style)
 }
 
-// registerToggleHotkeys binds the apps shortcut to the apps tab and the
-// links shortcut to the links tab, on the native thread.
-func registerToggleHotkeys(
-	toggle func(tab string), apps, links platform.Hotkey,
-) {
-	onHotkey = toggle
+// RegisterHotkeys binds the apps shortcut to the apps tab and the links
+// shortcut to the links tab, on the native thread; a press reaches
+// hooks.Toggle.
+func RegisterHotkeys(apps, links platform.Hotkey) {
 	registerHotkey(platform.HotkeyApps, apps)
 	registerHotkey(platform.HotkeyLinks, links)
 }
@@ -181,11 +175,11 @@ func monitors() []monitorInfoEx {
 	return enumeration
 }
 
-// shutdownNative takes the tray icon away before the process exits:
+// Shutdown takes the tray icon away before the process exits:
 // Wails ends with a WM_QUIT to its own thread, so the native window is
 // never destroyed and its WM_DESTROY never arrives. Nothing to do when
 // the native thread never started.
-func shutdownNative() {
+func Shutdown() {
 	if native.window == 0 {
 		return
 	}
@@ -238,10 +232,10 @@ func chosenMonitor(mode string, display uint32) (monitorInfoEx, bool) {
 	return monitorInfoEx{}, false
 }
 
-// centerWindow moves the hidden window to the middle of the chosen
+// CenterWindow moves the hidden window to the middle of the chosen
 // monitor's work area, a little above the middle so it reads as an
 // overlay, as centerOnScreen does on macOS.
-func centerWindow(mode string, display uint32) {
+func CenterWindow(mode string, display uint32) {
 	window := launcherWindow()
 	if window == 0 {
 		return
@@ -271,8 +265,8 @@ func centerWindow(mode string, display uint32) {
 	)
 }
 
-// currentDisplay is the monitor the launcher is on now, 0 for none.
-func currentDisplay() uint32 {
+// CurrentDisplay is the monitor the launcher is on now, 0 for none.
+func CurrentDisplay() uint32 {
 	window := launcherWindow()
 	if window == 0 {
 		return 0
@@ -290,9 +284,9 @@ func currentDisplay() uint32 {
 	return displayID(info)
 }
 
-// activeDisplays lists the attached monitors, so screenChoice can tell
+// ActiveDisplays lists the attached monitors, so screenChoice can tell
 // whether the remembered one is still there.
-func activeDisplays() []uint32 {
+func ActiveDisplays() []uint32 {
 	all := monitors()
 	ids := make([]uint32, 0, len(all))
 
@@ -303,12 +297,11 @@ func activeDisplays() []uint32 {
 	return ids
 }
 
-// handleReopen has nothing to hook: Wails' single-instance lock answers
-// a second launch on Windows, so the show function is never needed here.
-// There is no onReopen variable either, as on macOS: nothing would read it.
-func handleReopen(show func()) {}
+// HandleReopen has nothing to hook: Wails' single-instance lock answers
+// a second launch on Windows, so hooks.Reopen is never called from here.
+func HandleReopen() {}
 
-// activateApp brings the window to the front with the keyboard once
+// Activate brings the window to the front with the keyboard once
 // Wails has queued the show (WindowShow posts the work to Wails' thread
 // and returns at once). It runs on the native thread, the one that
 // registered the hotkey and so holds the right to take the foreground
@@ -317,7 +310,7 @@ func handleReopen(show func()) {}
 // to the thread that owns the launcher for the one call, the documented
 // way round the foreground lock. The keyboard itself is handed to the
 // page by Wails, nudged by nudgeFocus.
-func activateApp() {
+func Activate() {
 	runNative(func() {
 		window := launcherWindow()
 		if window == 0 {
@@ -331,7 +324,7 @@ func activateApp() {
 
 // bringForward makes the launcher the foreground window: a plain
 // SetForegroundWindow first, then the input-queue loan described on
-// activateApp when Windows refuses.
+// Activate when Windows refuses.
 func bringForward(window windows.Handle) {
 	ok, _, _ := procSetForegroundWindow.Call(uintptr(window))
 	if ok != 0 {

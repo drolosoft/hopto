@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 
+	"github.com/drolosoft/hopto/internal/native"
 	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -48,7 +49,7 @@ func main() {
 		// Wails ends with a WM_QUIT that never reaches the tray window, so
 		// the Windows tray icon is taken away here or it would stay in the
 		// notification area as a ghost.
-		OnShutdown: func(ctx context.Context) { shutdownNative() },
+		OnShutdown: func(ctx context.Context) { native.Shutdown() },
 
 		// A second launch (`open -n`, or a launcher that starts a new
 		// copy) quits at once and shows this copy's panel instead.

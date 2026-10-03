@@ -16,6 +16,7 @@ import (
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/native"
 	"github.com/drolosoft/hopto/internal/platform"
 	"github.com/drolosoft/hopto/internal/usage"
 	"github.com/drolosoft/hopto/seed"
@@ -48,8 +49,8 @@ type window interface {
 	Quit()
 }
 
-// wailsWindow is the real window. Center and Activate go through the cgo
-// helpers of hotkey_darwin.go, in the order the spec fixes.
+// wailsWindow is the real window. Center and Activate go through the
+// native package, in the order the spec fixes.
 type wailsWindow struct {
 	ctx context.Context
 }
@@ -62,7 +63,7 @@ func (w *wailsWindow) Hide() { runtime.WindowHide(w.ctx) }
 
 // Activate gives hopto the keyboard, which an accessory app does not
 // get on its own when its window shows.
-func (w *wailsWindow) Activate() { activateApp() }
+func (w *wailsWindow) Activate() { native.Activate() }
 
 // Emit sends an event to the page.
 func (w *wailsWindow) Emit(name string, data any) {
@@ -72,7 +73,7 @@ func (w *wailsWindow) Emit(name string, data any) {
 // Center goes through the cgo helper of hotkey_darwin.go, which also
 // sets the overlay behaviour of the window.
 func (w *wailsWindow) Center(mode string, display uint32) {
-	centerWindow(mode, display)
+	native.CenterWindow(mode, display)
 }
 
 // SetClipboard puts text on the general pasteboard.
@@ -222,8 +223,8 @@ func newApp(
 
 	// Where the panel was last shown, and how to read the real screens.
 	app.display = readWindowState(filepath.Join(dataDir, platform.WindowFile))
-	app.windowDisplay = currentDisplay
-	app.attachedDisplays = activeDisplays
+	app.windowDisplay = native.CurrentDisplay
+	app.attachedDisplays = native.ActiveDisplays
 
 	usageStore, err := usage.Open(filepath.Join(dataDir, platform.UsageFile))
 	if err != nil {
@@ -267,22 +268,31 @@ func (a *App) startup(ctx context.Context) {
 		a.window = &wailsWindow{ctx: ctx}
 	}
 
-	becomeAccessory()
+	native.BecomeAccessory()
+
+	// The native side reaches the App only through these, so they are
+	// handed over before anything that can fire them is registered.
+	native.Start(native.Hooks{
+		Toggle:           a.toggle,
+		Reopen:           a.showFromOutside,
+		MenuPicked:       a.menuAction,
+		HotkeyRegistered: recordHotkeyStatus,
+	})
 
 	apps, links := platform.HotkeysFromSettings(a.library.Snapshot().Settings)
-	registerToggleHotkeys(a.toggle, apps, links)
+	native.RegisterHotkeys(apps, links)
 
 	// The menu bar item is the way to quit and to reach the help or the
 	// file without the shortcuts.
 	if a.menu == nil {
-		a.menu = statusBar{}
+		a.menu = native.StatusBar{}
 	}
 
 	a.installMenu()
 
 	// A launch of the running app (Alfred, `open -a`, the Finder) shows
 	// the panel like the shortcut does.
-	handleReopen(a.showFromOutside)
+	native.HandleReopen()
 }
 
 // Toggle shows the launcher on the apps tab, or hides it when that tab is

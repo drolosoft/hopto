@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/drolosoft/hopto/internal/native"
 	"github.com/drolosoft/hopto/internal/platform"
 )
 
@@ -37,7 +38,7 @@ func TestMenuItems(t *testing.T) {
 
 	titles := []string{}
 	for _, item := range menu.items {
-		titles = append(titles, item.Title)
+		titles = append(titles, item.Label)
 	}
 
 	want := "Abrir hopto|Ayuda|Editar library.toml|" +
@@ -181,12 +182,12 @@ func (f *fakeLogin) Disable() error {
 // fakeMenu records what App puts in the menu bar item.
 type fakeMenu struct {
 	mu      sync.Mutex
-	items   []menuItem
+	items   []native.MenuItem
 	checked map[int]bool
 }
 
 // Install keeps the entries and their ticks, as the real item draws them.
-func (m *fakeMenu) Install(items []menuItem) {
+func (m *fakeMenu) Install(items []native.MenuItem) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
