@@ -16,7 +16,7 @@ import (
 
 // The window side of the native layer: find Wails' window, keep it off
 // the taskbar, place it on a monitor and bring it to the front. The
-// tray and the hotkeys are in native_windows.go.
+// tray is in tray_windows.go and the hotkeys in hotkey_windows.go.
 
 // The user32 entry points for Wails' window: finding it, its style, its
 // place on a monitor, and the foreground.
