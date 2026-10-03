@@ -214,7 +214,7 @@ func (a *App) linkViews(lib library.Library) []ItemView {
 
 		views = append(views, ItemView{
 			ID:          link.ID,
-			Key:         tabLinks + ":" + link.ID,
+			Key:         usage.Key(tabLinks, link.ID),
 			Kind:        kindLink,
 			Source:      sourceLibrary,
 			Name:        link.Name,
@@ -243,7 +243,7 @@ func (a *App) appViews(lib library.Library) []ItemView {
 	for _, app := range lib.Apps {
 		view := ItemView{
 			ID:          app.ID,
-			Key:         tabApps + ":" + app.ID,
+			Key:         usage.Key(tabApps, app.ID),
 			Kind:        kindApp,
 			Source:      sourceLibrary,
 			Name:        app.Name,
@@ -275,7 +275,7 @@ func (a *App) appViews(lib library.Library) []ItemView {
 
 		views = append(views, ItemView{
 			ID:          app.ID,
-			Key:         tabApps + ":" + app.ID,
+			Key:         usage.Key(tabApps, app.ID),
 			Kind:        kindApp,
 			Source:      app.Source,
 			Name:        app.Name,

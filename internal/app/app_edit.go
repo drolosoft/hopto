@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/drolosoft/hopto/internal/discover"
 	"github.com/drolosoft/hopto/internal/icons"
 	"github.com/drolosoft/hopto/internal/library"
+	"github.com/drolosoft/hopto/internal/usage"
 )
 
 // The errors of editing that are not field problems.
@@ -268,9 +268,7 @@ func (a *App) DeleteApp(id string) error {
 // since it is unreachable from the UI (a twin never reaches the grid
 // under that id) and would only recreate the dead row AddApp drops.
 func (a *App) HideApp(id string) error {
-	isDiscovered := strings.HasPrefix(id, discover.PrefixApplications) ||
-		strings.HasPrefix(id, discover.PrefixEdge)
-	if !isDiscovered {
+	if !library.IsDiscoveredID(id) {
 		return fmt.Errorf("%w: %s", errNotDiscovered, id)
 	}
 
@@ -333,7 +331,7 @@ func (a *App) removeEntry(id, tab string) error {
 // item with the same id starts clean. Failures are logged: the item is
 // already gone from the library.
 func (a *App) forgetItem(tab, id string) {
-	if err := a.usage.Forget(tab + ":" + id); err != nil {
+	if err := a.usage.Forget(usage.Key(tab, id)); err != nil {
 		log.Printf("usage: %v", err)
 	}
 

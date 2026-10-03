@@ -211,7 +211,7 @@ func ScanStartMenu(roots []string, systemRoot string) []App {
 	apps = append(apps, systemToolsIn(systemRoot)...)
 
 	sortByName(apps)
-	assignIDs(apps, PrefixApplications)
+	assignIDs(apps, library.PrefixApplications)
 
 	return apps
 }
@@ -251,7 +251,7 @@ func ScanEdgeShortcuts(dir string) []App {
 	}
 
 	sortByName(apps)
-	assignIDs(apps, PrefixEdge)
+	assignIDs(apps, library.PrefixEdge)
 
 	return apps
 }

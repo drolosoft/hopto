@@ -20,13 +20,6 @@ const (
 	SourceEdge         = "edge"
 )
 
-// The id prefixes reserved for discovered apps (library.CheckID refuses
-// them for user entries).
-const (
-	PrefixApplications = "app-"
-	PrefixEdge         = "edge-"
-)
-
 // App is one discovered application. IconPath is the .icns inside the
 // bundle, "" when the icon lives in an asset catalog hopto cannot read.
 type App struct {

@@ -2,6 +2,8 @@ package discover
 
 import (
 	"os"
+
+	"github.com/drolosoft/hopto/internal/library"
 )
 
 // ScanApplications lists every .app one level under each root, plus the
@@ -48,7 +50,7 @@ func ScanApplications(roots []string) []App {
 	}
 
 	sortByName(apps)
-	assignIDs(apps, PrefixApplications)
+	assignIDs(apps, library.PrefixApplications)
 
 	return apps
 }

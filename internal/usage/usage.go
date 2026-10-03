@@ -72,6 +72,12 @@ func DefaultPath() string {
 	)
 }
 
+// Key is the usage key of the item id on tab, in the "<tab>:<id>" shape
+// ValidKey accepts. It is what usage.json stores, so it must not change.
+func Key(tab, id string) string {
+	return tab + ":" + id
+}
+
 // ValidKey reports whether key has the "<tab>:<id>" shape.
 func ValidKey(key string) bool {
 	return keyPattern.MatchString(key)

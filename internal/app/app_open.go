@@ -37,7 +37,7 @@ func (a *App) Launch(id string) error {
 	}
 
 	log.Printf("launched %s: %v", id, target)
-	a.recordOpen(tabApps + ":" + id)
+	a.recordOpen(usage.Key(tabApps, id))
 	a.Hide()
 
 	return nil
@@ -78,7 +78,7 @@ func (a *App) openLink(link library.Link, args []string) error {
 	}
 
 	log.Printf("opened link %s: %s", link.ID, link.URL)
-	a.recordOpen(tabLinks + ":" + link.ID)
+	a.recordOpen(usage.Key(tabLinks, link.ID))
 	a.Hide()
 
 	return nil

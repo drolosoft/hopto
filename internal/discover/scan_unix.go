@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/drolosoft/hopto/internal/library"
 )
 
 // utilitiesFolder is the one subfolder of /Applications macOS itself fills.
@@ -77,7 +79,7 @@ func scanEdgeBundles(dir string) []App {
 	}
 
 	sortByName(apps)
-	assignIDs(apps, PrefixEdge)
+	assignIDs(apps, library.PrefixEdge)
 
 	return apps
 }

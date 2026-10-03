@@ -68,9 +68,19 @@ var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 // shape as every id in the library.
 var iconShPattern = regexp.MustCompile(`^sh:[a-z0-9][a-z0-9-]{0,63}$`)
 
-// reservedPrefixes are the ids of discovered apps; a user entry must not
-// look like one, or hiding and usage keys would get confused.
-var reservedPrefixes = []string{"edge-", "app-"}
+// The id prefixes of discovered apps. A user entry must not look like
+// one, or hiding and usage keys would get confused.
+const (
+	// PrefixApplications starts the id of a scanned .app, or of a Start
+	// menu shortcut on Windows.
+	PrefixApplications = "app-"
+
+	// PrefixEdge starts the id of an Edge web app.
+	PrefixEdge = "edge-"
+)
+
+// reservedPrefixes are the prefixes IsDiscoveredID looks for.
+var reservedPrefixes = []string{PrefixEdge, PrefixApplications}
 
 // reservedCategoryIDs are the virtual chips of the page: the favourites
 // filter, the two groups of discovered apps and the chip of the hidden
@@ -254,7 +264,7 @@ func checkHidden(hiddenRows []Hidden) error {
 
 		// Only a discovered app (an "edge-" or "app-" id) can be hidden;
 		// a user entry is removed instead of hidden.
-		if !hasReservedPrefix(hidden.ID) {
+		if !IsDiscoveredID(hidden.ID) {
 			return &Problem{
 				Field: "id",
 				ID:    hidden.ID,
@@ -298,7 +308,7 @@ func CheckID(id string) *Problem {
 		}
 	}
 
-	if hasReservedPrefix(id) {
+	if IsDiscoveredID(id) {
 		return &Problem{
 			Field: "id",
 			ID:    id,
@@ -311,9 +321,9 @@ func CheckID(id string) *Problem {
 	return nil
 }
 
-// hasReservedPrefix reports whether id starts with one of the prefixes a
+// IsDiscoveredID reports whether id starts with one of the prefixes a
 // discovered app gets ("edge-" for an Edge PWA, "app-" for a scanned .app).
-func hasReservedPrefix(id string) bool {
+func IsDiscoveredID(id string) bool {
 	for _, prefix := range reservedPrefixes {
 		if strings.HasPrefix(id, prefix) {
 			return true

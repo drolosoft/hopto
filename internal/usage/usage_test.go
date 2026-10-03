@@ -223,6 +223,18 @@ func TestInvalidKeysAreRefused(t *testing.T) {
 	}
 }
 
+// Key builds the shape usage.json already holds: changing it would orphan
+// every count and favourite on disk.
+func TestKeyKeepsTheStoredShape(t *testing.T) {
+	if got := Key("links", "mdn"); got != "links:mdn" {
+		t.Fatalf("Key = %q, want links:mdn", got)
+	}
+
+	if !ValidKey(Key("apps", "cronometro")) {
+		t.Fatal("Key builds a key ValidKey refuses")
+	}
+}
+
 // Twenty goroutines counting at once never lose an opening (-race covers
 // the memory side, the count covers the logic).
 func TestConcurrentRecordOpen(t *testing.T) {

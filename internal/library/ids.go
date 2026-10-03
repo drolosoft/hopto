@@ -46,11 +46,8 @@ func Slug(name string) string {
 		return fallbackID
 	}
 
-	for _, prefix := range reservedPrefixes {
-		if strings.HasPrefix(slug, prefix) {
-			slug = fallbackID + "-" + slug
-			break
-		}
+	if IsDiscoveredID(slug) {
+		slug = fallbackID + "-" + slug
 	}
 
 	if len(slug) > maxIDLength {
