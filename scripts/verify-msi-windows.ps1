@@ -2,7 +2,9 @@
 verify-msi-windows.ps1: installs hopto's MSI silently, as an unattended
 install does, and checks what a person would look for afterwards: the exe
 in its folder, the Start Menu shortcut, the entry in Installed apps with
-its version, hopto running. With -Upgrade it installs a second, newer
+its version, hopto running (or, when the script runs elevated, hopto left
+for the user to start, since an elevated installer must not start it).
+With -Upgrade it installs a second, newer
 package over the first while hopto runs, and checks the new version
 replaced the old one, that a different hopto process is running and that
 "open at login" survived. Then it uninstalls and checks that the program
@@ -78,6 +80,39 @@ function WaitRunning([int]$seconds = 20, [int[]]$except = @()) {
     return $false
 }
 
+# Waits up to $seconds for a file to exist: hopto writes its library a
+# moment after its process appears.
+function WaitFile([string]$path, [int]$seconds = 10) {
+    for ($i = 0; $i -lt $seconds * 5; $i++) {
+        if (Test-Path $path) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+# Whether this script, and so the installer it starts, runs elevated. An
+# elevated installer must not start hopto: it would run as administrator,
+# and so would every app it opens afterwards.
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+$elevated = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# Checks what an install must have done about starting hopto, and leaves
+# it running either way: started by the installer when unelevated, and
+# left alone when elevated, in which case it is started here as the user
+# would from the Start Menu, so the checks that follow have it running.
+function CheckStarted([string]$name, [int[]]$except = @()) {
+    if (-not $elevated) {
+        Check $name (WaitRunning -except $except)
+        return
+    }
+    Check 'an elevated install leaves hopto for the user to start' (-not (WaitRunning -seconds 5 -except $except))
+    if (Test-Path $exe) {
+        Start-Process -FilePath $exe
+        [void](WaitRunning)
+    }
+}
+
 function StopHopto {
     Get-Process -Name hopto* -ErrorAction SilentlyContinue |
         Stop-Process -Force -PassThru |
@@ -98,7 +133,7 @@ try {
     $entry = InstalledEntry
     Check 'Installed apps lists hopto' ($null -ne $entry)
     Check 'the entry names Drolosoft' ($entry.Publisher -eq 'Drolosoft')
-    Check 'hopto starts by itself' (WaitRunning)
+    CheckStarted 'hopto starts by itself'
     $first = $entry.DisplayVersion
 
     # The library, and an "open at login" value as the app would have
@@ -106,7 +141,7 @@ try {
     if ($libraryExisted) {
         Check 'the library exists' (Test-Path $library)
     } else {
-        Check 'the first run seeded the library' (Test-Path $library)
+        Check 'the first run seeded the library' (WaitFile $library)
     }
     Set-ItemProperty $runKey -Name hopto -Value $runValue
 
@@ -119,7 +154,7 @@ try {
         $entries = @(InstalledEntry)
         Check 'one entry is left, not two' ($entries.Count -eq 1)
         Check 'the version went up' ([version]$entries[0].DisplayVersion -gt [version]$first)
-        Check 'hopto is running again, as a new process' (WaitRunning -except $before)
+        CheckStarted 'hopto is running again, as a new process' $before
         $kept = (Get-ItemProperty $runKey -Name hopto -ErrorAction SilentlyContinue).hopto
         Check 'an update keeps open at login' ($kept -eq $runValue)
         Check 'the older package is now refused' ((Installer "/i `"$Msi`"") -ne 0)
