@@ -4,49 +4,39 @@ on:
   push:
     tags: ['v*']
   # A rehearsal by hand from a branch: every step, signing and
-  # notarisation included, except creating the release, which needs a
-  # tag.
+  # notarisation included, except the tag checks and the release itself,
+  # which a rehearsal never creates. A run started by hand on a tag ref
+  # is a tag run like a push: it checks the tag and publishes.
   workflow_dispatch:
 
 # Nothing by default; each job asks for the least it needs.
 permissions: {}
 
-# Two runs for the same tag or branch would build, sign and upload the
-# same names at once. The second waits instead of cancelling the first,
-# which may be half way through a notarisation.
+# Artefact names belong to their run, so two runs never clash on those.
+# What two runs for the same tag or branch would do is create the same
+# release twice and notarise everything twice. The second waits instead
+# of cancelling the first, which may be half way through a notarisation.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # The checks, the Windows exes and the macOS disk image: signed,
-  # notarised and stapled, or the job fails.
-  build:
-    # Carbon and Cocoa only build on macOS, and the universal binary needs
-    # the Apple toolchain for both architectures; the Windows exes
-    # cross-compile here too.
-    runs-on: macos-latest
-    # Two notarisations of up to 30 minutes each, on top of the builds
-    # and the tests.
-    timeout-minutes: 120
+  # Fails fast, before a macOS runner starts, on what would otherwise
+  # only fail after the build: a missing Apple secret, or a release that
+  # already exists for this tag. A job of its own because a step cannot
+  # test a secret in its `if:`, and the build job must never hold a
+  # secret: here the values reach one step's environment, are only tested
+  # for emptiness, and no third-party code runs in this job at all.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
-      checks: read
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      product: ${{ steps.version.outputs.product }}
 
     steps:
-      # The whole history, so git describe finds the last tag in a
-      # rehearsal.
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
       # A tag and a rehearsal both sign and notarise, so both need every
-      # Apple secret. Checked first, so a missing one costs no build time
-      # and the message names it. ${!name} reads the variable whose name
-      # is in $name; nothing here prints a value.
+      # Apple secret. The message names each missing one. ${!name} reads
+      # the variable whose name is in $name; nothing here prints a value.
       - name: Apple secrets are set
         env:
           DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
@@ -66,6 +56,53 @@ jobs:
             exit 1
           fi
 
+      # gh release create would refuse an existing release only at the
+      # very end, after two notarisations and perhaps a SignPath approval.
+      # Only "release not found" counts as absent: any other failure (the
+      # network, the token) stops the run rather than passing for it.
+      - name: No release for this tag yet
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if answer="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" 2>&1)"; then
+            echo "a release for $GITHUB_REF_NAME already exists" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "$answer" | grep -q 'release not found'; then
+            echo "could not tell whether a release for $GITHUB_REF_NAME exists: $answer" >&2
+            exit 1
+          fi
+
+  # The checks, the Windows exes and the unsigned universal app. This job
+  # runs third-party code (npm ci, the npm install inside wails build, Go
+  # modules under go test), any of which could write to $GITHUB_ENV or
+  # $GITHUB_PATH and reach every later step, so it holds no secret: the
+  # signing happens in sign-macos, on a runner this code never touched.
+  build:
+    needs: preflight
+    # Carbon and Cocoa only build on macOS, and the universal binary needs
+    # the Apple toolchain for both architectures; the Windows exes
+    # cross-compile here too.
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      product: ${{ steps.version.outputs.product }}
+
+    steps:
+      # The whole history, so git describe finds the last tag in a
+      # rehearsal and main is there for the ancestry check. No stored
+      # credential: nothing in this job pushes, and the gh calls bring
+      # their own token.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       # The tag and the bundle's own version must agree, or the files
       # would say one version and the Finder another. A rehearsal has no
       # tag to compare.
@@ -84,18 +121,18 @@ jobs:
         run: bash scripts/check-internal-files.sh --tree
 
       # Fails early, before a long build, when the notes are missing. The
-      # publish job writes them again from the same commit. A rehearsal
-      # has no version whose section could be looked up.
+      # version comes from wails.json, which on a tag the step above has
+      # just matched to the tag, so a rehearsal checks the notes the next
+      # tag will need. The publish job writes them again from the same
+      # commit.
       - name: Release notes
-        if: github.ref_type == 'tag'
-        run: bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > /dev/null
+        run: bash scripts/changelog-section.sh "v$(jq -r .info.productVersion wails.json)" > /dev/null
 
       # This job skips golangci-lint, gofmt and Playwright, all of which
       # CI already ran on this same commit: a tag must sit on a commit
       # CI passed, or this release would publish a build CI would have
       # refused. A rehearsal is held to the same rule, since its files
-      # are what a release of that commit would be; CI's test job runs
-      # for the commits of a pull request too.
+      # are what a release of that commit would be.
       - name: Require CI green on this commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,13 +144,33 @@ jobs:
             exit 1
           fi
 
+      # CI's test job also runs for pull requests, so a green check-run
+      # alone would let a tag on an unmerged pull request's head through.
+      # A release comes only from main. The full-history checkout already
+      # brings origin/main; it is fetched here only if it somehow did not,
+      # which needs no credential on a public repository. A rehearsal runs
+      # from a branch that is not on main by definition, so it is held to
+      # the check-run rule alone.
+      - name: Tagged commit is on main
+        if: github.ref_type == 'tag'
+        run: |
+          if ! git rev-parse --verify --quiet origin/main > /dev/null; then
+            git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "$GITHUB_REF_NAME ($GITHUB_SHA) is not on main" >&2
+            exit 1
+          fi
+
       # The version every file and every make call of this run uses: the
       # tag, or what git describes in a rehearsal. Fixed here once,
       # because the Makefile's own default adds -dirty, and wails build
       # runs npm install, which may rewrite the lock file between one
-      # build and the next and give the disk image another name than the
-      # step that signs it expects. The MSI wants the version as three
-      # numbers, which wails.json has.
+      # build and the next and give the files another name than the later
+      # jobs expect. Anything but vX.Y.Z or git describe's vX.Y.Z-N-gHASH
+      # is refused now: a tag such as v0.3.0-rc1 would otherwise fail only
+      # in WiX, after both notarisations. The MSI wants the version as
+      # three numbers, which wails.json has.
       - name: Version
         id: version
         run: |
@@ -122,19 +179,24 @@ jobs:
           else
             version="$(git describe --tags --always)"
           fi
+          if ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+-g[0-9a-f]+)?$'; then
+            echo "version $version is neither vX.Y.Z nor vX.Y.Z-N-gHASH" >&2
+            exit 1
+          fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "product=$(jq -r .info.productVersion wails.json)" >> "$GITHUB_OUTPUT"
 
+      # No cache in this workflow: one saved by another run, a pull
+      # request's among them, must not feed the build that gets signed.
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
@@ -147,20 +209,90 @@ jobs:
       - name: Windows exes
         run: make build-windows
 
+      # overwrite: a re-run of the failed jobs runs this upload again in
+      # the same run, where the name already exists. One day is enough
+      # for an artefact that only feeds the later jobs of this run.
       - uses: actions/upload-artifact@v7
         with:
           name: windows-exes
           path: build/bin/hopto-windows-*.exe
           if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
       # Refuses a binary that carries the runner's home folder.
       - name: Universal app
         run: make app-universal
 
       # The Go package embeds frontend/dist, which the build just wrote.
-      # Before signing, so a failing test spends no notarisation.
+      # Before the app leaves this job, so a failing test spends no
+      # notarisation.
       - name: Go tests
         run: go vet ./... && go test -race -count=1 ./...
+
+      # The artefact zip loses the executable bit and the symlinks inside
+      # the bundle; a tar keeps both.
+      - name: App archive
+        run: tar -C build/bin -cf hopto-app.tar hopto.app
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-app-unsigned
+          path: hopto-app.tar
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+  # The app and the disk image, signed, notarised and stapled, or the job
+  # fails. The only job with the Apple secrets, and it runs nothing from
+  # npm or Go: the repository's own scripts and Apple's tools.
+  sign-macos:
+    needs: build
+    runs-on: macos-latest
+    # Two notarisations of up to 30 minutes each.
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+
+    steps:
+      # Checked first, so the message names a missing secret before
+      # anything else runs. ${!name} reads the variable whose name is in
+      # $name; nothing here prints a value.
+      - name: Apple secrets are set
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: |
+          missing=""
+          for name in DEVELOPER_ID_P12 DEVELOPER_ID_PASSWORD APPLE_ID TEAM_ID NOTARIZATION_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "these secrets are not set:$missing" >&2
+            exit 1
+          fi
+
+      # Only for the scripts.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos-app-unsigned
+          path: app-archive
+
+      - name: Unpack the app
+        run: |
+          mkdir -p build/bin
+          tar -C build/bin -xf app-archive/hopto-app.tar
 
       # A keychain of this job's own for the certificate: the runner's
       # login keychain is not ours to write to, and this one is deleted
@@ -207,10 +339,12 @@ jobs:
           NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
         run: bash scripts/sign-and-notarize.sh build/bin/hopto.app
 
+      # The script itself rather than make dmg: the Makefile's variables
+      # call git at parse time, and this job needs nothing but bash and
+      # hdiutil for it. Same path as make dmg would give.
       - name: Disk image
-        run: make dmg
+        run: bash scripts/make-dmg.sh build/bin/hopto.app "build/dist/hopto-$VERSION-macos-universal.dmg"
 
-      # The name make dmg gives it, from the same VERSION.
       - name: Sign and notarise the disk image
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -235,20 +369,27 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: macos-dist
-          path: build/dist/hopto-${{ steps.version.outputs.version }}-macos-universal.dmg
+          path: build/dist/hopto-${{ needs.build.outputs.version }}-macos-universal.dmg
           if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
   # The two installers; signed by SignPath once the project is approved
   # there and the repository variable SIGNPATH_READY says so. Until then
-  # the unsigned files go on as they are.
+  # the unsigned files go on as they are. After sign-macos, so no SignPath
+  # request, with its approval by hand, is spent on a run whose macOS
+  # files were refused.
   windows:
-    needs: build
+    needs: [build, sign-macos]
     runs-on: windows-latest
     # SignPath waits for somebody to approve the request by hand; the
     # wait below is four hours, and this leaves room for WiX around it.
     timeout-minutes: 300
-    # SignPath's action reads this run's job details and downloads the
-    # unsigned artefact with the job's token, which needs both scopes.
+    # SignPath's action hands this job's token to SignPath's connector,
+    # which reads the run's job details and downloads the unsigned
+    # artefact with it, so it needs both scopes. The token leaves GitHub:
+    # that is why this job is read-only and holds no secret but
+    # SignPath's own.
     permissions:
       contents: read
       actions: read
@@ -258,6 +399,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@v8
         with:
@@ -304,6 +447,8 @@ jobs:
           name: windows-unsigned
           path: out/*
           if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
       # One request for the four files. It waits until somebody approves
       # it on SignPath, for up to four hours instead of the action's ten
@@ -321,8 +466,9 @@ jobs:
           wait-for-completion-timeout-in-seconds: 14400
           output-artifact-directory: signed
 
-      # SignPath answering is not proof enough: every file that came back
-      # must carry a valid signature, and all four must have come back.
+      # SignPath answering is not proof enough: all four files must have
+      # come back, each with a valid signature, and signed by SignPath
+      # Foundation, since any valid certificate would pass the first test.
       - name: Every file is signed
         if: vars.SIGNPATH_READY == 'true'
         shell: pwsh
@@ -333,10 +479,12 @@ jobs:
             exit 1
           }
           $unsigned = @($files | Where-Object {
-            (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid'
+            $signature = Get-AuthenticodeSignature $_.FullName
+            $signature.Status -ne 'Valid' -or
+              $signature.SignerCertificate.Subject -notlike '*SignPath Foundation*'
           })
           if ($unsigned.Count -gt 0) {
-            Write-Error "not signed: $($unsigned.Name -join ', ')"
+            Write-Error "not signed by SignPath Foundation: $($unsigned.Name -join ', ')"
             exit 1
           }
           Remove-Item out/*
@@ -347,11 +495,13 @@ jobs:
           name: windows-dist
           path: out/*
           if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
   # The zips, the sums and, on a tag, the release. It needs no Go, no
   # Wails and no tags: VERSION reaches make by hand.
   publish:
-    needs: [build, windows]
+    needs: [build, sign-macos, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -360,7 +510,10 @@ jobs:
       VERSION: ${{ needs.build.outputs.version }}
 
     steps:
+      # No stored credential: the release is created by gh with GH_TOKEN.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@v8
         with:
@@ -403,12 +556,16 @@ jobs:
           shasum -a 256 -c ./*.sha256
 
       # On a tag and in a rehearsal alike, so a rehearsal's files can be
-      # downloaded and tried.
+      # downloaded and tried. A rehearsal's are kept five days; a tag's
+      # get the repository's default (0 asks for it), since they are the
+      # release's files.
       - uses: actions/upload-artifact@v7
         with:
           name: release-files
           path: build/dist/*
           if-no-files-found: error
+          overwrite: true
+          retention-days: ${{ github.ref_type != 'tag' && 5 || 0 }}
 
       - name: Publish
         if: github.ref_type == 'tag'
