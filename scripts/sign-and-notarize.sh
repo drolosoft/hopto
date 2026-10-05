@@ -45,6 +45,7 @@ case "$target" in
         ;;
     *.dmg)
         codesign --force --timestamp --sign "$SIGN_IDENTITY" "$target"
+        codesign --verify --strict "$target"
         upload="$target"
         ;;
     *)
@@ -56,14 +57,16 @@ esac
 # --wait returns once Apple has decided. A rejection may or may not come
 # with a non-zero exit status, depending on the Xcode version, so the
 # status line of the answer is what counts. The exit status is kept
-# apart: with pipefail it is also the one of tee, and it tells a
-# submission that never got an answer (no network, bad credentials)
-# from one that was answered.
+# apart: pipefail makes the pipeline fail when notarytool does, even
+# though tee succeeds, and it tells a submission that never got an answer
+# (no network, bad credentials) from one that was answered.
+# --timeout 30m: --wait has no limit of its own, and a stuck queue at
+# Apple would otherwise hold the CI job for hours.
 answer="$work/answer"
 submit_status=0
 xcrun notarytool submit "$upload" \
     --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$NOTARIZATION_PASSWORD" \
-    --wait | tee "$answer" || submit_status=$?
+    --wait --timeout 30m | tee "$answer" || submit_status=$?
 
 # The answer is indented and repeats the id; only a line that is a
 # status on its own counts, not "Current status: ..." progress lines.

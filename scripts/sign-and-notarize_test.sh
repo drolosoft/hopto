@@ -44,6 +44,11 @@ calls="$work/calls"
 cat > "$work/bin/codesign" <<'FAKE'
 #!/usr/bin/env bash
 echo "codesign $*" >> "$FAKE_CALLS"
+# FAKE_CODESIGN=fail makes the signing itself fail.
+if [ "${FAKE_CODESIGN:-}" = "fail" ] && [[ "$*" == *--sign* ]]; then
+    echo "codesign: no identity found" >&2
+    exit 1
+fi
 FAKE
 
 # The real ditto writes the zip named by its last argument.
@@ -56,7 +61,9 @@ FAKE
 # The notarytool answers copy what the real one prints with --wait: the
 # id shows up more than once, indented, and the last line is the status.
 # FAKE_NOTARY picks the outcome: Accepted, Invalid, or Crash for a
-# submission that fails by itself (no network, bad credentials).
+# submission that fails by itself (no network, bad credentials), and
+# InvalidExit for a rejection that also exits non-zero. Any other value
+# is printed as the status, as In Progress would be.
 cat > "$work/bin/xcrun" <<'FAKE'
 #!/usr/bin/env bash
 echo "xcrun $*" >> "$FAKE_CALLS"
@@ -73,10 +80,21 @@ case "$1 $2" in
         echo "Waiting for processing to complete."
         echo "Current status: In Progress.....Processing complete"
         echo "  id: $FAKE_ID"
+        if [ "${FAKE_NOTARY:-Accepted}" = "InvalidExit" ]; then
+            echo "  status: Invalid"
+            exit 1
+        fi
         echo "  status: ${FAKE_NOTARY:-Accepted}"
         ;;
     "notarytool log")
         echo "fake log: the reason"
+        ;;
+    "stapler staple")
+        # FAKE_STAPLER=fail makes the stapling fail.
+        if [ "${FAKE_STAPLER:-}" = "fail" ]; then
+            echo "Error: could not staple the ticket" >&2
+            exit 1
+        fi
         ;;
 esac
 FAKE
@@ -97,9 +115,10 @@ echo "▶ a bundle is signed, notarised and stapled:"
 target="$work/hopto.app"
 : > "$calls"
 check "the run succeeds" 'run_script'
-check "the bundle is signed with the hardened runtime" 'grep -q "^codesign .*--options runtime.*--timestamp" "$calls"'
-check "the signature is verified" 'grep -q "^codesign --verify" "$calls"'
+check "the bundle is signed with the hardened runtime, the identity and the bundle" 'grep -qxF "codesign --force --options runtime --timestamp --sign fake-identity $work/hopto.app" "$calls"'
+check "the signature is verified" 'grep -qxF "codesign --verify --deep --strict $work/hopto.app" "$calls"'
 check "signing comes before the submission" '[ "$(grep -n "^codesign" "$calls" | head -1 | cut -d: -f1)" -lt "$(grep -n "notarytool submit" "$calls" | cut -d: -f1)" ]'
+check "the wait for Apple has a time limit" 'grep -q "notarytool submit .*--timeout 30m" "$calls"'
 check "the bundle is zipped for the upload" 'grep -q "^ditto -c -k --keepParent $work/hopto.app " "$calls"'
 check "stapling comes last" 'tail -1 "$calls" | grep -q "^xcrun stapler staple $work/hopto.app"'
 check "the password is not printed" '! grep -q fake-password "$work/out"'
@@ -108,7 +127,8 @@ echo "▶ a disk image is signed, notarised and stapled:"
 target="$work/hopto.dmg"
 : > "$calls"
 check "the run succeeds" 'run_script'
-check "it is signed without the runtime flag" 'grep -q "^codesign " "$calls" && ! grep -q -- "--options runtime" "$calls"'
+check "it is signed without the runtime flag, with the identity and the image" 'grep -qxF "codesign --force --timestamp --sign fake-identity $work/hopto.dmg" "$calls" && ! grep -q -- "--options runtime" "$calls"'
+check "its signature is verified before the upload" '[ "$(grep -nxF "codesign --verify --strict $work/hopto.dmg" "$calls" | cut -d: -f1)" -lt "$(grep -n "notarytool submit" "$calls" | cut -d: -f1)" ]'
 check "it is submitted as it is" 'grep -q "notarytool submit $work/hopto.dmg" "$calls"'
 check "it is not zipped" '! grep -q "^ditto" "$calls"'
 check "stapling comes last" 'tail -1 "$calls" | grep -q "^xcrun stapler staple $work/hopto.dmg"'
@@ -129,11 +149,37 @@ check "a failed submission fails the script" '! run_script FAKE_NOTARY=Crash'
 check "the output says the submission failed" 'grep -q "submission failed" "$work/out"'
 check "a failed submission is not stapled" '! grep -q "stapler staple" "$calls"'
 
+echo "▶ a rejection that also exits non-zero:"
+: > "$calls"
+check "it fails" '! run_script FAKE_NOTARY=InvalidExit'
+check "the log is still fetched" 'grep -q "^xcrun notarytool log $submission_id " "$calls"'
+check "it is not stapled" '! grep -q "stapler staple" "$calls"'
+
+echo "▶ a status that is neither Accepted nor Invalid:"
+: > "$calls"
+check "it fails" '! run_script "FAKE_NOTARY=In Progress"'
+check "it is not stapled" '! grep -q "stapler staple" "$calls"'
+
+echo "▶ codesign fails:"
+: > "$calls"
+check "it fails" '! run_script FAKE_CODESIGN=fail'
+check "nothing is submitted" '! grep -q "notarytool submit" "$calls"'
+check "nothing is stapled" '! grep -q "stapler staple" "$calls"'
+
+echo "▶ stapler fails:"
+: > "$calls"
+check "it fails" '! run_script FAKE_STAPLER=fail'
+check "the ticket was asked for" 'grep -q "stapler staple" "$calls"'
+
 echo "▶ bad input:"
 : > "$calls"
 check "missing environment fails" '! env -i "PATH=$work/bin:$PATH" "FAKE_CALLS=$calls" SIGN_IDENTITY=fake-identity bash "$here/sign-and-notarize.sh" "$target" > "$work/out" 2>&1'
 check "missing environment names the variable" 'grep -q APPLE_ID "$work/out"'
 check "missing environment signs nothing" '[ ! -s "$calls" ]'
+
+: > "$calls"
+check "no argument fails" '! env "PATH=$work/bin:$PATH" "FAKE_CALLS=$calls" SIGN_IDENTITY=fake-identity APPLE_ID=someone@example.org TEAM_ID=ABCDE12345 NOTARIZATION_PASSWORD=fake-password bash "$here/sign-and-notarize.sh" > "$work/out" 2>&1'
+check "no argument signs nothing" '[ ! -s "$calls" ]'
 
 target="$work/notes.txt"
 check "another kind of file is refused" '! run_script'
