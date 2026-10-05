@@ -2,7 +2,7 @@
 # run build itself (see wails.json), and it is what writes frontend/wailsjs
 # and frontend/dist, which go:embed needs — running npm separately first
 # would fail on a fresh clone before wailsjs exists.
-.PHONY: build build-windows build-windows-dist test e2e fmt lint ci hooks clean dist
+.PHONY: build build-windows app-universal dmg windows-zips sums test e2e fmt lint ci hooks clean dist
 
 # What `make build` stamps into the binary for the help panel: what git
 # describes (the tag, or the commit, plus -dirty for local changes), the
@@ -45,40 +45,50 @@ test:
 e2e:
 	cd frontend && npm run test:e2e
 
-# The release artefact, in build/dist: a universal .app (Apple silicon and
-# Intel) zipped the way the Finder does it, and its SHA-256. -trimpath
-# keeps the folders of the machine that builds it, its user name
-# included, out of the binary, and the check after the build refuses a
-# binary that still carries $HOME. A tag builds
-# hopto-v0.1.0-macos-universal.zip.
+# Everything a release publishes lands in build/dist.
 DIST := build/dist
-ZIP := $(DIST)/hopto-$(VERSION)-macos-universal.zip
+DMG := $(DIST)/hopto-$(VERSION)-macos-universal.dmg
 
-# The Windows zips: the exe and the licence at the root, one per
-# architecture, with the same $HOME check as the Mac binary. dist depends
-# on this one, and not the other way round, because build-windows cleans
-# build/bin: the exes have to be built before the universal .app, or the
-# .app would be wiped out. The loop runs under set -e: make only sees the
-# exit status of the last command, so a zip that failed for amd64 would
-# otherwise be hidden by a good arm64.
-build-windows-dist: build-windows
-	mkdir -p $(DIST)
-	set -e; for arch in amd64 arm64; do \
-	  test -z "$$(strings build/bin/hopto-windows-$$arch.exe | grep -F "$$HOME")" || exit 1; \
-	  rm -f $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(DIST)/hopto-$(VERSION)-windows-$$arch.zip.sha256; \
-	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip build/bin/hopto-windows-$$arch.exe LICENSE; \
-	  (cd $(DIST) && shasum -a 256 hopto-$(VERSION)-windows-$$arch.zip > hopto-$(VERSION)-windows-$$arch.zip.sha256); \
-	done
+# Where windows-zips takes the exes from: build/bin after a local
+# build, or the folder of signed ones the release workflow downloads.
+EXES ?= build/bin
 
-# The whole release: the Windows zips first, then the universal .app.
-dist: build-windows-dist
+# The universal .app (Apple silicon and Intel). -trimpath keeps the
+# folders of the machine that builds it, its user name included, out of
+# the binary, and the check after the build refuses a binary that still
+# carries $HOME.
+app-universal:
 	wails build -clean -trimpath -platform darwin/universal -ldflags "$(LDFLAGS)"
 	$(RESTORE_GITKEEP)
 	test -z "$$(strings build/bin/hopto.app/Contents/MacOS/hopto | grep -F "$$HOME")"
+
+# The disk image of the .app as it is in build/bin. The release
+# workflow signs and notarises the bundle between app-universal and
+# this target; run by hand it packs an unsigned one, for trying the
+# image out.
+dmg:
+	bash scripts/make-dmg.sh build/bin/hopto.app $(DMG)
+
+# The Windows zips: the exe and the licence at the root, one per
+# architecture. The loop runs under set -e: make only sees the exit
+# status of the last command, so a zip that failed for amd64 would
+# otherwise be hidden by a good arm64.
+windows-zips:
 	mkdir -p $(DIST)
-	rm -f $(ZIP) $(ZIP).sha256
-	ditto -c -k --keepParent build/bin/hopto.app $(ZIP)
-	cd $(DIST) && shasum -a 256 $(notdir $(ZIP)) > $(notdir $(ZIP)).sha256
+	set -e; for arch in amd64 arm64; do \
+	  test -z "$$(strings $(EXES)/hopto-windows-$$arch.exe | grep -F "$$HOME")" || exit 1; \
+	  rm -f $(DIST)/hopto-$(VERSION)-windows-$$arch.zip; \
+	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(EXES)/hopto-windows-$$arch.exe LICENSE; \
+	done
+
+# One .sha256 beside every file in build/dist, written last so no sum
+# is older than its file.
+sums:
+	cd $(DIST) && rm -f *.sha256 && for file in *; do shasum -a 256 "$$file" > "$$file.sha256"; done
+
+# The whole release, unsigned, for a local look: the Windows exes
+# first, because build-windows cleans build/bin and would wipe the .app.
+dist: build-windows windows-zips app-universal dmg sums
 
 # The formatting check on its own: it needs nothing installed, so the CI
 # test job can run it without golangci-lint, which has a job of its own.
