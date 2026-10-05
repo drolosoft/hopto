@@ -43,9 +43,15 @@ function Installer([string]$arguments) {
     return $process.ExitCode
 }
 
-# The entry Installed apps shows for hopto, or $null.
+# The entry Installed apps shows for hopto, or $null. Windows Installer
+# writes it under the user's hive or the machine's depending on how the
+# package was started, so both are read.
 function InstalledEntry {
-    Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
+    $roots = @(
+        'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    Get-ItemProperty $roots -ErrorAction SilentlyContinue |
         Where-Object { $_.DisplayName -eq 'hopto' }
 }
 

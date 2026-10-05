@@ -73,7 +73,7 @@
                   Name="hopto"
                   Description="Keyboard launcher for your apps and links"
                   Target="[INSTALLFOLDER]hopto.exe"
-                  WorkingDirectory="INSTALLFOLDER"
+                  WorkingDirectory="LocalAppDataFolder"
                   Icon="hopto.ico" />
         <RegistryValue Root="HKCU" Key="Software\Drolosoft\hopto" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
@@ -86,10 +86,14 @@
 
     <!--
       Starts hopto once the files are in place, and does not wait for
-      it: the installer ends while hopto goes on running.
+      it: the installer ends while hopto goes on running. Here and in
+      the shortcut hopto starts in %LocalAppData%, not in its own
+      folder: a process keeps its starting folder open, WebView2's
+      helpers inherit it and outlive hopto for a moment, and an
+      uninstall would then leave the folder behind, empty.
     -->
     <CustomAction Id="StartHopto"
-                  Directory="INSTALLFOLDER"
+                  Directory="LocalAppDataFolder"
                   ExeCommand="&quot;[INSTALLFOLDER]hopto.exe&quot;"
                   Execute="immediate"
                   Return="asyncNoWait" />
