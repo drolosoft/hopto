@@ -184,7 +184,7 @@ done
 
 | Limitation | Reason |
 |-----------|--------|
-| Not signed or notarised | There is no Developer ID yet; the first open needs the steps in the README. |
+| Releases up to v0.2.0 are not signed | From v0.3.0 the disk image is signed with a Developer ID and notarised. |
 | Shortcuts are read at start | They are registered once in `startup` on both systems; a change needs Quit and open. |
 | The menu bar item keeps its labels after a language change | The labels are set when the item is built at start. |
 | Open at login assumes the running binary is not reached through a symbolic link | The bundle path is taken from `os.Executable` as it is, without resolving links. |
@@ -195,6 +195,6 @@ done
 | Links are http and https only | Other schemes could reach other apps or the file system. |
 | Store apps are not listed on Windows | They live in `shell:AppsFolder`, not as shortcuts; a later milestone. |
 | No bundle id opening on Windows | Bundle ids are a macOS idea: an app entry with a `bundle_id` cannot open on Windows, even when it also has a `path`. The `path` is what opens there. |
-| The Windows exe is unsigned | SmartScreen warns on the first run. |
+| The Windows exe and the MSI are unsigned | SmartScreen warns on the first run. |
 | A redirected `APPDATA` is not followed | The data folder is derived from the profile folder. |
 | Windows 10 is untested | Below Windows 11 22H2 (build 22621) Wails draws the translucent window as a blur over its whole rectangle, so hopto asks for Windows 11 22H2 or later. |

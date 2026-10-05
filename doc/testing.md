@@ -118,11 +118,11 @@ Windows has no `osascript`; the checks use Win32 from PowerShell. The exe cross-
 
 ## The installers
 
-The release workflow builds them, and it can be run by hand without publishing anything: `gh workflow run release.yml --ref <branch>`, then `gh run download <id> -n release-files`. A rehearsal signs and notarises the macOS image for real, so it also proves the repository's Apple secrets are right.
+The release workflow builds them, and it can be run by hand without publishing anything: `gh workflow run release.yml --ref <branch>`, then `gh run download <id> -n release-files`. A rehearsal signs and notarises the macOS image for real, so it also proves the repository's Apple secrets are right. The commit must be pushed and its CI green. The artefact `release-files` holds the disk image, the two MSI and the two zips, each with its `.sha256`, for five days.
 
 - **The disk image**: `spctl -a -t open --context context:primary-signature -vv hopto-*.dmg` says `accepted` and `source=Notarized Developer ID`; `xcrun stapler validate` finds the ticket. `make dist` builds an unsigned one locally, for a look at the window.
 - **The scripts**: `scripts/make-dmg_test.sh` builds an image from a fake bundle and looks inside; `scripts/sign-and-notarize_test.sh` runs the signing script against fake tools, for the order of the calls and for what happens when Apple says no.
-- **The MSI**: `scripts/verify-msi-windows.ps1 -Msi <path> [-Upgrade <newer>]` installs it without dialogs on a test machine and checks the exe, the shortcut, the entry in Installed apps, that hopto starts, that a newer package replaces a running one, and that an uninstall removes the program and leaves the library. Run elevated, it checks instead that the installer does not start hopto. It installs into the profile it runs in: a VM, never a PC somebody uses.
+- **The MSI**: `scripts/verify-msi-windows.ps1 -Msi <path> [-Upgrade <newer>]` installs it without dialogs on a test machine and checks the exe, the shortcut, the entry in Installed apps, that hopto starts, that a newer package replaces a running one, that an update keeps open at login, that an older package is refused, and that an uninstall removes the program, forgets open at login and leaves the library. Run elevated, it checks instead that the installer does not start hopto. It installs into the profile it runs in: a VM, never a PC somebody uses.
 
 ## Before saying "done"
 
