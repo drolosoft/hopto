@@ -44,6 +44,17 @@ jobs:
       - name: Real-app helpers self-test
         run: bash scripts/real-app_test.sh
 
+      # The release scripts run only on a tag or in a rehearsal, both
+      # long and the second spending a notarisation; a change that broke
+      # either should show here first. This runner is a Mac, so the disk
+      # image test has the real hdiutil; the signing test fakes Apple's
+      # tools and signs nothing.
+      - name: Disk image self-test
+        run: bash scripts/make-dmg_test.sh
+
+      - name: Signing self-test
+        run: bash scripts/sign-and-notarize_test.sh
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

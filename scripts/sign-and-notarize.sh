@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # sign-and-notarize.sh: signs an .app or a .dmg with a Developer ID,
 # sends it to Apple's notary service, waits for the answer and staples
-# the ticket to it, so it opens on a Mac with no network and no warning.
+# the ticket to it, so a Mac accepts it even with no network: macOS
+# still asks once before opening something downloaded, but no longer
+# refuses it.
 # (The file says "notarize" because Apple's tool is spelled notarytool.)
 #
 # Usage: bash scripts/sign-and-notarize.sh <hopto.app | file.dmg>

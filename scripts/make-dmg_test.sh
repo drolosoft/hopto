@@ -57,5 +57,39 @@ hdiutil attach "$work/a folder/spaced.dmg" -mountpoint "$work/mount" -nobrowse -
 check "the app keeps its name inside" '[ -f "$work/mount/hopto.app/Contents/MacOS/hopto" ]'
 hdiutil detach "$work/mount" -quiet
 
+echo "▶ hdiutil create fails now and then:"
+# A fake hdiutil first on the PATH: it fails the way a busy runner does
+# for as many tries as FAKE_FAILURES says, counting them in a file, and
+# then hands over to the real one. A fake sleep keeps the test from
+# waiting out the pauses between tries.
+real_hdiutil="$(command -v hdiutil)"
+mkdir -p "$work/fakes"
+cat > "$work/fakes/hdiutil" <<FAKE
+#!/usr/bin/env bash
+tries="\$(cat "\$FAKE_TRIES" 2>/dev/null || echo 0)"
+tries=\$((tries + 1))
+echo "\$tries" > "\$FAKE_TRIES"
+if [ "\$tries" -le "\$FAKE_FAILURES" ]; then
+    echo "hdiutil: create failed - Resource busy" >&2
+    exit 1
+fi
+exec "$real_hdiutil" "\$@"
+FAKE
+printf '#!/usr/bin/env bash\n' > "$work/fakes/sleep"
+chmod +x "$work/fakes/hdiutil" "$work/fakes/sleep"
+
+rm -f "$work/tries"
+check "one busy try is retried" 'PATH="$work/fakes:$PATH" FAKE_TRIES="$work/tries" FAKE_FAILURES=1 bash "$here/make-dmg.sh" "$work/hopto.app" "$work/retried.dmg" 2> "$work/retry-log"'
+check "the image is made on the second try" '[ -s "$work/retried.dmg" ] && [ "$(cat "$work/tries")" = 2 ]'
+hdiutil attach "$work/retried.dmg" -mountpoint "$work/mount" -nobrowse -readonly -quiet
+check "the retried image holds the app" '[ -f "$work/mount/hopto.app/Contents/MacOS/hopto" ]'
+hdiutil detach "$work/mount" -quiet
+
+rm -f "$work/tries"
+check "an hdiutil that always fails fails the script" '! PATH="$work/fakes:$PATH" FAKE_TRIES="$work/tries" FAKE_FAILURES=99 bash "$here/make-dmg.sh" "$work/hopto.app" "$work/never.dmg" 2> "$work/retry-log"'
+check "it gives up after three tries" '[ "$(cat "$work/tries")" = 3 ]'
+check "the log shows the message hdiutil gave" 'grep -q "Resource busy" "$work/retry-log"'
+check "no image is left behind" '[ ! -e "$work/never.dmg" ]'
+
 echo "── $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A disk image for macOS, signed with a Developer ID and notarised: open it, drag hopto to Applications, no warning.
+- A disk image for macOS, signed with a Developer ID and notarised: open it, drag hopto to Applications, and macOS asks once whether to open it instead of refusing it.
 - An installer for Windows, `amd64` and `arm64`: for one user, no administrator, a Start Menu shortcut, and a newer version replaces the one installed. Not signed yet, so SmartScreen still warns; the zips stay for who would rather not install.
 
 | System | Download |

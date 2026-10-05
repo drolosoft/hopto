@@ -118,7 +118,11 @@ Windows has no `osascript`; the checks use Win32 from PowerShell. The exe cross-
 
 ## The installers
 
-The release workflow builds them, and it can be run by hand without publishing anything: `gh workflow run release.yml --ref <branch>`, then `gh run download <id> -n release-files`. A rehearsal signs and notarises the macOS image for real, so it also proves the repository's Apple secrets are right. The commit must be pushed and its CI green. The artefact `release-files` holds the disk image, the two MSI and the two zips, each with its `.sha256`, for five days.
+The release workflow builds them, and it can be run by hand without publishing anything: `gh workflow run release.yml --ref <branch>`, then `gh run download <id> -n release-files`. A rehearsal signs and notarises the macOS image for real, so it also proves the repository's Apple secrets are right. The artefact `release-files` holds the disk image, the two MSI and the two zips, each with its `.sha256`, for five days.
+
+The commit must be pushed and its CI green, all four jobs. CI runs only on main and on pull requests, so a branch needs an open pull request for its commit to have a CI run at all.
+
+A tag run that fails on something only a code change can fix cannot be re-run with the fix: the workflow is read from the tagged commit. Delete the tag, here and on GitHub, and push it again on the new commit.
 
 - **The disk image**: `spctl -a -t open --context context:primary-signature -vv hopto-*.dmg` says `accepted` and `source=Notarized Developer ID`; `xcrun stapler validate` finds the ticket. `make dist` builds an unsigned one locally, for a look at the window.
 - **The scripts**: `scripts/make-dmg_test.sh` builds an image from a fake bundle and looks inside; `scripts/sign-and-notarize_test.sh` runs the signing script against fake tools, for the order of the calls and for what happens when Apple says no.

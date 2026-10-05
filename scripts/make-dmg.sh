@@ -24,5 +24,23 @@ ditto "$app" "$stage/$(basename "$app")"
 ln -s /Applications "$stage/Applications"
 
 mkdir -p "$(dirname "$dmg")"
-rm -f "$dmg"
-hdiutil create -volname hopto -srcfolder "$stage" -fs HFS+ -format UDZO -quiet "$dmg"
+
+# hdiutil create now and then fails on GitHub's hosted macOS runners
+# with "Resource busy", when something else on the machine still holds
+# the new volume for a moment; the same command a few seconds later
+# works. Three tries with a pause between them, and after the third its
+# own message is what the log shows. A failed try may leave a partial
+# image, which hdiutil would refuse to overwrite, so each try starts
+# without one.
+attempts=3
+pause_seconds=5
+attempt=1
+until rm -f "$dmg" && hdiutil create -volname hopto -srcfolder "$stage" -fs HFS+ -format UDZO -quiet "$dmg"; do
+    if [ "$attempt" -ge "$attempts" ]; then
+        echo "make-dmg: hdiutil failed $attempts times" >&2
+        exit 1
+    fi
+    echo "make-dmg: hdiutil failed, trying again in $pause_seconds seconds" >&2
+    attempt=$((attempt + 1))
+    sleep "$pause_seconds"
+done

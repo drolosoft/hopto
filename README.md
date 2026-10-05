@@ -82,8 +82,9 @@ No Dock icon, no window until you call it, one small app.
 ### Quick Start
 
 1. Download `hopto-vX.Y.Z-macos-universal.dmg` from the [latest release](https://github.com/drolosoft/hopto/releases/latest). The same app runs on Apple silicon and Intel Macs, macOS 12 or later.
-2. Open it and drag hopto to Applications. It is signed and notarised, so macOS opens it without a warning.
-3. Press **⌘⇧Space**. The welcome panel lists both shortcuts and whether each one is ready.
+2. Open it and drag hopto to Applications.
+3. Open hopto from Applications. macOS asks once whether to open an app downloaded from the Internet: click **Open**. hopto is signed and notarised, so macOS does not refuse it.
+4. Press **⌘⇧Space**. The welcome panel lists both shortcuts and whether each one is ready.
 
 To start hopto at login, tick **Open at login** in its menu bar item.
 
@@ -235,7 +236,7 @@ Runs on macOS 12 or later, and on Windows 11 22H2 or later with WebView2. Buildi
 
 **⌘⌥Space opens "Searching This Mac".** macOS uses ⌘⌥Space for "Show Finder search window". Turn it off in System Settings › Keyboard › Keyboard Shortcuts › Spotlight, or pick another shortcut in `hotkey_links`. The welcome panel warns about it and opens that page for you.
 
-**"hopto" cannot be opened, or Apple could not verify it.** Releases from v0.3.0 are signed and notarised and open without a warning. If one does not, download it again and check that it arrived whole: in the folder with both files, `shasum -a 256 -c hopto-vX.Y.Z-macos-universal.dmg.sha256` should say `OK`. Releases up to v0.2.0 were not signed: clear the download flag once with `xattr -dr com.apple.quarantine /Applications/hopto.app`, or click **Open Anyway** in System Settings › Privacy & Security.
+**"hopto" cannot be opened, or Apple could not verify it.** Releases from v0.3.0 are signed and notarised: macOS asks once whether to open hopto, and does not refuse it. If it does refuse it, download it again and check that it arrived whole: in the folder with both files, `shasum -a 256 -c hopto-vX.Y.Z-macos-universal.dmg.sha256` should say `OK`. Releases up to v0.2.0 were not signed: clear the download flag once with `xattr -dr com.apple.quarantine /Applications/hopto.app`, or click **Open Anyway** in System Settings › Privacy & Security.
 
 **Windows SmartScreen warns about the installer.** The installer and the exe in the zips are not signed yet: **More info**, then **Run anyway**. See the [code signing policy](#code-signing-policy).
 

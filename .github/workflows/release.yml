@@ -128,19 +128,33 @@ jobs:
       - name: Release notes
         run: bash scripts/changelog-section.sh "v$(jq -r .info.productVersion wails.json)" > /dev/null
 
-      # This job skips golangci-lint, gofmt and Playwright, all of which
-      # CI already ran on this same commit: a tag must sit on a commit
-      # CI passed, or this release would publish a build CI would have
-      # refused. A rehearsal is held to the same rule, since its files
-      # are what a release of that commit would be.
+      # This job skips golangci-lint, gofmt, Playwright and the tests on
+      # Windows, all of which CI runs on this same commit: a tag must sit
+      # on a commit CI passed, or this release would publish a build CI
+      # would have refused. A rehearsal is held to the same rule, since
+      # its files are what a release of that commit would be. All four of
+      # CI's jobs must have run, and every run of each must be green: a
+      # commit pushed to main from a pull request has two runs of each,
+      # and the older one may be the one that failed. A run that has not
+      # finished has no conclusion yet and counts as not green.
       - name: Require CI green on this commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
-              --jq '[.check_runs[] | select(.name=="test") | .conclusion] | first')"
-          if [ "$conclusion" != "success" ]; then
-            echo "CI's test job on $GITHUB_SHA is not green (got: ${conclusion:-none})" >&2
+          runs="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
+              --jq '.check_runs[] | [.name, (.conclusion // "unfinished")] | @tsv')"
+          failed=0
+          for job in test lint windows-build windows-test; do
+            conclusions="$(printf '%s\n' "$runs" | awk -F '\t' -v job="$job" '$1 == job { print $2 }')"
+            if [ -z "$conclusions" ]; then
+              echo "CI's $job job has not run on $GITHUB_SHA" >&2
+              failed=1
+            elif printf '%s\n' "$conclusions" | grep -qvx success; then
+              echo "CI's $job job on $GITHUB_SHA is not green (got: $(printf '%s' "$conclusions" | tr '\n' ' '))" >&2
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
             exit 1
           fi
 
@@ -352,14 +366,39 @@ jobs:
           NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
         run: bash scripts/sign-and-notarize.sh "build/dist/hopto-$VERSION-macos-universal.dmg"
 
-      # What a Mac that just downloaded them would decide.
+      # What a Mac that just downloaded them would decide. spctl -vv
+      # names the source, which is the proof wanted here, and also the
+      # origin, the signing identity's full name, which has no place in
+      # a public log. So its answer is captured, a refusal fails the
+      # step, the source must be a notarised Developer ID, and the
+      # answer is printed without the origin line.
       - name: Gatekeeper accepts both
         run: |
           dmg="build/dist/hopto-$VERSION-macos-universal.dmg"
+
+          # gatekeeper runs spctl with the arguments it is given and
+          # applies the rules above to its answer.
+          gatekeeper() {
+            local answer
+            local status=0
+            answer="$(spctl "$@" 2>&1)" || status=$?
+            # grep -v fails when it has no line left to print, which is
+            # no reason to stop: the checks below decide.
+            printf '%s\n' "$answer" | grep -v '^origin=' || true
+            if [ "$status" -ne 0 ]; then
+              echo "Gatekeeper refused it (exit status $status)" >&2
+              return 1
+            fi
+            if ! printf '%s\n' "$answer" | grep -qx 'source=Notarized Developer ID'; then
+              echo "Gatekeeper accepted it, but not as a notarised Developer ID" >&2
+              return 1
+            fi
+          }
+
           codesign --verify --deep --strict build/bin/hopto.app
-          spctl -a -t exec -vv build/bin/hopto.app
+          gatekeeper -a -t exec -vv build/bin/hopto.app
           xcrun stapler validate build/bin/hopto.app
-          spctl -a -t open --context context:primary-signature -vv "$dmg"
+          gatekeeper -a -t open --context context:primary-signature -vv "$dmg"
           xcrun stapler validate "$dmg"
 
       - name: Delete the signing keychain

@@ -29,7 +29,10 @@ build with `wails build`.
 - `icon.ico` - The icon used for the application. This is used when building using `wails build`. If you wish to
   use a different icon, simply replace this file with your own. If it is missing, a new `icon.ico` file
   will be created using the `appicon.png` file in the build directory.
-- `installer/*` - The files used to create the Windows installer. These are used when building using `wails build`.
+- `installer/*` - The NSIS installer files Wails generates. Nothing in this repository uses them.
+- `msi/` - The WiX source of the MSI installer the release workflow builds, one per architecture.
+- `signpath-artifact-configuration.xml` - A copy of what SignPath signs in a release; the one that counts is saved in
+  the SignPath project.
 - `info.json` - Application details used for Windows builds. The data here will be used by the Windows installer,
   as well as the application itself (right click the exe -> properties -> details)
 - `wails.exe.manifest` - The main application manifest file.

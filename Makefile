@@ -30,11 +30,19 @@ build:
 # The Windows exes, both architectures, cross-compiled from here: Wails
 # is pure Go on Windows, so none of their toolchain is needed. The first
 # build cleans build/bin and the frontend; the second keeps the frontend
-# the first one just built.
+# the first one just built. -trimpath keeps the builder's folders out of
+# the exes, and the check after the builds refuses an exe that still
+# carries $HOME, here on the machine that built it, where $HOME is the
+# folder to look for. The loop runs under set -e: make only sees the
+# exit status of the last command, so a failed check for arm64 would
+# otherwise be hidden by a good amd64.
 build-windows:
 	wails build -clean -trimpath -platform windows/arm64 -ldflags "$(LDFLAGS)" -o hopto-windows-arm64.exe
 	wails build -trimpath -platform windows/amd64 -ldflags "$(LDFLAGS)" -o hopto-windows-amd64.exe
 	$(RESTORE_GITKEEP)
+	set -e; for arch in arm64 amd64; do \
+	  test -z "$$(strings build/bin/hopto-windows-$$arch.exe | grep -F "$$HOME")"; \
+	done
 
 test:
 	cd frontend && npm test
@@ -50,7 +58,8 @@ DIST := build/dist
 DMG := $(DIST)/hopto-$(VERSION)-macos-universal.dmg
 
 # Where windows-zips takes the exes from: build/bin after a local
-# build, or the folder of signed ones the release workflow downloads.
+# build, or the ones the release workflow downloads, signed once
+# SignPath is on.
 EXES ?= build/bin
 
 # The universal .app (Apple silicon and Intel). -trimpath keeps the
@@ -70,26 +79,28 @@ dmg:
 	bash scripts/make-dmg.sh build/bin/hopto.app $(DMG)
 
 # The Windows zips: the exe and the licence at the root, one per
-# architecture. The loop runs under set -e: make only sees the exit
-# status of the last command, so a zip that failed for amd64 would
-# otherwise be hidden by a good arm64.
+# architecture, each replacing a zip of the same name. The exes were
+# checked for $HOME by build-windows, on the machine that built them.
+# The loop runs under set -e for the same reason as the one above: a
+# zip that failed for amd64 would otherwise be hidden by a good arm64.
 windows-zips:
 	mkdir -p $(DIST)
 	set -e; for arch in amd64 arm64; do \
-	  test -z "$$(strings $(EXES)/hopto-windows-$$arch.exe | grep -F "$$HOME")" || exit 1; \
 	  rm -f $(DIST)/hopto-$(VERSION)-windows-$$arch.zip; \
 	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(EXES)/hopto-windows-$$arch.exe LICENSE; \
 	done
 
 # One .sha256 beside every file of this version in build/dist, written
 # last so no sum is older than its file. A file left there by an older
-# build gets none: a release must not publish a sum for it. The loop
-# runs under set -e for the same reason as the one above, and the test
-# stops it in an empty folder, where the pattern stays a literal name.
+# build gets none: a release must not publish a sum for it. The patterns
+# name the platform right after the version, so a bare tag such as
+# v0.2.0 does not also match the files of v0.2.0-27-g1234abc. The loop
+# runs under set -e for the same reason as the ones above, and the test
+# stops it in an empty folder, where a pattern stays a literal name.
 sums:
 	set -e; cd $(DIST); rm -f *.sha256; \
-	for file in hopto-$(VERSION)-*; do \
-	  test -f "$$file"; \
+	for file in hopto-$(VERSION)-macos-* hopto-$(VERSION)-windows-*; do \
+	  test -f "$$file" || { echo "sums: no file matches $$file in $(DIST)" >&2; exit 1; }; \
 	  shasum -a 256 "$$file" > "$$file.sha256"; \
 	done
 
