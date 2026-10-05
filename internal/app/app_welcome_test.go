@@ -81,3 +81,42 @@ func TestOpenKeyboardSettings(t *testing.T) {
 		t.Errorf("open = %v", open.calls)
 	}
 }
+
+// The panel PresentWelcome raised stays through a blur: whatever started
+// hopto (an installer closing, the Finder) takes the focus back before
+// anyone has seen it. Once the welcome is answered, a blur hides again.
+func TestThePresentedWelcomeSurvivesABlur(t *testing.T) {
+	app, win, _ := newTestApp(t)
+	finderOff(t, app)
+	withHotkeys(t, 0, 0)
+
+	app.PresentWelcome()
+	app.Hide()
+
+	if strings.Contains(win.joined(), "hide") {
+		t.Fatalf("the unseen welcome was hidden: %q", win.joined())
+	}
+
+	app.DismissWelcome()
+	app.Hide()
+
+	if !strings.HasSuffix(win.joined(), "hide") {
+		t.Errorf("not hidden after the welcome: %q", win.joined())
+	}
+}
+
+// A shortcut is somebody at the keyboard: from then on the panel hides
+// on a blur as always, welcome or not.
+func TestAShortcutEndsTheUnseenWelcome(t *testing.T) {
+	app, win, _ := newTestApp(t)
+	finderOff(t, app)
+	withHotkeys(t, 0, 0)
+
+	app.PresentWelcome()
+	app.toggle(tabLinks)
+	app.Hide()
+
+	if !strings.HasSuffix(win.joined(), "hide") {
+		t.Errorf("not hidden after a shortcut: %q", win.joined())
+	}
+}

@@ -197,4 +197,4 @@ done
 | No bundle id opening on Windows | Bundle ids are a macOS idea: an app entry with a `bundle_id` cannot open on Windows, even when it also has a `path`. The `path` is what opens there. |
 | The Windows exe and the MSI are unsigned | SmartScreen warns on the first run. |
 | A redirected `APPDATA` is not followed | The data folder is derived from the profile folder. |
-| Windows 10 is untested | Below Windows 11 22H2 (build 22621) Wails draws the translucent window as a blur over its whole rectangle, so hopto asks for Windows 11 22H2 or later. |
+| Windows 10 is tested on one PC | The panel came out right there, round corners included. Below Windows 11 22H2 (build 22621) Wails can draw a translucent window as a blur over its whole rectangle; if a Windows 10 machine shows that, it is this. |

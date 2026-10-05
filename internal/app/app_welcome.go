@@ -113,6 +113,11 @@ func (a *App) PresentWelcome() {
 
 	log.Printf("welcome: showing the panel")
 	a.toggle(tabApps)
+
+	// Set after toggle, which clears it as any shortcut does.
+	a.mu.Lock()
+	a.unseenWelcome = a.visible
+	a.mu.Unlock()
 }
 
 // DismissWelcome hides the welcome for the rest of this run. The log
@@ -123,6 +128,7 @@ func (a *App) DismissWelcome() {
 	defer a.mu.Unlock()
 
 	a.welcomeDismissed = true
+	a.unseenWelcome = false
 	log.Printf("welcome: dismissed")
 }
 

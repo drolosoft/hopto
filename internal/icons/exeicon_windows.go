@@ -271,8 +271,14 @@ func iconPNG(icon windows.Handle) ([]byte, bool) {
 	colour := dibBits(screen, info.Colour, width, height, 32)
 	mask := dibBits(screen, info.Mask, width, height, 1)
 
+	// A blank canvas is refused here, so that shellIconPNG goes on to
+	// the 32 px icon instead of saving a transparent square.
+	img, drawn := drawnPart(nrgbaFromDIB(width, height, colour, mask))
+	if !drawn {
+		return nil, false
+	}
+
 	var out bytes.Buffer
-	img := nrgbaFromDIB(width, height, colour, mask)
 	if err := png.Encode(&out, img); err != nil {
 		return nil, false
 	}

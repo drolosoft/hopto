@@ -2,6 +2,7 @@ package icons
 
 import (
 	"bytes"
+	"image"
 	"image/color"
 	"image/png"
 	"testing"
@@ -95,5 +96,52 @@ func TestNRGBAFromDIBMaskStride(t *testing.T) {
 	}
 	if img.NRGBAAt(32, 1).A != 0 {
 		t.Errorf("row 1 pixel 32 should be transparent")
+	}
+}
+
+// paintSquare makes every pixel of the square at the origin opaque.
+func paintSquare(img *image.NRGBA, side int) {
+	for y := range side {
+		for x := range side {
+			img.SetNRGBA(x, y, color.NRGBA{R: 0x20, G: 0x40, B: 0x60, A: 0xFF})
+		}
+	}
+}
+
+// A program that ships small icons only gets its 48 px one drawn in the
+// corner of an empty 256 px canvas: the drawing is cut down to it.
+func TestDrawnPartCutsTheCornerIcon(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 256, 256))
+	paintSquare(img, 40)
+
+	part, ok := drawnPart(img)
+	if !ok {
+		t.Fatal("a corner icon counted as blank")
+	}
+
+	// 40 px of drawing sit in a 48 px icon; its margin stays.
+	if got := part.Bounds(); got != image.Rect(0, 0, 48, 48) {
+		t.Errorf("bounds = %v", got)
+	}
+}
+
+// An icon that uses its canvas is left as it is.
+func TestDrawnPartKeepsAFullIcon(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 256, 256))
+	paintSquare(img, 200)
+
+	part, ok := drawnPart(img)
+	if !ok || part.Bounds() != img.Bounds() {
+		t.Errorf("bounds = %v, ok = %v", part.Bounds(), ok)
+	}
+}
+
+// A canvas with nothing on it is no icon: the caller tries the next
+// source instead of saving a transparent square.
+func TestDrawnPartRefusesABlankCanvas(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 256, 256))
+
+	if _, ok := drawnPart(img); ok {
+		t.Error("a blank canvas counted as an icon")
 	}
 }

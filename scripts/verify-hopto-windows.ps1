@@ -60,12 +60,26 @@ $VK = @{Ctrl = 0x11; Shift = 0x10; Alt = 0x12; Space = 0x20; Esc = 0x1B; Enter =
 # WS_EX_TOOLWINDOW, the style that keeps a window off the taskbar.
 $ToolWindow = 0x80
 
+# How long a check waits for what it expects. Every wait returns as soon as
+# its condition holds, so a fast machine never spends this; it is sized for
+# the amd64 build on an Arm machine, where emulation makes WebView2 several
+# times slower and a fixed pause after each key was sometimes too short.
+$Patience = 10
+
 # Presses the keys in order and releases them in reverse, as a hand does.
+# It does not pause afterwards: whoever calls it waits for the effect.
 function Chord([int[]]$keys) {
     foreach ($k in $keys) { [Native]::keybd_event($k, 0, 0, [UIntPtr]::Zero) }
     [array]::Reverse($keys)
     foreach ($k in $keys) { [Native]::keybd_event($k, 0, 2, [UIntPtr]::Zero) }
-    Start-Sleep -Milliseconds 800
+}
+
+# Sends a key meant for the page, Esc or Enter, once the page can take it.
+# A key pressed while the focus is still on the bare window is lost, and
+# the check after it would blame hopto for a key that never arrived.
+function PageKey([int]$key) {
+    [void](WaitPageFocus)
+    Chord @($key)
 }
 
 # 1 with the panel shown, 0 hidden, -1 with no window at all.
@@ -79,7 +93,7 @@ function Visible {
 }
 
 # Waits up to $seconds for Visible to be $want.
-function WaitVisible([int]$want, [int]$seconds = 3) {
+function WaitVisible([int]$want, [int]$seconds = $Patience) {
     for ($i = 0; $i -lt $seconds * 5; $i++) {
         if ((Visible) -eq $want) { return $true }
         Start-Sleep -Milliseconds 200
@@ -93,7 +107,7 @@ function WaitVisible([int]$want, [int]$seconds = 3) {
 # means Chromium, not the bare window, gets the keys). The foreground alone
 # is not enough; a key typed while the focus is still on the bare window
 # never reaches the page.
-function WaitPageFocus([int]$seconds = 3) {
+function WaitPageFocus([int]$seconds = $Patience) {
     for ($i = 0; $i -lt $seconds * 10; $i++) {
         $front = [Native]::GetForegroundWindow() -eq [Native]::FindWindow('hoptoWindow', 'hopto')
         if ($front -and [Native]::FocusClass().StartsWith('Chrome_WidgetWin')) { return $true }
@@ -103,7 +117,7 @@ function WaitPageFocus([int]$seconds = 3) {
 }
 
 # Waits up to $seconds for a line matching $pattern in hopto's log.
-function WaitLog([string]$pattern, [int]$seconds = 3) {
+function WaitLog([string]$pattern, [int]$seconds = $Patience) {
     for ($i = 0; $i -lt $seconds * 5; $i++) {
         if ((Test-Path $log) -and ((Get-Content $log -Raw) -match $pattern)) { return $true }
         Start-Sleep -Milliseconds 200
@@ -157,17 +171,17 @@ if (WaitWindow) {
     Check 'the first run shows the panel with the welcome' $welcome
     if ($welcome) {
         Check 'the page has the keyboard' (WaitPageFocus)
-        Chord @($VK.Enter)
+        PageKey $VK.Enter
         Check 'Enter closes the welcome and keeps the panel' ((WaitLog 'welcome: dismissed') -and ((Visible) -eq 1))
     }
-    Chord @($VK.Esc); Check 'Esc hides it' (WaitVisible 0)
+    PageKey $VK.Esc; Check 'Esc hides it' (WaitVisible 0)
 
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space shows the panel' (WaitVisible 1)
     Check 'the page has the keyboard again' (WaitPageFocus)
     Chord @($VK.Ctrl, $VK.Shift, $VK.Space); Check 'Ctrl+Shift+Space again hides it' (WaitVisible 0)
     Chord @($VK.Ctrl, $VK.Alt, $VK.Space); Check 'Ctrl+Alt+Space shows the links' (WaitVisible 1)
     Check 'the links page has the keyboard' (WaitPageFocus)
-    Chord @($VK.Esc); Check 'Esc hides the links' (WaitVisible 0)
+    PageKey $VK.Esc; Check 'Esc hides the links' (WaitVisible 0)
 
     $h = [Native]::FindWindow('hoptoWindow', 'hopto')
     $style = [Native]::GetWindowLong($h, -20)

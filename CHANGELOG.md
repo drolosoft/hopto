@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+- Windows 10 is supported: hopto was installed and used on a Windows 10 PC, and the requirement is no longer Windows 11 22H2.
+- The exe carries its file version and product version, so its properties and the list of installed apps show them.
+
+### Fixed
+
+- After installing on Windows, hopto started in the tray with nothing on screen: the welcome panel came up and hid again as the installer closed. The first panel now stays until you answer it.
+- Programs that ship small icons only showed an empty tile on Windows; their icon is now cut out of the corner Windows draws it in.
+
 ## [v0.3.0] - 2026-10-05
 
 ### Added

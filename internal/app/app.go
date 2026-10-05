@@ -239,6 +239,10 @@ type App struct {
 
 	// welcomeDismissed hides the welcome for the rest of the run.
 	welcomeDismissed bool
+	// unseenWelcome is set while the panel is up because PresentWelcome
+	// raised it and nobody has answered yet: Hide ignores the page's
+	// blur until the welcome is answered or a shortcut is pressed.
+	unseenWelcome bool
 }
 
 // Wiring is what main hands to Wails besides the App itself: the
@@ -404,6 +408,9 @@ func (a *App) toggle(tab string) {
 		return
 	}
 
+	// A shortcut is somebody at the keyboard.
+	a.unseenWelcome = false
+
 	if a.visible && a.tab == tab {
 		a.rememberDisplay()
 		a.window.Hide()
@@ -454,13 +461,21 @@ func (a *App) TabChanged(tab string) {
 
 // Hide is called from the page on Escape or when the window loses focus,
 // and by every successful opening. While a dialog is open it does
-// nothing: the page's blur fires as the dialog takes the focus. Before
-// hiding it notes the display the window is on, for the next show.
+// nothing: the page's blur fires as the dialog takes the focus. Nor does
+// it hide the welcome nobody has seen yet: an installer that starts
+// hopto takes the focus back as it closes, and the first run would end
+// with an icon in the tray and nothing else on screen. Before hiding it
+// notes the display the window is on, for the next show.
 func (a *App) Hide() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.dialogOpen {
+		return
+	}
+
+	if a.unseenWelcome {
+		log.Printf("welcome: kept through a blur")
 		return
 	}
 
