@@ -81,10 +81,21 @@ windows-zips:
 	  zip -j -q $(DIST)/hopto-$(VERSION)-windows-$$arch.zip $(EXES)/hopto-windows-$$arch.exe LICENSE; \
 	done
 
-# One .sha256 beside every file in build/dist, written last so no sum
-# is older than its file.
+# One .sha256 beside every file of this version in build/dist, written
+# last so no sum is older than its file. A file left there by an older
+# build gets none: a release must not publish a sum for it. The loop
+# runs under set -e for the same reason as the one above, and the test
+# stops it in an empty folder, where the pattern stays a literal name.
 sums:
-	cd $(DIST) && rm -f *.sha256 && for file in *; do shasum -a 256 "$$file" > "$$file.sha256"; done
+	set -e; cd $(DIST); rm -f *.sha256; \
+	for file in hopto-$(VERSION)-*; do \
+	  test -f "$$file"; \
+	  shasum -a 256 "$$file" > "$$file.sha256"; \
+	done
+
+# dist needs its steps in the order written: a parallel make would let
+# the two Wails builds clean build/bin under each other.
+.NOTPARALLEL:
 
 # The whole release, unsigned, for a local look: the Windows exes
 # first, because build-windows cleans build/bin and would wipe the .app.

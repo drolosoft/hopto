@@ -44,8 +44,18 @@ check "nothing else is inside" '[ "$(ls "$work/mount" | wc -l | tr -d " ")" = "2
 hdiutil detach "$work/mount" -quiet
 
 echo "▶ bad input and reruns:"
-check "a missing bundle is refused" '! bash "$here/make-dmg.sh" "$work/nothing.app" "$work/no.dmg" 2>/dev/null'
+check "a missing bundle is refused" '! bash "$here/make-dmg.sh" "$work/nothing.app" "$work/no.dmg" 2> "$work/refusal"'
+check "the refusal says why" 'grep -q "no bundle" "$work/refusal"'
+check "a refusal leaves no image behind" '[ ! -e "$work/no.dmg" ]'
 check "an existing image is replaced" 'bash "$here/make-dmg.sh" "$work/hopto.app" "$work/out.dmg"'
+
+echo "▶ awkward paths:"
+mkdir -p "$work/a folder"
+cp -R "$work/hopto.app" "$work/a folder/hopto.app"
+check "a space in the path and a trailing slash" 'bash "$here/make-dmg.sh" "$work/a folder/hopto.app/" "$work/a folder/spaced.dmg"'
+hdiutil attach "$work/a folder/spaced.dmg" -mountpoint "$work/mount" -nobrowse -readonly -quiet
+check "the app keeps its name inside" '[ -f "$work/mount/hopto.app/Contents/MacOS/hopto" ]'
+hdiutil detach "$work/mount" -quiet
 
 echo "── $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
