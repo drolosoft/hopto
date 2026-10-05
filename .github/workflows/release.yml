@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # By hand. Without a tag it stops at the first check.
+  workflow_dispatch:
 
 # Publishing the release writes to the repository's releases; reading
 # check-runs needs its own scope, since declaring any permissions here

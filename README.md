@@ -261,6 +261,19 @@ If hopto saves you a few seconds a day, a ⭐ helps others find it.
 
 <p align="center"><a href="https://buymeacoffee.com/juan.andres.morenorub.io"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50"></a></p>
 
+### Code signing policy
+
+Releases up to v0.2.0 are not signed. From v0.3.0 the macOS disk image is signed with an Apple Developer ID and notarised by Apple.
+
+Windows installers and executables: free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). Until SignPath approves hopto's application, the Windows files are published unsigned.
+
+- **What is signed**: only the files the [release workflow](.github/workflows/release.yml) of this repository builds, on GitHub's own runners. A release is published only from a tag on `main`. Nothing built on a personal machine is signed.
+- **Committers and reviewers**: the [members of the drolosoft organisation](https://github.com/orgs/drolosoft/people).
+- **Approvers**: the [owners of the drolosoft organisation](https://github.com/orgs/drolosoft/people?query=role%3Aowner) approve each signing request by hand.
+- **Privacy**: hopto sends no data about you to anyone and has no telemetry. It opens the apps and links you ask it to. When you add a link, when a link has no icon yet, or when you ask for a new one, it reads that page for its title and icon, from the site itself or from the icon service you chose in `icon_services`.
+
+---
+
 ### License & Philosophy
 
 MIT, see [LICENSE](LICENSE). hopto gets you to an app or a page in two keys and then gets out of the way. Your library is a plain file on your Mac, readable without hopto; there is no account, no telemetry and no update check.
