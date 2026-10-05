@@ -10,6 +10,7 @@ make build    # the .app, and frontend/dist for the browser tests
 make e2e      # Playwright WebKit against the built page
 make lint     # gofmt and golangci-lint, for the macOS and the Windows builds
 make ci       # what the CI test job runs: fmt, build, test, e2e
+make dist     # the disk image and the Windows zips, unsigned, in build/dist
 ```
 
 - **Go**: table tests for validation, ids, duplicates, shortcuts and the store (a missing, empty, broken, huge, future or unreadable file), the atomic writes (a failure at every step leaves the previous file and no temporary one), usage, icons against `httptest` servers (redirect loops, huge bodies, HTML served as PNG, private addresses), `.icns` parsing, discovery over fake bundles in a temp folder, and the App with a fake window and a fake `open` (every case of the shortcuts, of opening, of the dialog, of the menu). CI runs them with `-race`.
@@ -115,9 +116,18 @@ Windows has no `osascript`; the checks use Win32 from PowerShell. The exe cross-
 
 `scripts/verify-hopto-windows.ps1 -Exe <path>` runs on a temporary profile, so every run is a first run: it checks the welcome, the shortcuts, the keyboard in the page, the taskbar and the seed, and prints one line per check, like `verify-hopto.sh`.
 
+## The installers
+
+The release workflow builds them, and it can be run by hand without publishing anything: `gh workflow run release.yml --ref <branch>`, then `gh run download <id> -n release-files`. A rehearsal signs and notarises the macOS image for real, so it also proves the repository's Apple secrets are right.
+
+- **The disk image**: `spctl -a -t open --context context:primary-signature -vv hopto-*.dmg` says `accepted` and `source=Notarized Developer ID`; `xcrun stapler validate` finds the ticket. `make dist` builds an unsigned one locally, for a look at the window.
+- **The scripts**: `scripts/make-dmg_test.sh` builds an image from a fake bundle and looks inside; `scripts/sign-and-notarize_test.sh` runs the signing script against fake tools, for the order of the calls and for what happens when Apple says no.
+- **The MSI**: `scripts/verify-msi-windows.ps1 -Msi <path> [-Upgrade <newer>]` installs it without dialogs on a test machine and checks the exe, the shortcut, the entry in Installed apps, that hopto starts, that a newer package replaces a running one, and that an uninstall removes the program and leaves the library. Run elevated, it checks instead that the installer does not start hopto. It installs into the profile it runs in: a VM, never a PC somebody uses.
+
 ## Before saying "done"
 
 1. `make lint`, `make test`, and `make build && make e2e` when the page changed.
 2. The change seen in the real app, with its proof in hand: a log line, `count windows`, a process, a screenshot.
 3. For the window, the shortcuts or the menu: `scripts/verify-hopto.sh` passes.
 4. Your data folder back as it was, and your own copy of hopto running again.
+5. For the release workflow, the scripts under `scripts/` or the MSI: a rehearsal run, green.

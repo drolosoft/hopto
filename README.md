@@ -81,26 +81,24 @@ No Dock icon, no window until you call it, one small app.
 
 ### Quick Start
 
-1. Download `hopto-<version>-macos-universal.zip` from the [latest release](https://github.com/drolosoft/hopto/releases/latest). The same app runs on Apple silicon and Intel Macs, macOS 12 or later.
-2. Open the zip and move `hopto.app` to `/Applications`.
-3. hopto is not signed with an Apple Developer ID yet, so macOS refuses the first open. Clear the download flag once:
-
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/hopto.app
-   open /Applications/hopto.app
-   ```
-
-   Or open it, close the warning, and click **Open Anyway** in System Settings › Privacy & Security.
-4. Press **⌘⇧Space**. The welcome panel lists both shortcuts and whether each one is ready.
+1. Download `hopto-vX.Y.Z-macos-universal.dmg` from the [latest release](https://github.com/drolosoft/hopto/releases/latest). The same app runs on Apple silicon and Intel Macs, macOS 12 or later.
+2. Open it and drag hopto to Applications. It is signed and notarised, so macOS opens it without a warning.
+3. Press **⌘⇧Space**. The welcome panel lists both shortcuts and whether each one is ready.
 
 To start hopto at login, tick **Open at login** in its menu bar item.
 
 #### Windows
 
-1. Download `hopto-vX.Y.Z-windows-amd64.zip` from the [latest release](https://github.com/drolosoft/hopto/releases/latest), or the `arm64` one on a Snapdragon machine.
-2. Unzip it anywhere under Program Files or `AppData\Local\Programs`, and run `hopto-windows-amd64.exe` (or `hopto-windows-arm64.exe`).
-3. The program is not signed, so SmartScreen warns the first time: **More info**, then **Run anyway**.
+1. Download `hopto-vX.Y.Z-windows-amd64.msi` from the [latest release](https://github.com/drolosoft/hopto/releases/latest), or the `arm64` one on a Snapdragon machine.
+2. Open it. It installs for your user, without asking for an administrator, adds hopto to the Start Menu and to Installed apps, and starts it. If you run the installer as an administrator it does not start hopto: start it from the Start Menu, so it does not run with administrator rights.
+3. The installer is not signed yet, so SmartScreen warns the first time: **More info**, then **Run anyway**. Signing is on its way; see the [code signing policy](#code-signing-policy).
 4. Press **Ctrl+Shift+Space**.
+
+Prefer not to install anything? The `.zip` beside each installer holds the exe alone: unzip it anywhere and run it. If a copy from a zip is running when the installer finishes, that copy goes on being the one in use: quit it first (tray icon, Quit).
+
+To update, install the new version over the old one: it replaces it, and closes a running hopto first.
+
+To remove hopto, use Installed apps on Windows or the Bin on macOS. Uninstalling on Windows removes the program and the "open at login" setting; your library stays where it was, under `%AppData%\hopto`.
 
 WebView2 comes with Windows 11 and with Edge on Windows 10; hopto asks to download it when it is missing.
 
@@ -113,6 +111,8 @@ cd hopto
 make build
 open build/bin/hopto.app
 ```
+
+`make dist` builds the disk image and the two Windows zips, unsigned, in `build/dist`.
 
 ---
 
@@ -195,7 +195,7 @@ On Windows read Ctrl for ⌘, Alt for ⌥ and Enter for ↩; the default shortcu
 - `library.toml` is read again on every open and written atomically, with the last good version kept aside. A file that does not parse is never overwritten.
 - Icons are fetched once through a client that allows only https, gives up after 10 seconds, reads at most 512 KiB and refuses private addresses; every image is decoded and written again as a PNG before the page shows it.
 - The page sends Go ids, never URLs or paths. Apps open with `open`, like a double click in the Finder; links in your default browser.
-- Nothing leaves your Mac except the icon downloads and the reading of a page whose address you type in the editor. No account, no telemetry.
+- hopto sends no data about you to anyone. The only network traffic is the reading of a page when you add a link or it has no icon yet, and the icon downloads; see the privacy note in the [code signing policy](#code-signing-policy). No account, no telemetry.
 
 More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/architecture.md).
 
@@ -223,7 +223,7 @@ More in [ARCHITECTURE.md](ARCHITECTURE.md) and [doc/architecture.md](doc/archite
 | `make e2e` | Browser tests in WebKit against the built page (after `make build`) |
 | `make lint` | `gofmt` and `golangci-lint`, once for the macOS build and once for the Windows one |
 | `make build-windows` | `hopto-windows-amd64.exe` and `hopto-windows-arm64.exe` in `build/bin`, cross-compiled on the Mac |
-| `make dist` | The universal macOS zip and the two Windows zips (`hopto-<version>-windows-amd64.zip`, `-arm64.zip`) in `build/dist`, each with its `.sha256` |
+| `make dist` | The universal macOS disk image and the two Windows zips (`hopto-<version>-windows-amd64.zip`, `-arm64.zip`) in `build/dist`, unsigned and each with its `.sha256`. The MSI installers and the signing are done by the release workflow |
 | `make hooks` | Installs the pre-commit guard against internal files |
 | `make clean` | Removes the build output |
 
@@ -235,11 +235,13 @@ Runs on macOS 12 or later, and on Windows 11 22H2 or later with WebView2. Buildi
 
 **⌘⌥Space opens "Searching This Mac".** macOS uses ⌘⌥Space for "Show Finder search window". Turn it off in System Settings › Keyboard › Keyboard Shortcuts › Spotlight, or pick another shortcut in `hotkey_links`. The welcome panel warns about it and opens that page for you.
 
-**"hopto" cannot be opened, or Apple could not verify it.** The release is not signed yet; see step 3 of the Quick Start.
+**"hopto" cannot be opened, or Apple could not verify it.** Releases from v0.3.0 are signed and notarised and open without a warning. If one does not, download it again and compare it with the `.sha256` beside it. Releases up to v0.2.0 were not signed: clear the download flag once with `xattr -dr com.apple.quarantine /Applications/hopto.app`, or click **Open Anyway** in System Settings › Privacy & Security.
+
+**Windows SmartScreen warns about the installer.** The installer is not signed yet: **More info**, then **Run anyway**.
 
 **There is no Dock icon.** By design. Use the shortcuts, or the menu bar item, which also has Quit.
 
-**Open at login does nothing.** hopto refuses to write the LaunchAgent while it runs from a translocated copy, the state macOS gives a fresh download opened without being moved first. Move hopto.app to /Applications, open it again, then tick the box.
+**Open at login does nothing.** hopto refuses to write the LaunchAgent while it runs from a translocated copy, the state macOS gives an app that was downloaded and opened without being moved first. Drag hopto to Applications from the disk image, open it from there, then tick the box.
 
 **The shortcut does nothing on Windows.** Another program holds it; the welcome shows which shortcut is taken. Ctrl+Shift+Space is also an input method key in some IMEs.
 
@@ -276,7 +278,7 @@ Windows installers and executables: free code signing provided by [SignPath.io](
 
 ### License & Philosophy
 
-MIT, see [LICENSE](LICENSE). hopto gets you to an app or a page in two keys and then gets out of the way. Your library is a plain file on your Mac, readable without hopto; there is no account, no telemetry and no update check.
+MIT, see [LICENSE](LICENSE). hopto gets you to an app or a page in two keys and then gets out of the way. Your library is a plain file on your computer, readable without hopto; there is no account, no telemetry and no update check.
 
 ---
 

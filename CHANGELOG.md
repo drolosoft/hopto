@@ -9,10 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-10-05
+
 ### Added
+
+- A disk image for macOS, signed with a Developer ID and notarised: open it, drag hopto to Applications, no warning.
+- An installer for Windows, `amd64` and `arm64`: for one user, no administrator, a Start Menu shortcut, and a newer version replaces the one installed. Not signed yet, so SmartScreen still warns; the zips stay for who would rather not install.
+
+| System | Download |
+|---|---|
+| macOS 12 or later, Apple silicon and Intel | `hopto-v0.3.0-macos-universal.dmg` |
+| Windows 11, x64 (most PCs) | `hopto-v0.3.0-windows-amd64.msi` |
+| Windows 11 on Arm (Snapdragon) | `hopto-v0.3.0-windows-arm64.msi` |
+| Windows, without installing | the `.zip` of your architecture |
 
 ### Changed
 
+- The macOS download is the disk image; the zip of the app is gone.
 - The Go code now lives in `internal/app`, `internal/platform` and `internal/native`; the root holds `main.go` alone. Nothing changes for a user.
 - A cleanup with no change in behaviour: the big files split by what each part does, the page's layout and removal logic in modules of their own with tests, the Windows build linted as well, a hermetic icon test, and a `make ci` the workflow runs.
 
