@@ -136,13 +136,27 @@ jobs:
       # CI's jobs must have run, and every run of each must be green: a
       # commit pushed to main from a pull request has two runs of each,
       # and the older one may be the one that failed. A run that has not
-      # finished has no conclusion yet and counts as not green.
+      # finished yet is waited for, up to fifteen minutes: fast-forwarding
+      # main and pushing the tag a minute later starts CI on main again,
+      # and v0.3.1's first run failed here with that second run still
+      # going. Past the wait, an unfinished run counts as not green.
       - name: Require CI green on this commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          runs="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
-              --jq '.check_runs[] | [.name, (.conclusion // "unfinished")] | @tsv')"
+          read_runs() {
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
+                --jq '.check_runs[] | [.name, (.conclusion // "unfinished")] | @tsv'
+          }
+          runs="$(read_runs)"
+          for attempt in $(seq 1 30); do
+            if ! printf '%s\n' "$runs" | awk -F '\t' '$1 == "test" || $1 == "lint" || $1 == "windows-build" || $1 == "windows-test"' | grep -q unfinished; then
+              break
+            fi
+            echo "a CI run on $GITHUB_SHA has not finished; waiting (attempt $attempt of 30)"
+            sleep 30
+            runs="$(read_runs)"
+          done
           failed=0
           for job in test lint windows-build windows-test; do
             conclusions="$(printf '%s\n' "$runs" | awk -F '\t' -v job="$job" '$1 == job { print $2 }')"
