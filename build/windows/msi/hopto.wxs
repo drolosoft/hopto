@@ -29,7 +29,13 @@
 
     <SummaryInformation Description="Keyboard launcher for your apps and links" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of hopto is already installed." />
+    <!--
+      Two builds of the same version (the x64 and the arm64 package, or
+      a rebuilt release) must replace each other instead of installing
+      side by side, so a same-version install counts as an upgrade.
+    -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of hopto is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <!-- What Installed apps shows beside the name. -->
@@ -56,9 +62,10 @@
     </StandardDirectory>
 
     <!--
-      A per-user component cannot use a file as its key path (the file
-      could be another user's); a value under HKCU stands in for it,
-      which is also why each folder is removed by hand on uninstall.
+      Under the profile, Windows Installer wants a value under HKCU as
+      the key path of the component (ICE38), and every folder it creates
+      there removed by name on uninstall (ICE64). Hence the registry
+      value and the two RemoveFolder entries.
     -->
     <Component Id="HoptoExe" Directory="INSTALLFOLDER" Guid="B2E6A1F4-93C7-4D5B-8E21-5C0D7A9F3B61">
       <File Id="HoptoExeFile" Name="hopto.exe" Source="$(var.Exe)" />
@@ -91,6 +98,10 @@
       folder: a process keeps its starting folder open, WebView2's
       helpers inherit it and outlive hopto for a moment, and an
       uninstall would then leave the folder behind, empty.
+
+      After an elevated install (an administrator's prompt) hopto is not
+      started: it would run elevated, and so would every app it launches
+      afterwards. The user starts it from the Start Menu instead.
     -->
     <CustomAction Id="StartHopto"
                   Directory="LocalAppDataFolder"
@@ -103,8 +114,15 @@
       key. Left behind after an uninstall it would point at an exe that
       is gone, so it is removed, quietly, and only on a real uninstall:
       an update removes the old version too, and must keep the setting.
+
+      The action is deferred and runs after RemoveFiles: an immediate one
+      would run before the uninstall is known to succeed, and a failed or
+      rolled-back uninstall would leave hopto installed with the setting
+      silently gone. It is impersonated because the value is under HKCU.
+      A deferred WixQuietExec reads its command line from the property
+      named like the action, which SetProperty fills in.
     -->
-    <SetProperty Id="WixQuietExecCmdLine"
+    <SetProperty Id="ForgetOpenAtLogin"
                  Value="&quot;[System64Folder]reg.exe&quot; delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v hopto /f"
                  Before="ForgetOpenAtLogin"
                  Sequence="execute"
@@ -112,12 +130,13 @@
     <CustomAction Id="ForgetOpenAtLogin"
                   BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
                   DllEntry="WixQuietExec"
-                  Execute="immediate"
+                  Execute="deferred"
+                  Impersonate="yes"
                   Return="ignore" />
 
     <InstallExecuteSequence>
-      <Custom Action="ForgetOpenAtLogin" Before="InstallFinalize" Condition="(REMOVE = &quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />
-      <Custom Action="StartHopto" After="InstallFinalize" Condition="NOT REMOVE" />
+      <Custom Action="ForgetOpenAtLogin" After="RemoveFiles" Condition="(REMOVE = &quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="StartHopto" After="InstallFinalize" Condition="NOT REMOVE AND NOT MsiRunningElevated" />
     </InstallExecuteSequence>
   </Package>
 </Wix>
