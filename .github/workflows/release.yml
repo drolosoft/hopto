@@ -3,32 +3,74 @@ name: Release
 on:
   push:
     tags: ['v*']
-  # By hand. Without a tag it stops at the first check.
+  # A rehearsal by hand from a branch: every step, signing and
+  # notarisation included, except creating the release, which needs a
+  # tag.
   workflow_dispatch:
 
-# Publishing the release writes to the repository's releases; reading
-# check-runs needs its own scope, since declaring any permissions here
-# sets every other one to none.
-permissions:
-  contents: write
-  checks: read
+# Nothing by default; each job asks for the least it needs.
+permissions: {}
+
+# Two runs for the same tag or branch would build, sign and upload the
+# same names at once. The second waits instead of cancelling the first,
+# which may be half way through a notarisation.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  # The checks, the Windows exes and the macOS disk image: signed,
+  # notarised and stapled, or the job fails.
+  build:
     # Carbon and Cocoa only build on macOS, and the universal binary needs
     # the Apple toolchain for both architectures; the Windows exes
     # cross-compile here too.
     runs-on: macos-latest
+    # Two notarisations of up to 30 minutes each, on top of the builds
+    # and the tests.
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      product: ${{ steps.version.outputs.product }}
 
     steps:
-      # The whole history, so git describe gives the tag to make dist.
+      # The whole history, so git describe finds the last tag in a
+      # rehearsal.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      # The tag and the bundle's own version must agree, or the zip would
-      # say one version and the Finder another.
+      # A tag and a rehearsal both sign and notarise, so both need every
+      # Apple secret. Checked first, so a missing one costs no build time
+      # and the message names it. ${!name} reads the variable whose name
+      # is in $name; nothing here prints a value.
+      - name: Apple secrets are set
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: |
+          missing=""
+          for name in DEVELOPER_ID_P12 DEVELOPER_ID_PASSWORD APPLE_ID TEAM_ID NOTARIZATION_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "these secrets are not set:$missing" >&2
+            exit 1
+          fi
+
+      # The tag and the bundle's own version must agree, or the files
+      # would say one version and the Finder another. A rehearsal has no
+      # tag to compare.
       - name: Tag matches wails.json
+        if: github.ref_type == 'tag'
         run: |
           want="v$(jq -r .info.productVersion wails.json)"
           if [ "$GITHUB_REF_NAME" != "$want" ]; then
@@ -36,18 +78,24 @@ jobs:
             exit 1
           fi
 
-      # A release is public for good: the guard runs here too.
+      # A release is public for good: the guard runs here too, and in a
+      # rehearsal as well, whose files can be downloaded.
       - name: Guard against internal files
         run: bash scripts/check-internal-files.sh --tree
 
-      # Fails early, before a long build, when the notes are missing.
+      # Fails early, before a long build, when the notes are missing. The
+      # publish job writes them again from the same commit. A rehearsal
+      # has no version whose section could be looked up.
       - name: Release notes
-        run: bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > release-notes.md
+        if: github.ref_type == 'tag'
+        run: bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > /dev/null
 
       # This job skips golangci-lint, gofmt and Playwright, all of which
       # CI already ran on this same commit: a tag must sit on a commit
       # CI passed, or this release would publish a build CI would have
-      # refused.
+      # refused. A rehearsal is held to the same rule, since its files
+      # are what a release of that commit would be; CI's test job runs
+      # for the commits of a pull request too.
       - name: Require CI green on this commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,6 +106,25 @@ jobs:
             echo "CI's test job on $GITHUB_SHA is not green (got: ${conclusion:-none})" >&2
             exit 1
           fi
+
+      # The version every file and every make call of this run uses: the
+      # tag, or what git describes in a rehearsal. Fixed here once,
+      # because the Makefile's own default adds -dirty, and wails build
+      # runs npm install, which may rewrite the lock file between one
+      # build and the next and give the disk image another name than the
+      # step that signs it expects. The MSI wants the version as three
+      # numbers, which wails.json has.
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="$(git describe --tags --always)"
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "product=$(jq -r .info.productVersion wails.json)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@v7
         with:
@@ -75,21 +142,281 @@ jobs:
       - name: Frontend tests
         run: cd frontend && npm ci && npm test
 
-      # make dist builds the Windows exes and the universal .app, refuses
-      # a binary that carries the runner's home folder, and writes each
-      # zip and its SHA-256.
-      - name: Build and zip, macOS and Windows
-        run: make dist
+      # First, because it cleans build/bin, and so does the universal
+      # build after it: the exes leave this job before that happens.
+      - name: Windows exes
+        run: make build-windows
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-exes
+          path: build/bin/hopto-windows-*.exe
+          if-no-files-found: error
+
+      # Refuses a binary that carries the runner's home folder.
+      - name: Universal app
+        run: make app-universal
 
       # The Go package embeds frontend/dist, which the build just wrote.
+      # Before signing, so a failing test spends no notarisation.
       - name: Go tests
         run: go vet ./... && go test -race -count=1 ./...
 
+      # A keychain of this job's own for the certificate: the runner's
+      # login keychain is not ours to write to, and this one is deleted
+      # when the job ends, whatever happened before. The certificate file
+      # is removed when the step ends, even when the import fails. Never
+      # add `set -x` here: it would print the password.
+      - name: Signing keychain
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          certificate="$RUNNER_TEMP/certificate.p12"
+          trap 'rm -f "$certificate"' EXIT
+          keychain_password="$(uuidgen)"
+          printf '%s' "$DEVELOPER_ID_P12" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          # Locks itself after six hours, longer than the job may run:
+          # the disk image is signed after the first notarisation wait.
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" \
+            -P "$DEVELOPER_ID_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$keychain_password" "$keychain" > /dev/null
+          # Ours first on the search list, the ones already there after it.
+          existing="$(security list-keychains -d user | tr -d '"')"
+          # shellcheck disable=SC2086 # one keychain path per word
+          security list-keychains -d user -s "$keychain" $existing
+          identity="$(security find-identity -v -p codesigning "$keychain" \
+            | awk '/Developer ID Application/{print $2; exit}')"
+          if [ -z "$identity" ]; then
+            echo "no Developer ID Application identity in the certificate" >&2
+            exit 1
+          fi
+          echo "SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+      # The bundle first, so the image carries a stapled app; then the
+      # image itself.
+      - name: Sign and notarise the app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: bash scripts/sign-and-notarize.sh build/bin/hopto.app
+
+      - name: Disk image
+        run: make dmg
+
+      # The name make dmg gives it, from the same VERSION.
+      - name: Sign and notarise the disk image
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: bash scripts/sign-and-notarize.sh "build/dist/hopto-$VERSION-macos-universal.dmg"
+
+      # What a Mac that just downloaded them would decide.
+      - name: Gatekeeper accepts both
+        run: |
+          dmg="build/dist/hopto-$VERSION-macos-universal.dmg"
+          codesign --verify --deep --strict build/bin/hopto.app
+          spctl -a -t exec -vv build/bin/hopto.app
+          xcrun stapler validate build/bin/hopto.app
+          spctl -a -t open --context context:primary-signature -vv "$dmg"
+          xcrun stapler validate "$dmg"
+
+      - name: Delete the signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-dist
+          path: build/dist/hopto-${{ steps.version.outputs.version }}-macos-universal.dmg
+          if-no-files-found: error
+
+  # The two installers; signed by SignPath once the project is approved
+  # there and the repository variable SIGNPATH_READY says so. Until then
+  # the unsigned files go on as they are.
+  windows:
+    needs: build
+    runs-on: windows-latest
+    # SignPath waits for somebody to approve the request by hand; the
+    # wait below is four hours, and this leaves room for WiX around it.
+    timeout-minutes: 300
+    # SignPath's action reads this run's job details and downloads the
+    # unsigned artefact with the job's token, which needs both scopes.
+    permissions:
+      contents: read
+      actions: read
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      PRODUCT: ${{ needs.build.outputs.product }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-exes
+          path: exes
+
+      # The versions proven on a real machine. dotnet puts global tools
+      # in a folder the next steps may not have on their path.
+      - name: WiX
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tools = Join-Path $env:USERPROFILE '.dotnet\tools'
+          $env:PATH = "$tools;$env:PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $tools
+          wix extension add --global WixToolset.Util.wixext/5.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # The exes go beside the installers, at the root of one folder,
+      # because that is the shape SignPath's artefact configuration
+      # expects: build/windows/signpath-artifact-configuration.xml.
+      - name: Installers
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          # WiX names the architectures its own way.
+          $architectures = @{ amd64 = 'x64'; arm64 = 'arm64' }
+          foreach ($name in $architectures.Keys) {
+            wix build build/windows/msi/hopto.wxs -arch $architectures[$name] `
+              -ext WixToolset.Util.wixext `
+              -d Version=$env:PRODUCT `
+              -d Exe=exes/hopto-windows-$name.exe `
+              -d Icon=build/windows/icon.ico `
+              -o out/hopto-$env:VERSION-windows-$name.msi
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Copy-Item exes/hopto-windows-$name.exe out/
+          }
+          Get-ChildItem out
+
+      - uses: actions/upload-artifact@v7
+        id: unsigned
+        with:
+          name: windows-unsigned
+          path: out/*
+          if-no-files-found: error
+
+      # One request for the four files. It waits until somebody approves
+      # it on SignPath, for up to four hours instead of the action's ten
+      # minutes.
+      - name: Sign with SignPath
+        if: vars.SIGNPATH_READY == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 14400
+          output-artifact-directory: signed
+
+      # SignPath answering is not proof enough: every file that came back
+      # must carry a valid signature, and all four must have come back.
+      - name: Every file is signed
+        if: vars.SIGNPATH_READY == 'true'
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem signed -File)
+          if ($files.Count -ne 4) {
+            Write-Error "expected 4 signed files, got $($files.Count): $($files.Name -join ', ')"
+            exit 1
+          }
+          $unsigned = @($files | Where-Object {
+            (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid'
+          })
+          if ($unsigned.Count -gt 0) {
+            Write-Error "not signed: $($unsigned.Name -join ', ')"
+            exit 1
+          }
+          Remove-Item out/*
+          Copy-Item signed/* out/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-dist
+          path: out/*
+          if-no-files-found: error
+
+  # The zips, the sums and, on a tag, the release. It needs no Go, no
+  # Wails and no tags: VERSION reaches make by hand.
+  publish:
+    needs: [build, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos-dist
+          path: build/dist
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-dist
+          path: windows
+
+      # The installers are published as they are; the exes go out in
+      # their zips, with the licence.
+      - name: Zips and sums
+        run: |
+          mv windows/*.msi build/dist/
+          make windows-zips EXES=windows VERSION="$VERSION"
+          make sums VERSION="$VERSION"
+          ls -l build/dist
+
+      # Exactly the ten files of this version, each sum matching its file,
+      # checked right before anything leaves the runner.
+      - name: Files and sums agree
+        run: |
+          cd build/dist
+          for file in \
+              "hopto-$VERSION-macos-universal.dmg" \
+              "hopto-$VERSION-windows-amd64.msi" \
+              "hopto-$VERSION-windows-arm64.msi" \
+              "hopto-$VERSION-windows-amd64.zip" \
+              "hopto-$VERSION-windows-arm64.zip"; do
+            test -f "$file" || { echo "missing: $file" >&2; exit 1; }
+            test -f "$file.sha256" || { echo "missing: $file.sha256" >&2; exit 1; }
+          done
+          count="$(find . -maxdepth 1 -type f | wc -l | tr -d ' ')"
+          if [ "$count" != 10 ]; then
+            echo "expected 10 files in build/dist, found $count" >&2
+            exit 1
+          fi
+          shasum -a 256 -c ./*.sha256
+
+      # On a tag and in a rehearsal alike, so a rehearsal's files can be
+      # downloaded and tried.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: build/dist/*
+          if-no-files-found: error
+
       - name: Publish
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/dist/*.zip build/dist/*.sha256 \
+          bash scripts/changelog-section.sh "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$GITHUB_REF_NAME" build/dist/* \
             --title "hopto $GITHUB_REF_NAME" \
-            --notes-file release-notes.md \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             --verify-tag
