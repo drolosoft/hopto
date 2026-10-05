@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  hopto's Windows installer: one user, no elevation. It copies the exe
+  under %LocalAppData%\Programs\hopto, adds a Start Menu shortcut and an
+  entry in Installed apps, and starts hopto when it is done. A newer
+  version replaces the one installed. The user's library, under
+  %AppData%\hopto, is never touched: it belongs to the app, not to this
+  package.
+
+  Built by the release workflow, once per architecture:
+    wix build hopto.wxs -arch x64 -ext WixToolset.Util.wixext
+        -d Version=0.3.0 -d Exe=path\to\hopto-windows-amd64.exe
+        -d Icon=build\windows\icon.ico -o hopto.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    UpgradeCode is what tells Windows that two versions are the same
+    product. It must never change, or an update would install beside
+    the old version instead of replacing it.
+  -->
+  <Package Name="hopto"
+           Manufacturer="Drolosoft"
+           Version="$(var.Version)"
+           UpgradeCode="7D0B6C1E-4B8A-4E0B-9C59-6A3F1E7B2D40"
+           Scope="perUser"
+           Compressed="yes">
+
+    <SummaryInformation Description="Keyboard launcher for your apps and links" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of hopto is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- What Installed apps shows beside the name. -->
+    <Icon Id="hopto.ico" SourceFile="$(var.Icon)" />
+    <Property Id="ARPPRODUCTICON" Value="hopto.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/drolosoft/hopto" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <!--
+      A running hopto holds its exe open, and Windows would ask for a
+      restart to replace it. It is asked to close first and stopped if
+      it does not: it keeps no unsaved state.
+    -->
+    <util:CloseApplication Id="CloseHopto"
+                           Target="hopto.exe"
+                           CloseMessage="yes"
+                           TerminateProcess="0"
+                           RebootPrompt="no" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="hopto" />
+      </Directory>
+    </StandardDirectory>
+
+    <!--
+      A per-user component cannot use a file as its key path (the file
+      could be another user's); a value under HKCU stands in for it,
+      which is also why each folder is removed by hand on uninstall.
+    -->
+    <Component Id="HoptoExe" Directory="INSTALLFOLDER" Guid="B2E6A1F4-93C7-4D5B-8E21-5C0D7A9F3B61">
+      <File Id="HoptoExeFile" Name="hopto.exe" Source="$(var.Exe)" />
+      <RegistryValue Root="HKCU" Key="Software\Drolosoft\hopto" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+      <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
+    </Component>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="E94C3D07-6A1B-4F28-B5D3-18A7C2E04F9D">
+        <Shortcut Id="HoptoShortcut"
+                  Name="hopto"
+                  Description="Keyboard launcher for your apps and links"
+                  Target="[INSTALLFOLDER]hopto.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="hopto.ico" />
+        <RegistryValue Root="HKCU" Key="Software\Drolosoft\hopto" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main">
+      <ComponentRef Id="HoptoExe" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!--
+      Starts hopto once the files are in place, and does not wait for
+      it: the installer ends while hopto goes on running.
+    -->
+    <CustomAction Id="StartHopto"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]hopto.exe&quot;"
+                  Execute="immediate"
+                  Return="asyncNoWait" />
+
+    <!--
+      "Open at login" is the app's own setting, a value under the Run
+      key. Left behind after an uninstall it would point at an exe that
+      is gone, so it is removed, quietly, and only on a real uninstall:
+      an update removes the old version too, and must keep the setting.
+    -->
+    <SetProperty Id="WixQuietExecCmdLine"
+                 Value="&quot;[System64Folder]reg.exe&quot; delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v hopto /f"
+                 Before="ForgetOpenAtLogin"
+                 Sequence="execute"
+                 Condition="(REMOVE = &quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />
+    <CustomAction Id="ForgetOpenAtLogin"
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec"
+                  Execute="immediate"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="ForgetOpenAtLogin" Before="InstallFinalize" Condition="(REMOVE = &quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="StartHopto" After="InstallFinalize" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

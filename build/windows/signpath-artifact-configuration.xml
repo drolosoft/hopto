@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What SignPath signs in one request: the zip the release workflow
+  uploads, with both installers and both loose exes. Inside each
+  installer the exe is signed first and the installer after it, so the
+  installed program is signed as well. The configuration that counts is
+  the one saved in the SignPath project; this copy documents it.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <msi-file path="hopto-*-windows-amd64.msi">
+      <pe-file path="hopto.exe">
+        <authenticode-sign />
+      </pe-file>
+      <authenticode-sign />
+    </msi-file>
+    <msi-file path="hopto-*-windows-arm64.msi">
+      <pe-file path="hopto.exe">
+        <authenticode-sign />
+      </pe-file>
+      <authenticode-sign />
+    </msi-file>
+    <pe-file path="hopto-windows-amd64.exe">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="hopto-windows-arm64.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>
