@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The menu bar item on macOS shows the frog instead of a generic grid: the key-frog from the front, by default. **Icon** in its menu offers six other drawings (the face, the isometric key of the app icon, the frog peeking out, an outline, the frog in colour and the old grid), kept in `library.toml` as `menubar_icon`.
+
 ### Changed
 
 ### Fixed

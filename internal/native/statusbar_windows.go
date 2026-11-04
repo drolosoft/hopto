@@ -17,14 +17,25 @@ func (StatusBar) Install(items []MenuItem) {
 	thread.items = append([]MenuItem{}, items...)
 }
 
+// SetIcon does nothing: the tray shows the app icon, as every tray
+// icon on Windows does, and the setting behind it is for macOS.
+func (StatusBar) SetIcon(_ Icon) {}
+
 // SetChecked moves the tick of one entry; the next click shows it.
 func (StatusBar) SetChecked(tag int, on bool) {
 	thread.mu.Lock()
 	defer thread.mu.Unlock()
 
-	for index := range thread.items {
-		if thread.items[index].Tag == tag {
-			thread.items[index].Checked = on
+	setChecked(thread.items, tag, on)
+}
+
+// setChecked moves the tick of tag wherever it is, submenus included.
+func setChecked(items []MenuItem, tag int, on bool) {
+	for index := range items {
+		if items[index].Tag == tag {
+			items[index].Checked = on
 		}
+
+		setChecked(items[index].Children, tag, on)
 	}
 }

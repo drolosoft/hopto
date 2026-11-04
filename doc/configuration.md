@@ -55,6 +55,7 @@ The schema of the file. Leave it as it is: hopto refuses to rewrite a file with 
 | `icon_services` | list of `"site"`, `"duckduckgo"`, `"google"` | `["site"]` | Where link icons come from after the link's own `icon` hint, in this order. `site` reads the icons the page declares. The two services receive the host of every link you add, so they are off unless listed. |
 | `secondary_browser` | bundle id, or path | none | The browser ⌘↩ opens links in, such as `"com.apple.Safari"` or `"org.mozilla.firefox"`. On Windows it is the path of a browser's exe. Without it, ⌘↩ on a link says there is none. |
 | `allow_private_icon_hosts` | boolean | `false` | Lets icon downloads and page reading reach loopback, private, link-local and CGNAT (tailnet) addresses, for links to a router or a home server. |
+| `menubar_icon` | `"key"`, `"face"`, `"isometric"`, `"peeking"`, `"outline"`, `"colour"`, `"generic"` | `"key"` | The drawing of the menu bar item on macOS, also picked from **Icon** in its menu: the key-frog from the front, the frog's face, the silhouette of the app icon, the frog peeking out, the key as an outline, the frog in green, or the system's grid symbol. All but `colour` follow the light and dark menu bars. On Windows the tray always shows the app icon. |
 
 ### Shortcuts
 
@@ -133,6 +134,6 @@ The notice at the top of the panel names the line (for a parse error) and the ru
 | `category.unknown`, `category.tab` | A category that does not exist, or one of the other tab |
 | `app.target`, `app.path`, `app.bundle` | An app with neither path nor bundle id, a path outside the three folders, or a bundle id with the wrong shape |
 | `hidden.prefix` | A hidden row that is not a found app |
-| `settings.language`, `settings.screen`, `settings.icons`, `settings.hotkey`, `settings.browser` | A setting with a value hopto does not know |
+| `settings.language`, `settings.screen`, `settings.icons`, `settings.hotkey`, `settings.browser`, `settings.menubar_icon` | A setting with a value hopto does not know |
 
 Fix the line, save, and press the shortcut again. The last good version is in `library.toml.bak` if you need it.

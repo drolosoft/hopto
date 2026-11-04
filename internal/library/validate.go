@@ -107,6 +107,42 @@ const (
 	ScreenMain = "main"
 )
 
+// The values of [settings] menubar_icon: the drawings of the menu bar
+// item on macOS. All but the last two are template images, black with
+// transparent holes, which the system paints to match the bar.
+const (
+	// MenubarIconFace is the frog's face, seen from the front.
+	MenubarIconFace = "face"
+
+	// MenubarIconKey is the key-frog seen from the front: a keycap with
+	// the eyes on top. The default.
+	MenubarIconKey = "key"
+
+	// MenubarIconIsometric is the silhouette of the app icon itself.
+	MenubarIconIsometric = "isometric"
+
+	// MenubarIconPeeking is the eyes and the top of the head, as a frog
+	// peeking out of the water.
+	MenubarIconPeeking = "peeking"
+
+	// MenubarIconOutline is the keycap and the eyes drawn as lines.
+	MenubarIconOutline = "outline"
+
+	// MenubarIconColour is the frog in green, as in the app icon.
+	MenubarIconColour = "colour"
+
+	// MenubarIconGeneric is the system's grid symbol, as before v0.4.
+	MenubarIconGeneric = "generic"
+)
+
+// MenubarIcons lists the values of menubar_icon in the order the menu
+// offers them.
+var MenubarIcons = []string{
+	MenubarIconFace, MenubarIconKey, MenubarIconIsometric,
+	MenubarIconPeeking, MenubarIconOutline, MenubarIconColour,
+	MenubarIconGeneric,
+}
+
 // The values settings accept.
 var (
 	languages    = map[string]bool{"auto": true, "es": true, "en": true}
@@ -116,7 +152,18 @@ var (
 	screens = map[string]bool{
 		ScreenLast: true, ScreenMouse: true, ScreenMain: true,
 	}
+	menubarIcons = setOf(MenubarIcons)
 )
+
+// setOf makes the lookup map of a list of accepted values.
+func setOf(values []string) map[string]bool {
+	set := make(map[string]bool, len(values))
+	for _, value := range values {
+		set[value] = true
+	}
+
+	return set
+}
 
 // Validate checks a whole library: the version, the limits, every entry and
 // the references between them. The first problem is returned; hand edits
@@ -627,6 +674,14 @@ func checkSettings(settings Settings) error {
 		return &Problem{
 			Field: "screen", Key: "settings.screen",
 			Detail: "screen must be last, mouse or main",
+		}
+	}
+
+	if !menubarIcons[settings.MenubarIcon] {
+		return &Problem{
+			Field: "menubar_icon", Key: "settings.menubar_icon",
+			Detail: "menubar_icon must be one of " +
+				strings.Join(MenubarIcons, ", "),
 		}
 	}
 

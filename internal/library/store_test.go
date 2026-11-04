@@ -381,7 +381,8 @@ func TestDecodeDefaultsAndUnknownKeys(t *testing.T) {
 	}
 
 	wrong := lib.Version != CurrentVersion || lib.Links == nil ||
-		lib.Settings.Language != "auto" || lib.Settings.Screen != "last"
+		lib.Settings.Language != "auto" || lib.Settings.Screen != "last" ||
+		lib.Settings.MenubarIcon != MenubarIconKey
 	if wrong {
 		t.Fatalf("lib = %+v", lib)
 	}

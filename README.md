@@ -193,6 +193,7 @@ On Windows read Ctrl for ⌘, Alt for ⌥ and Enter for ↩; the default shortcu
 - hopto is a Go program with a [Wails](https://wails.io) window. The panel is a web page in a WKWebView; the library, the scans, the icons and everything native are Go.
 - The shortcuts are registered with Carbon's `RegisterEventHotKey`: global, no Accessibility permission, and they work while the panel is hidden.
 - hopto runs as an accessory app: no Dock icon, no place in ⌘⇥. The panel comes back on the display it was last on, in every Space and over full-screen apps.
+- The menu bar item is the frog, drawn as a key seen from the front. **Icon** in its menu offers six other drawings, including the frog in colour and the plain grid symbol.
 - `library.toml` is read again on every open and written atomically, with the last good version kept aside. A file that does not parse is never overwritten.
 - Icons are fetched once through a client that allows only https, gives up after 10 seconds, reads at most 512 KiB and refuses private addresses; every image is decoded and written again as a PNG before the page shows it.
 - The page sends Go ids, never URLs or paths. Apps open with `open`, like a double click in the Finder; links in your default browser.

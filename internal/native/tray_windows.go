@@ -149,27 +149,7 @@ func showTrayMenu(window windows.Handle) {
 		_, _, _ = procDestroyMenu.Call(menu)
 	}()
 
-	for _, item := range items {
-		if item.Separator {
-			_, _, _ = procAppendMenuW.Call(menu, mfSeparator, 0, 0)
-			continue
-		}
-
-		flags := uintptr(mfString)
-		if item.Checked {
-			flags |= mfChecked
-		}
-
-		title, err := windows.UTF16PtrFromString(item.Label)
-		if err != nil {
-			continue
-		}
-
-		_, _, _ = procAppendMenuW.Call(
-			menu, flags, uintptr(item.Tag),
-			uintptr(unsafe.Pointer(title)),
-		)
-	}
+	appendMenuItems(menu, items)
 
 	var cursor point
 	_, _, _ = procGetCursorPos.Call(uintptr(unsafe.Pointer(&cursor)))
@@ -186,4 +166,46 @@ func showTrayMenu(window windows.Handle) {
 	}
 
 	menuPicked(int(chosen))
+}
+
+// appendMenuItems fills menu with the entries. One with children becomes
+// a popup submenu, which DestroyMenu on the top menu takes down with it;
+// TrackPopupMenu reports a choice made inside it like any other.
+func appendMenuItems(menu uintptr, items []MenuItem) {
+	for _, item := range items {
+		if item.Separator {
+			_, _, _ = procAppendMenuW.Call(menu, mfSeparator, 0, 0)
+			continue
+		}
+
+		title, err := windows.UTF16PtrFromString(item.Label)
+		if err != nil {
+			continue
+		}
+
+		if len(item.Children) > 0 {
+			submenu, _, _ := procCreatePopupMenu.Call()
+			if submenu == 0 {
+				continue
+			}
+
+			appendMenuItems(submenu, item.Children)
+			_, _, _ = procAppendMenuW.Call(
+				menu, mfString|mfPopup, submenu,
+				uintptr(unsafe.Pointer(title)),
+			)
+
+			continue
+		}
+
+		flags := uintptr(mfString)
+		if item.Checked {
+			flags |= mfChecked
+		}
+
+		_, _, _ = procAppendMenuW.Call(
+			menu, flags, uintptr(item.Tag),
+			uintptr(unsafe.Pointer(title)),
+		)
+	}
 }

@@ -70,13 +70,14 @@ const (
 	nifTip     = 0x4
 )
 
-// Menu flags (winuser.h): a text entry, a rule, a tick; and the popup
-// options: return the chosen id instead of sending WM_COMMAND, take the
+// Menu flags (winuser.h): a text entry, a rule, a submenu, a tick; and
+// the popup options: return the chosen id instead of sending WM_COMMAND, take the
 // right button too, and send no WM_ENTERMENULOOP noise.
 const (
 	mfString       = 0x0000
 	mfSeparator    = 0x0800
 	mfChecked      = 0x0008
+	mfPopup        = 0x0010
 	tpmRightButton = 0x0002
 	tpmNoNotify    = 0x0080
 	tpmReturnCmd   = 0x0100

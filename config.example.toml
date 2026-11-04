@@ -57,6 +57,13 @@ icon_services = ["site"]
 # hopto probe your own network.
 allow_private_icon_hosts = false
 
+# The drawing of the menu bar item, also picked from Icon in its menu:
+# "key" (the key-frog from the front), "face", "isometric" (the app icon's
+# silhouette), "peeking", "outline", "colour" (the green frog) or
+# "generic" (the system's grid symbol). On Windows the tray always shows
+# the app icon.
+menubar_icon = "key"
+
 # Categories are the chips above the list, in this order. The id is made
 # of lowercase letters, digits and dashes; tab is "links" or "apps".
 [[categories]]

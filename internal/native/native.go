@@ -28,7 +28,8 @@ type Hooks struct {
 }
 
 // MenuItem is one entry of the menu bar item or the tray menu. A
-// Separator has no label and no tag.
+// Separator has no label and no tag; an entry with Children is a
+// submenu, one level deep, whose own Tag is never reported.
 type MenuItem struct {
 	// Tag is what MenuPicked reports when the entry is chosen.
 	Tag int
@@ -38,6 +39,30 @@ type MenuItem struct {
 	Checked bool
 	// Separator makes the entry a line between groups.
 	Separator bool
+	// Children are the entries of a submenu opened from this one.
+	Children []MenuItem
+	// Icon is a drawing shown next to the label on macOS; nil for none,
+	// the zero Icon for the system symbol, like SetIcon.
+	Icon *Icon
+}
+
+// Icon is a drawing for the menu bar item: the same picture as a PNG at
+// 18 and 36 pixels, for the plain and the Retina bar. Template marks a
+// black-and-transparent image the system paints to match the bar, like
+// its own symbols. The zero Icon asks for the system's own symbol back.
+type Icon struct {
+	// Small is the PNG at 18 pixels.
+	Small []byte
+	// Large is the PNG at 36 pixels.
+	Large []byte
+	// Template lets the system paint the image in the bar's colour.
+	Template bool
+}
+
+// Empty reports an Icon with no picture, the one that means "the system
+// symbol".
+func (icon Icon) Empty() bool {
+	return len(icon.Small) == 0 && len(icon.Large) == 0
 }
 
 // hooks holds the callbacks the C handlers and the native thread reach.

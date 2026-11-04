@@ -8,6 +8,7 @@ screen = "last"
 scan_applications = true
 discover_edge_apps = true
 icon_services = ["site"]
+menubar_icon = "key"
 
 [[categories]]
 id = "dev"

@@ -20,6 +20,13 @@ The directory contains the following files:
 - `Info.plist` - the main plist file used for Mac builds. It is used when building using `wails build`.
 - `Info.dev.plist` - same as the main plist file but used when building using `wails dev`.
 
+## Menu bar
+
+The `menubar` directory holds the SVG sources of the drawings the menu bar item can show on macOS, one per value of
+`menubar_icon`, and `render.sh`, which renders them (and the frog in colour, from `assets/icon.png`) at 18 and 36
+pixels into `internal/app/menubar`, where the app embeds them. Run it after changing an SVG; it needs `rsvg-convert`
+(`brew install librsvg`).
+
 ## Windows
 
 The `windows` directory contains the manifest and rc files used when building with `wails build`.

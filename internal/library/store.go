@@ -322,6 +322,10 @@ func Decode(data []byte) (Library, error) {
 		lib.Settings.Screen = Default().Settings.Screen
 	}
 
+	if lib.Settings.MenubarIcon == "" {
+		lib.Settings.MenubarIcon = Default().Settings.MenubarIcon
+	}
+
 	return withoutNils(lib), nil
 }
 

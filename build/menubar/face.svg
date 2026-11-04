@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+  <mask id="holes">
+    <rect width="36" height="36" fill="#fff"/>
+    <circle cx="12" cy="11" r="3.9" fill="#000"/>
+    <circle cx="24" cy="11" r="3.9" fill="#000"/>
+    <path d="M13 25q5 3 10 0" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </mask>
+  <g fill="#000" mask="url(#holes)">
+    <rect x="3" y="13" width="30" height="19" rx="8"/>
+    <circle cx="12" cy="11" r="6.5"/>
+    <circle cx="24" cy="11" r="6.5"/>
+    <circle cx="12.6" cy="11.4" r="2"/>
+    <circle cx="24.6" cy="11.4" r="2"/>
+  </g>
+</svg>

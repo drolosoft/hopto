@@ -85,6 +85,7 @@ The next `shown` compares the file's bytes with the last ones read or written. C
 main.go               window options, single-instance lock, asset server with the icons handler
 internal/
   app/                App, the type Wails binds: toggle, show and hide, open, edit, menu, welcome, about, screen choice; imports everything below
+    menubar/          the drawings of the menu bar item, PNGs at 18 and 36 px rendered from build/menubar by its render.sh
   native/             Carbon and Cocoa on macOS, the Win32 window, tray and message loop on Windows, the menu bar item or tray menu; calls back through native.Hooks; imports platform and library, never Wails or app
   platform/           what differs between macOS and Windows: paths, open, language, log file, login agent, hotkey specs and key codes; imports library, discover and atomicfile, never Wails, native or app
   atomicfile/         write to a temp file, sync, rename; keep a .bak

@@ -255,6 +255,11 @@ func TestValidateRejects(t *testing.T) {
 			lib.Settings.Screen = "left"
 		}, "screen"},
 		{
+			"unknown menu bar icon",
+			func(lib *Library) { lib.Settings.MenubarIcon = "frog" },
+			"menubar_icon",
+		},
+		{
 			"unknown icon service",
 			func(lib *Library) { lib.Settings.IconServices = []string{"bing"} },
 			"icon_services",

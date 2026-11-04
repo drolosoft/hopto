@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+  <mask id="holes">
+    <rect width="36" height="36" fill="#fff"/>
+    <circle cx="7.5" cy="10.5" r="3" fill="#000"/>
+    <circle cx="23.5" cy="5.5" r="3" fill="#000"/>
+    <path d="M1 15 L18 25 L35 15 M18 25 V33" stroke="#000" stroke-width="1.8" fill="none"/>
+  </mask>
+  <g fill="#000" mask="url(#holes)">
+    <polygon points="18,6 35,15 35,23 18,33 1,23 1,15"/>
+    <circle cx="7.5" cy="10.5" r="5.5"/>
+    <circle cx="23.5" cy="5.5" r="5.5"/>
+    <circle cx="8" cy="10.9" r="1.9"/>
+    <circle cx="24" cy="5.9" r="1.9"/>
+  </g>
+</svg>

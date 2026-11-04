@@ -30,9 +30,10 @@ type Library struct {
 // else the main one; "mouse": the one under the pointer; "main"); the
 // icon services are third parties asked for a favicon, in order, and are
 // opt-in because they receive the host of every link; the secondary
-// browser is the bundle id ⌘↩ opens links with; and
+// browser is the bundle id ⌘↩ opens links with;
 // allow_private_icon_hosts lets the icon fetch reach loopback and private
-// addresses.
+// addresses; and menubar_icon is the drawing of the menu bar item on
+// macOS (the tray on Windows always shows the app icon).
 type Settings struct {
 	Language              string   `toml:"language"`
 	HotkeyApps            string   `toml:"hotkey_apps"`
@@ -43,6 +44,7 @@ type Settings struct {
 	IconServices          []string `toml:"icon_services"`
 	SecondaryBrowser      string   `toml:"secondary_browser,omitempty"`
 	AllowPrivateIconHosts bool     `toml:"allow_private_icon_hosts"`
+	MenubarIcon           string   `toml:"menubar_icon"`
 }
 
 // Category is one filter chip. The array order in the file is the order of
@@ -96,6 +98,7 @@ func Default() Library {
 			ScanApplications: true,
 			DiscoverEdgeApps: true,
 			IconServices:     []string{"site"},
+			MenubarIcon:      MenubarIconKey,
 		},
 		Categories: []Category{},
 		Links:      []Link{},

@@ -12,3 +12,6 @@ func (StatusBar) Install(_ []MenuItem) {}
 
 // SetChecked does nothing here.
 func (StatusBar) SetChecked(_ int, _ bool) {}
+
+// SetIcon does nothing here.
+func (StatusBar) SetIcon(_ Icon) {}
